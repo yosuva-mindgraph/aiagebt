@@ -16,7 +16,7 @@ The short version: **`vendor/talkinghead.bundle.js` is a generated, committed, c
 | File | Size | Why it is in git |
 |---|---|---|
 | `vendor/talkinghead.bundle.js` | 812 KB (831,359 B) | The deliverable is `dist/index.html` — one file you double-click on a booth machine with no network and no npm. A dependency you have to install is not a deliverable. |
-| `assets/avatar.glb` | **35.11 MiB (36,815,920 B)** | Same reason. **CC0**, and a placeholder — see the avatar section. |
+| `assets/avatar.glb` | **6.56 MiB (6,877,280 B)** | Same reason. A **VALID** avatar (MIT), converted by `tools/convert-valid-avatar.mjs` — see `docs/AVATAR.md`. |
 | `package-lock.json` | — | The bundle is only reproducible if the inputs are. |
 
 This is the same call the repo already made for the 731 KB `assets/fonts.css` (fonts as
@@ -93,18 +93,28 @@ which loads the bundle from a real `file://` URL and asserts it constructs, rigs
 mouth, and speaks. Expected, with the CC0 avatar currently committed:
 
 ```
-ctor=ok armature=true visemeMorphs=14 marker=fired markerAfterStop=false
-  avatar loaded in ~1600ms · 80 morph targets · queue drained to 0
+ctor=ok armature=true visemeMorphs=15 marker=fired markerAfterStop=false
+  avatar loaded in 152ms · 81 morph targets · queue drained to 0
   rig: root "Armature" · 52 required bones present · eyes [LeftEye,RightEye]
-  visemes: 14/15 present (missing: sil)
+  visemes: 15/15 present
 ```
 
-`visemeMorphs=14` is correct, not a defect — `mpfb.glb` ships no `viseme_sil`, and `sil`
-is silence, which is also exactly what every other viseme relaxing to 0 renders. The
-morph apply path is guarded (`if (this.mtAvatar.hasOwnProperty(mt))`, ~L2434), so an
-absent morph is skipped rather than thrown on. The smoke test therefore asserts the **14
-articulating** visemes individually and permits only `sil` to be missing; any other
-absence fails, because that would be an avatar that mouths some phonemes and not others.
+The smoke test asserts the visemes **by name** and permits only `sil` to be missing, on
+the grounds that `sil` is silence — which is also exactly what every other viseme
+relaxing to 0 renders — and that the morph apply path is guarded
+(`if (this.mtAvatar.hasOwnProperty(mt))`, ~L2434). Any other absence fails, because that
+would be an avatar that mouths some phonemes and not others.
+
+That tolerance is currently unused. The CC0 placeholder this repo shipped first did read
+`visemeMorphs=14`; the VALID avatar now committed emits all 15, so the recorded
+acceptance deviation is closed. **The tolerance stays anyway** — it is a statement about
+what `sil` means, not a workaround for one file.
+
+**Nothing here proves the mouth MOVES.** This suite checks that the contract is
+satisfied, and a rig can satisfy every line of it and still render a mannequin — that is
+the exact failure a Daz-scheme avatar produces. The test that samples
+`morphTargetInfluences` frame by frame during real speech lives with the converter; see
+`docs/AVATAR.md` §6.
 
 ---
 
@@ -237,19 +247,28 @@ case; the callback will not arrive.
 
 ---
 
-## The avatar — CC0, placeholder, and the only licence-safe option there was
+## The avatar — VALID, MIT, and converted
 
-`assets/avatar.glb` is **`mpfb.glb` from the TalkingHead repository**, byte-identical to
-`met4citizen/TalkingHead@main:avatars/mpfb.glb`:
+`assets/avatar.glb` is **`Black_F_1_Busi` from the VALID library**, MIT, converted for
+this pinned TalkingHead by `tools/convert-valid-avatar.mjs`:
 
 ```
-sha256   63c645a2a863b9972e9a9c2ed576a1de4c390b8475508e1473e69c87a3ee299c
-size     36,815,920 bytes  ·  35.11 MiB  ·  glTF 2.0 binary
-licence  CC0 (public domain) — built in Blender with the MPFB extension
+source   c-frame/valid-avatars-glb @ c4719df  ·  avatars/Black/Black_F_1_Busi.glb
+         sha256 e8158244ef013f65fa4724d0831a860bd6bc4bb5fdaa1b81c0050910beb44a83
+output   sha256 410f99339be663b806bb3060032f30dfbdc9fa7491e5b4d8d2d724f927d4e66d
+         6,877,280 bytes  ·  6.56 MiB  ·  glTF 2.0 binary
+licence  MIT, Copyright (c) 2022 Tiffany Do
 ```
 
-**It was chosen for its licence, not its looks or its size.** Of the six example avatars
-bundled with TalkingHead, five cannot be used here:
+**Everything about that choice — the licence text verbatim, the citation VALID asks for,
+why this avatar, the full 96→67 morph mapping, what is approximated, what is inert, and
+the evidence that the mouth actually moves — is in `docs/AVATAR.md`.** This section keeps
+only what a reader of *this* file needs: the contract a replacement must satisfy, and why
+the obvious sources are unusable.
+
+### Why not the avatars bundled with TalkingHead
+
+Of the six example avatars in the TalkingHead repository, five cannot be used here:
 
 | Avatar | Size | Licence | Usable? |
 |---|---|---|---|
@@ -257,7 +276,7 @@ bundled with TalkingHead, five cannot be used here:
 | `avatar.glb` (Avaturn) | 13.8 MB | Avaturn, non-commercial | ✗ |
 | `avatarsdk.glb` | 12.3 MB | AvatarSDK, non-commercial | ✗ |
 | `vroid.glb` | 2.3 MB | VRoid Studio, non-commercial | ✗ |
-| **`mpfb.glb`** | **36.8 MB** | **CC0 — public domain** | ✓ **the only one** |
+| **`mpfb.glb`** | **36.8 MB** | **CC0 — public domain** | ✓ **the only usable one** |
 
 > **Why non-commercial is a hard blocker here.** This is a MindGraph × DXC product
 > walkthrough shown to prospects. That is commercial use, unambiguously, and CC BY-NC
@@ -275,15 +294,23 @@ bundled with TalkingHead, five cannot be used here:
 > "a free Ready Player Me avatar is a 10-minute job" premise in
 > `docs/OSS-EVALUATION.md` died with the company; that file has been corrected.
 
-So we pay 35 MiB for a clean licence. That is the trade, made knowingly. **Do not swap
-back to a smaller non-commercial avatar to improve the numbers.**
+`mpfb.glb` — the sixth, CC0 — is what this repo shipped first, and it remains the
+fallback of record. It is a generic MakeHuman figure in a logo t-shirt and jeans at
+35 MiB, which is not what presents an airport platform to a CFO, so it was replaced.
+**Do not swap back to a smaller non-commercial avatar to improve the numbers.**
 
-### It is still a placeholder
+### Swapping the avatar
 
-`mpfb.glb` is a generic MakeHuman figure. It proves the pipeline, not the brand — Iris
-still has to be chosen, and that is a brand decision, not an engineering one. Swapping
-her is a **one-file change with no code impact**: drop the new GLB at `assets/avatar.glb`
-and re-run `vendor/smoke.cjs`.
+It is a one-constant change with no code impact: edit `SOURCE` in
+`tools/convert-valid-avatar.mjs` (name, URL, byte count, sha256), then
+
+    node tools/convert-valid-avatar.mjs
+    node tools/check-avatar-glb.mjs assets/avatar.glb
+    node vendor/smoke.cjs
+
+Any GLB already meeting the contract below can equally be dropped straight at
+`assets/avatar.glb`; run the gate and the smoke test either way. Nothing in `src/`,
+`build.js` or `vendor/` knows which avatar it is.
 
 ### What a replacement avatar must satisfy
 
@@ -314,20 +341,41 @@ pinned npm 1.7.0 and asserted by `vendor/smoke.cjs`:
 - **Not Draco-compressed** (see trap 3).
 - **Licensed for commercial use.** CC0, a licence we own, or an avatar we commission.
 
-Realistically, a brand-correct Iris now means **authoring a rig to that contract**
-(Blender + MPFB, or a commissioned model), because the service that used to make it a
-ten-minute job no longer exists.
+Ready Player Me used to make meeting that contract a ten-minute job and no longer
+exists, so the realistic sources are now: the **VALID** library via
+`tools/convert-valid-avatar.mjs` (what is committed — MIT, 210 validated avatars, and the
+converter handles the Daz-scheme mismatch), a rig authored to the contract in
+Blender + MPFB, or a commissioned model.
 
-### If someone later optimises the size
+**Meeting the contract is necessary and not sufficient.** A VALID avatar satisfies every
+bullet above the moment it is renamed and reparented, and still renders a motionless
+mannequin twisted ninety degrees away from camera, because `showAvatar()` overwrites the
+rest pose with absolute bone rotations authored against an RPM rig. `docs/AVATAR.md` §3.3
+is that story. Check a new avatar with `tools/check-avatar-glb.mjs`, which adds the
+checks `vendor/smoke.cjs` cannot make from inside the browser — morph meshes outside the
+`Armature` subtree, zero-delta "present" shapes, and extensions the pinned loader cannot
+decode.
 
-Worth doing once the final avatar is settled, not before. The order of preference:
+### Size — done, and where the bytes went
 
-1. **`gltf-transform` with webp textures** — this is the route. Texture data, not
-   geometry, is the bulk of a 35 MiB humanoid.
-2. **Meshopt** — better than Draco, but TalkingHead only supports it on **git `main`**,
-   not the npm 1.7.0 we are pinned to. Taking it means taking `main`, which reintroduces
-   the unresolvable `retargeter.mjs` import described above.
-3. **Draco — no.** `dracoEnabled` fetches its decoder from `gstatic.com`. That is an
+35.11 MiB → **6.56 MiB**, via `gltf-transform` in `tools/convert-valid-avatar.mjs`.
+
+The bulk was **not** texture data, which is the usual guess and was the guess recorded
+here: the VALID source ships two webp maps totalling 240 KB and they are passed through
+untouched (three r180 reads `EXT_texture_webp` natively). It was **morph-target
+storage** — 67 targets over a 22k-vertex mesh is ~30 MB of mostly zeroes, because a
+viseme does not move the scalp. glTF **sparse accessors** store only the vertices that
+move. Measurements, and the one ordering that produces a smaller file that is silently
+corrupt, are in `docs/AVATAR.md` §8.
+
+Still excluded, unchanged:
+
+1. **Meshopt — no.** Better than Draco, but TalkingHead supports it only on git `main`,
+   not the npm 1.7.0 we are pinned to; taking it reintroduces the unresolvable
+   `retargeter.mjs` import described above. Note that the upstream c-frame GLBs *are*
+   meshopt-compressed, which is why the converter has to decode it out rather than
+   re-host the file.
+2. **Draco — no.** `dracoEnabled` fetches its decoder from `gstatic.com`. That is an
    air-gap violation, which is the one thing this whole vendoring exercise exists to
    prevent.
 
@@ -342,4 +390,6 @@ Worth doing once the final avatar is settled, not before. The order of preferenc
 | `vendor/talkinghead.bundle.js` | **Generated — do not edit.** |
 | `vendor/smoke.html` | The page under test. Driven by the harness; needs the GLB handed to it. |
 | `vendor/smoke.cjs` | Playwright harness. Opens the page from `file://` and asserts the behaviours above, plus the full rig contract. |
-| `assets/avatar.glb` | Placeholder avatar — `mpfb.glb`, CC0, 35.11 MiB. See the avatar section. |
+| `assets/avatar.glb` | The avatar — VALID `Black_F_1_Busi`, MIT, 6.56 MiB. **Generated** by `tools/convert-valid-avatar.mjs`; committed because the booth machine has no npm. See `docs/AVATAR.md`. |
+| `tools/convert-valid-avatar.mjs` | Builds `assets/avatar.glb` from the pinned VALID source: reparents, retargets the rest pose, remaps 96 Daz morphs onto 15 visemes + 52 ARKit shapes, synthesises gaze. Deterministic. |
+| `tools/check-avatar-glb.mjs` | The avatar acceptance gate. No npm dependencies — parses the GLB by hand so it can be run against a candidate before anything is installed. |

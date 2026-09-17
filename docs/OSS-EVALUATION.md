@@ -29,10 +29,11 @@ HTML file. That is smaller than the config of any of the above.
 
 This is the one to take, and it is close to a perfect fit.
 
-> **Status: taken.** The library is now vendored as an offline bundle — see
-> `docs/TALKINGHEAD.md` for the pins, the four traps, and the avatar contract. **The
-> verdict below stands; the avatar-sourcing paragraph did not.** It assumed Ready Player
-> Me, and Ready Player Me no longer exists. The corrections are inline and flagged.
+> **Status: taken, and the avatar is solved.** The library is vendored as an offline
+> bundle (`docs/TALKINGHEAD.md` — pins, traps, rig contract) and a licence-clean avatar
+> now ships (`docs/AVATAR.md`). **The verdict below stands; the avatar-sourcing
+> paragraph did not.** It assumed Ready Player Me, and Ready Player Me no longer exists.
+> The corrections are inline and flagged.
 
 - **What it is:** a JavaScript class that renders a full-body 3D avatar in Three.js
   and lip-syncs it in real time.
@@ -45,8 +46,13 @@ This is the one to take, and it is close to a perfect fit.
   **Wrong as of 2026.** Ready Player Me **shut down on 2026-01-31** after being acquired
   by Netflix (announced 2025-12-19); all its hostnames now fail to resolve, verified. So
   the free-avatar-in-ten-minutes route is gone, and with it the only documented way to
-  license an RPM avatar for commercial use. A brand-correct presenter now means
-  **authoring a rig to the contract above** (Blender + MPFB, or a commissioned model).
+  license an RPM avatar for commercial use.
+  **The replacement is the [VALID](https://github.com/xrtlab/Validated-Avatar-Library-for-Inclusion-and-Diversity---VALID)
+  library — MIT, 210 perceptually validated avatars, seven ethnicities, business
+  attire included.** It is not a drop-in: a VALID rig meets the bone contract exactly
+  and then loads, renders, reports nothing, and never moves, because its 96 morph
+  targets are in a Daz/Mimic scheme and its bone frames are not RPM's.
+  `tools/convert-valid-avatar.mjs` closes that gap — see `docs/AVATAR.md`.
 - **ElevenLabs is already integrated**, via the ElevenLabs **WebSocket** API with
   **word-level timestamps** — which is the whole reason the lip-sync is good rather
   than amplitude-jiggle. Azure Speech, Google TTS, OpenAI, Gemini and Grok are also
@@ -78,14 +84,15 @@ and map those four calls. `src/voice.js` hands its audio to `speakAudio()` inste
 an AudioContext. Everything else — scenes, narration loop, film strip, Q&A — is
 untouched.
 
-**Cost of the swap:** roughly half a day for the wiring. Choosing and rigging the avatar
-is no longer part of that estimate — see below.
+**Cost of the swap:** roughly half a day for the wiring. The avatar is no longer part of
+that estimate at all — it is done, licence-clean and committed. See below.
 
-**The one real trade-off:** it needs WebGL and a large GLB, so the single-file offline
-build gets meaningfully bigger and needs a GPU. The canvas presenter in this repo stays
-as the fallback for a locked-down venue machine — keep both.
+**The one real trade-off:** it needs WebGL and a GLB, so the single-file offline build
+gets bigger and needs a GPU. Concretely: 6.56 MiB of avatar, about 9.6 MB once base64'd
+into `dist/index.html`. The canvas presenter in this repo stays as the fallback for a
+locked-down venue machine — keep both.
 
-### The avatar licensing problem (this is the live issue)
+### The avatar licensing problem — **resolved**
 
 Of the six example avatars bundled with TalkingHead, **five are non-commercial and
 therefore unusable here** — this is a MindGraph × DXC product walkthrough shown to
@@ -99,16 +106,27 @@ prospects, and the single-file build hands the asset to the client outright:
 | `vroid.glb` | 2.3 MB | VRoid Studio, non-commercial | ✗ |
 | **`mpfb.glb`** | **36.8 MB** | **CC0 — public domain** | ✓ **the only one** |
 
-`mpfb.glb` is what is committed, chosen for its licence rather than its looks or its
-size, and it is a **placeholder**: a generic MakeHuman figure that proves the pipeline,
-not the brand. The 35 MiB is the price of the only clean licence, and it is paid
-knowingly — do not swap back to a smaller non-commercial avatar to improve the numbers.
+`mpfb.glb` was committed first, on licence grounds alone, and is now the **fallback of
+record** rather than the shipped avatar: a generic MakeHuman figure in a logo t-shirt and
+jeans at 35 MiB is not what presents an airport platform to a CFO.
 
-**What this actually costs the project:** the "10-minute avatar" assumption is dead, so
-choosing the real Iris is now a modelling task or a commission, and it is a brand
-decision the operator has to make. Optimising the size (`gltf-transform` + webp textures —
-**not** Draco, which fetches a decoder from gstatic.com and breaks the air gap) is worth
-doing *after* that choice, not before.
+**What ships instead: a VALID avatar** — `Black_F_1_Busi`, **MIT, Copyright (c) 2022
+Tiffany Do**, 6.56 MiB, business dress, and joint-highest validated agreement in the
+library (0.98 ethnicity / 0.98 gender, n=132 across 33 countries, from VALID's own
+published data). Commercial use is unambiguously permitted; the citation VALID asks for
+is honoured in `docs/AVATAR.md` alongside the verbatim licence, the source hashes and the
+dated provenance record.
+
+**What it cost, since "just use a free avatar" is exactly the assumption that killed the
+last plan:** VALID ships FBX, so the glTF conversion comes from `c-frame/valid-avatars-glb`
+(MIT, same holder, linked from VALID's own README). Those files are meshopt-compressed,
+which the pinned loader cannot decode; carry 96 Daz/Mimic morph targets and none of the
+15 visemes or 52 ARKit shapes; have no `Armature` and put their meshes *outside* the
+skeleton; and — the one that actually took the time — have Daz bone frames, which
+TalkingHead's absolute RPM-authored pose templates twist ninety degrees off camera.
+`tools/convert-valid-avatar.mjs` fixes all four deterministically and
+`tools/check-avatar-glb.mjs` gates the result. **Budget a day for a new avatar library,
+not ten minutes** — and never accept "it loaded" as evidence.
 
 ---
 
@@ -159,11 +177,13 @@ is a key in the browser, and anyone can read it. `llm.endpoint` exists for exact
 
 1. **Ship the current build as the layout.** It runs offline, on any machine, today.
 2. **Swap in TalkingHead + ElevenLabs WebSocket** for the customer-facing version — MIT,
-   purpose-built, ~half a day, one file changes. The library is now vendored offline
-   (`docs/TALKINGHEAD.md`). ~~+ a Ready Player Me avatar~~ — **that route is gone**; RPM
-   shut down 2026-01-31. A CC0 placeholder is committed and the real avatar is an open
-   brand decision with a modelling cost attached. **Treat it as the critical path, not a
-   detail** — it is the one thing here with no off-the-shelf answer left.
+   purpose-built, ~half a day, one file changes. The library is vendored offline
+   (`docs/TALKINGHEAD.md`) and the avatar is done: ~~+ a Ready Player Me avatar~~ —
+   **that route is gone**, RPM shut down 2026-01-31 — replaced by a **VALID** avatar,
+   MIT, licence-clean, business-dressed, 6.56 MiB, with its mouth proven to move
+   (`docs/AVATAR.md`). No longer the critical path. The one decision still open is
+   *which* of the 210 VALID avatars presents as Iris; that is a client call and it is one
+   constant in `tools/convert-valid-avatar.mjs`.
 3. **Keep the canvas presenter as the fallback** for venue machines with no GPU.
 4. **Put the LLM key behind a proxy** before it is reachable from the internet.
 5. Revisit Pipecat / LiveKit only if we decide people should be able to interrupt Iris
