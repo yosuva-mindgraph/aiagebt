@@ -174,6 +174,34 @@ header {
   border-bottom: 1px solid var(--rule);
 }
 #avatar { width: 100%; height: 100%; display: block; }
+
+/* The 3D presenter's mount — the same square the canvas bust occupies, and
+   never both at once (app.js hides whichever backend lost).
+
+   Absolute + inset over a position:relative, aspect-ratio 1/1 parent, so it is
+   a real, MEASURED box before TalkingHead reads clientWidth/clientHeight and
+   hands them to WebGLRenderer.setSize(). Out of flow, so the renderer canvas —
+   which sizes itself in px and lags the box by a frame on resize — cannot push
+   the rail wider; overflow:hidden clips that frame instead of scrolling the
+   page sideways.
+
+   NO `display` declaration here, deliberately: the element ships `hidden`, and
+   `hidden` is only the UA sheet's `[hidden] { display: none }`. Any author
+   `display` on #avatar3d outranks it and the attribute silently stops hiding
+   anything. Add one and you get an empty black box over the bust on every
+   machine that falls back.
+
+   Nothing sets a size of its own either — that is what makes the mobile
+   breakpoint safe. #rail is display:none under 760px, so this measures 0x0 and
+   Avatar3D.create() declines rather than buying an invisible WebGL context. */
+#avatar3d {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  border-radius: inherit;          /* follow the wrap if it is ever rounded */
+  pointer-events: none;            /* the presenter is not a turntable */
+}
+#avatar3d > canvas { display: block; }
+
 #avatarState {
   position: absolute; left: 14px; bottom: 12px;
   font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em;
@@ -183,6 +211,17 @@ header {
 #avatarState .dot {
   width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3);
   transition: background .2s var(--e), box-shadow .2s var(--e);
+}
+/* The badge sits over whichever backend won. The canvas bust is a dark ground
+   and ink-3 reads fine on it; the 3D one puts a lit, mid-blue shirt right
+   behind these letters and the same grey all but disappears. So give it a scrim
+   in the rail's own surface colour — but ONLY when the 3D mount is showing, so
+   the fallback path looks exactly as it always has. left/bottom shift by the
+   padding so the text itself does not move between the two. */
+#avatar3d:not([hidden]) ~ #avatarState {
+  left: 5px; bottom: 9px;
+  padding: 3px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--abyss) 82%, transparent);
 }
 #avatarState[data-state="speaking"] .dot { background: var(--sky); box-shadow: 0 0 9px var(--sky); }
 #avatarState[data-state="listening"] .dot { background: var(--gold); box-shadow: 0 0 9px var(--gold); }
