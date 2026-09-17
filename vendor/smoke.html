@@ -92,8 +92,52 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     URL.revokeObjectURL(url);
     r.showMs = Math.round(performance.now() - t0);
     r.armature = !!th.armature;
-    r.morphs = Object.keys(th.mtAvatar || {}).length;
-    r.visemeMorphs = Object.keys(th.mtAvatar || {}).filter(k => k.startsWith('viseme_')).length;
+    r.armatureName = th.armature && th.armature.name;
+    const morphKeys = Object.keys(th.mtAvatar || {});
+    r.morphs = morphKeys.length;
+    r.visemeMorphs = morphKeys.filter(k => k.startsWith('viseme_')).length;
+
+    /* Which visemes are missing matters far more than how many there are, so
+       name them — again derived from the library's own th.visemeNames rather
+       than a transcribed list. 'sil' is the one legitimate absence: it is the
+       silence/neutral shape, and silence is already what you get when every
+       other viseme relaxes to 0. The apply path is guarded
+       (`if (this.mtAvatar.hasOwnProperty(mt))`, ~L2434), so an absent morph is
+       skipped rather than thrown on. Any of the other 14 going missing is a
+       broken export and must fail. */
+    const present = new Set(morphKeys.filter(k => k.startsWith('viseme_')).map(k => k.slice(7)));
+    r.visemesMissing = th.visemeNames.filter(v => !present.has(v)).join(',');
+
+    /* ── the rig contract ─────────────────────────────────────────────────
+
+       "a Mixamo-compatible rig" is far too loose a description of what this
+       class needs. It needs a specific, named skeleton, and it finds out in two
+       very different ways.
+
+       DERIVED, not transcribed: showAvatar() builds its own required[] as
+       `[opt.modelRoot, ...posePropNames.map(x => x.split('.')[0])]`
+       (talkinghead.mjs ~L1209). Reading it back off the live instance means this
+       assertion cannot drift from the library it is meant to be checking — bump
+       the pin and the list updates itself, and the count assertion in smoke.cjs
+       is what tells you it moved. Those bones fail LOUDLY:
+       "Avatar object <name> not found".
+
+       LeftEye and RightEye are checked SEPARATELY and on purpose: they are NOT
+       in required[], but showAvatar() then does
+       `this.objectLeftEye.getWorldPosition(plEye)` unguarded (~L1384) to
+       estimate avatar height. A rig without them therefore dies on
+       "Cannot read properties of undefined (reading 'getWorldPosition')",
+       which names nothing and points at nothing. Check them here so a bad export
+       is caught at build time with a sentence that says what is wrong.
+
+       The root ('Armature', opt.modelRoot) is checked separately from the 52
+       bones: on npm 1.7.0 it must be named EXACTLY that, and the `mixamorig`
+       prefix is NOT stripped — so a GLB exported straight out of Mixamo loads on
+       git main and fails here. That is a pin-specific trap, not a general one. */
+    const required = [...new Set(th.posePropNames.map(x => x.split('.')[0]))];
+    r.bonesChecked = required.length;
+    r.bonesMissing = required.filter(n => !th.armature.getObjectByName(n)).join(',');
+    r.eyeBones = ['LeftEye', 'RightEye'].filter(n => !!th.armature.getObjectByName(n)).join(',');
 
     /* A short synthetic buffer stands in for TTS audio. speakAudio wants the
        word timings alongside it, which is exactly the shape ElevenLabs

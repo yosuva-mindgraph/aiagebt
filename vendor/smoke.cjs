@@ -62,9 +62,19 @@ const GLB = path.join(ROOT, 'assets', 'avatar.glb');
    of the set rather than something that crept in. Consumers still touch only
    TalkingHead and LipsyncEn; there is deliberately no `THREE` global to reach for. */
 const EXPECT = {
-  visemeMorphs: 15,
   visemes: 'SS,aa,RR,SS,I,SS',
   globals: 'LipsyncEn,TalkingHead,__THREE__',   // JS default sort: '_' (0x5F) lands after the capitals
+  /* Not a magic number: it is the length of the list showAvatar() derives from
+     posePropNames on this pinned version (plus opt.modelRoot, asserted
+     separately). The page reads that list off the live instance rather than
+     transcribing it, so this count is the tripwire for the list itself changing
+     under a version bump. */
+  bones: 52,
+  /* The only viseme an avatar is allowed to omit. See the note in smoke.html:
+     'sil' is silence, which is also what every other viseme at 0 renders, and
+     the morph apply path skips absent keys. Anything else missing is a broken
+     export that would mouth some phonemes and not others. */
+  visemesMayOmit: ['sil'],
 };
 
 (async () => {
@@ -102,17 +112,29 @@ const EXPECT = {
   if (r && r.err) problems.push('threw: ' + r.err);
 
   const marker = r && r.marker === 'fired' ? 'fired' : 'NOT-FIRED';
+  const missingVisemes = (r && r.visemesMissing ? r.visemesMissing.split(',') : []);
+  const fatalVisemes = missingVisemes.filter(v => !EXPECT.visemesMayOmit.includes(v));
   console.log(
     `ctor=${(r && r.ctor) || 'FAILED'} armature=${!!(r && r.armature)} ` +
     `visemeMorphs=${r ? r.visemeMorphs : '?'} marker=${marker} markerAfterStop=${!!(r && r.markerAfterStop)}`,
   );
   console.log(`  avatar loaded in ${r && r.showMs}ms · ${r && r.morphs} morph targets · queue drained to ${r && r.queueLen}`);
+  console.log(`  rig: root "${r && r.armatureName}" · ${r && r.bonesChecked} required bones present · eyes [${r && r.eyeBones}]`);
+  console.log(`  visemes: ${r && r.visemeMorphs}/15 present${missingVisemes.length ? ` (missing: ${missingVisemes.join(',')})` : ''}`);
   console.log(`  offline lipsync 'sources' → [${r && r.visemes}]`);
   console.log(`  globals added by the bundle: ${r && r.globalsAdded}`);
 
   if (!r || r.ctor !== 'ok') problems.push('TalkingHead did not construct');
   if (!r || !r.armature) problems.push('no armature — the GLB did not load or did not rig');
-  if (!r || r.visemeMorphs !== EXPECT.visemeMorphs) problems.push(`expected ${EXPECT.visemeMorphs} viseme_* morphs, got ${r && r.visemeMorphs}`);
+  if (!r || fatalVisemes.length) problems.push(`avatar is missing articulating viseme morphs: ${fatalVisemes.join(',')} — those phonemes would have no mouth shape`);
+  /* Total morph count is deliberately NOT asserted. The 5 "extras" (mouthOpen,
+     mouthSmile, eyesClosed, eyesLookUp, eyesLookDown) are optional — TalkingHead
+     synthesises them from ARKit shapes via mtExtras, and the CC0 avatar ships
+     none of them and works fine. The real requirement is 52 ARKit + 15 visemes. */
+  if (!r || r.bonesMissing !== '') problems.push(`rig is missing required bones: ${r && r.bonesMissing}`);
+  if (!r || r.bonesChecked !== EXPECT.bones) problems.push(`the required-bone list itself changed: expected ${EXPECT.bones} names, the library now asks for ${r && r.bonesChecked}`);
+  if (!r || r.armatureName !== 'Armature') problems.push(`root object is "${r && r.armatureName}", must be exactly "Armature" — npm 1.7.0 does not strip a mixamorig prefix`);
+  if (!r || r.eyeBones !== 'LeftEye,RightEye') problems.push(`missing eye bones [have: ${r && r.eyeBones}] — showAvatar() reads them unguarded and would have died on getWorldPosition of undefined`);
   if (!r || r.visemes !== EXPECT.visemes) problems.push(`offline lipsync drifted: expected [${EXPECT.visemes}], got [${r && r.visemes}]`);
   if (marker !== 'fired') problems.push('speakMarker never fired after normal speech');
   if (!r || r.markerAfterStop !== false) problems.push('stopSpeaking() now DOES run a pending marker — the documented constraint changed');

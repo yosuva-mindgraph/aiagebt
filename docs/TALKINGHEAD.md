@@ -15,17 +15,22 @@ The short version: **`vendor/talkinghead.bundle.js` is a generated, committed, c
 
 | File | Size | Why it is in git |
 |---|---|---|
-| `vendor/talkinghead.bundle.js` | 812 KB | The deliverable is `dist/index.html` — one file you double-click on a booth machine with no network and no npm. A dependency you have to install is not a deliverable. |
-| `assets/avatar.glb` | 4.50 MB | Same reason. Also **placeholder** — see the licence section below, it is not shippable as-is. |
+| `vendor/talkinghead.bundle.js` | 812 KB (831,359 B) | The deliverable is `dist/index.html` — one file you double-click on a booth machine with no network and no npm. A dependency you have to install is not a deliverable. |
+| `assets/avatar.glb` | **35.11 MiB (36,815,920 B)** | Same reason. **CC0**, and a placeholder — see the avatar section. |
 | `package-lock.json` | — | The bundle is only reproducible if the inputs are. |
 
 This is the same call the repo already made for the 731 KB `assets/fonts.css` (fonts as
 data URIs) and for `dist/index.html` itself. `node_modules/` stays gitignored: `npm ci`
 is how you **regenerate** the bundle, never how you **obtain** it.
 
-Budget, for whoever is watching the file size: base64'd into the page, the bundle is
-~1.06 MB and the GLB ~6.0 MB, on top of the current ~890 KB. Call it 8 MB for the
-finished single file. Large, but it is a local file, not a download.
+**Size, stated plainly, because it is the uncomfortable number here.** Base64'd into the
+page the bundle is ~1.06 MB and the avatar ~49 MB, on top of the current ~890 KB — call
+it **~51 MB for the finished single file**, against ~8 MB had the non-commercial avatar
+been usable. That is the price of the only CC0 option, and it was paid deliberately: see
+the avatar section. It is a local file rather than a download, so it costs load time on
+the booth machine, not bandwidth. Optimising it is a real follow-up (a `gltf-transform`
+pass with webp textures is the route — **not** Draco, see below), but it is not worth
+doing before the final avatar is chosen, since the work would be thrown away.
 
 ---
 
@@ -85,11 +90,21 @@ LD_LIBRARY_PATH=$HOME/.local/chromedeps/root/usr/lib/x86_64-linux-gnu node vendo
 ```
 
 which loads the bundle from a real `file://` URL and asserts it constructs, rigs, has a
-mouth, and speaks. Expected:
+mouth, and speaks. Expected, with the CC0 avatar currently committed:
 
 ```
-ctor=ok armature=true visemeMorphs=15 marker=fired markerAfterStop=false
+ctor=ok armature=true visemeMorphs=14 marker=fired markerAfterStop=false
+  avatar loaded in ~1600ms · 80 morph targets · queue drained to 0
+  rig: root "Armature" · 52 required bones present · eyes [LeftEye,RightEye]
+  visemes: 14/15 present (missing: sil)
 ```
+
+`visemeMorphs=14` is correct, not a defect — `mpfb.glb` ships no `viseme_sil`, and `sil`
+is silence, which is also exactly what every other viseme relaxing to 0 renders. The
+morph apply path is guarded (`if (this.mtAvatar.hasOwnProperty(mt))`, ~L2434), so an
+absent morph is skipped rather than thrown on. The smoke test therefore asserts the **14
+articulating** visemes individually and permits only `sil` to be missing; any other
+absence fails, because that would be an avatar that mouths some phonemes and not others.
 
 ---
 
@@ -192,9 +207,10 @@ base64 → Uint8Array → new Blob([bytes], {type:'model/gltf-binary'})
        → URL.createObjectURL(blob) → showAvatar({ url })
 ```
 
-Measured: loads in ~0.2–0.4 s, `armature: true`, 81 morph targets of which **15 are
-`viseme_*`**. Count the visemes, don't assume them — a GLB exported without the Oculus
-viseme set loads perfectly happily and then never moves its lips.
+Measured with the committed 35 MiB CC0 avatar: loads in ~1.6 s, `armature: true`, 80
+morph targets of which **14 are `viseme_*`**. Check the visemes by name, don't assume
+them — a GLB exported without the Oculus viseme set loads perfectly happily and then
+never moves its lips.
 
 **`dracoEnabled` must stay `false`** (its default). Turning it on makes TalkingHead fetch
 a decoder from `https://www.gstatic.com/draco/v1/decoders/`, which is an air-gap
@@ -221,45 +237,99 @@ case; the callback will not arrive.
 
 ---
 
-## The avatar is a placeholder — and its licence blocks shipping
+## The avatar — CC0, placeholder, and the only licence-safe option there was
 
-`assets/avatar.glb` is **`brunette.glb` from the TalkingHead repository**, byte-identical
-to `met4citizen/TalkingHead@main:avatars/brunette.glb`:
+`assets/avatar.glb` is **`mpfb.glb` from the TalkingHead repository**, byte-identical to
+`met4citizen/TalkingHead@main:avatars/mpfb.glb`:
 
 ```
-sha256  8864c504b5c11daa2f0037afffdc0815bb0fa2e6062e37a584746116a3c2f538
-size    4,721,528 bytes · glTF 2.0 binary
+sha256   63c645a2a863b9972e9a9c2ed576a1de4c390b8475508e1473e69c87a3ee299c
+size     36,815,920 bytes  ·  35.11 MiB  ·  glTF 2.0 binary
+licence  CC0 (public domain) — built in Blender with the MPFB extension
 ```
 
-It is here because it is known-good — it loads, it rigs, it has all 15 visemes, so it
-proves the pipeline rather than the art.
+**It was chosen for its licence, not its looks or its size.** Of the six example avatars
+bundled with TalkingHead, five cannot be used here:
 
-> **Licence — read before shipping.** The TalkingHead *code* is MIT (Mika Suominen,
-> 2023–2024) and the bundle is fine. The **avatar is not MIT.** The project's README
-> states that `brunette.glb` was created at Ready Player Me and is *"free to all
-> developers for **non-commercial** use under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)"*,
-> and that integrating Ready Player Me avatars into a commercial app requires signing up
-> as a Ready Player Me developer.
+| Avatar | Size | Licence | Usable? |
+|---|---|---|---|
+| `brunette.glb` / `brunette-t.glb` | 4.5 MB | Ready Player Me, **CC BY-NC 4.0** | ✗ non-commercial |
+| `avatar.glb` (Avaturn) | 13.8 MB | Avaturn, non-commercial | ✗ |
+| `avatarsdk.glb` | 12.3 MB | AvatarSDK, non-commercial | ✗ |
+| `vroid.glb` | 2.3 MB | VRoid Studio, non-commercial | ✗ |
+| **`mpfb.glb`** | **36.8 MB** | **CC0 — public domain** | ✓ **the only one** |
+
+> **Why non-commercial is a hard blocker here.** This is a MindGraph × DXC product
+> walkthrough shown to prospects. That is commercial use, unambiguously, and CC BY-NC
+> forbids it. It is not a footnote to clear later — the asset is delivered to the client
+> and, being one HTML file, is effectively downloadable, which is precisely the case the
+> TalkingHead README warns about.
 >
-> A MindGraph × DXC sales walkthrough shown to prospects is commercial use. **This file
-> must be replaced before the presenter is used with a client**, or the use must be
-> cleared with Ready Player Me. This is a licence constraint, not a preference — flagging
-> it here because it is invisible in the binary and easy to inherit by accident.
+> **And the escape hatch is gone.** The npm 1.7.0 README says that to use a Ready Player
+> Me avatar commercially "you must sign up as a Ready Player Me developer". **Ready
+> Player Me shut down on 2026-01-31**, following its acquisition by Netflix (announced
+> 2025-12-19). Verified from this box: `readyplayer.me`, `models.readyplayer.me`,
+> `api.readyplayer.me` and `docs.readyplayer.me` all fail to resolve — no A record. The
+> current `main` README has quietly dropped that sentence. So there is **no route to
+> license an RPM avatar for commercial use at all**, and nothing to escalate. The whole
+> "a free Ready Player Me avatar is a 10-minute job" premise in
+> `docs/OSS-EVALUATION.md` died with the company; that file has been corrected.
 
-Choosing the real Iris is a brand decision, not an engineering one. Swapping her is a
-**one-file change with no code impact** — drop the new GLB at `assets/avatar.glb` and
-re-run `vendor/smoke.cjs`. Requirements for the replacement:
+So we pay 35 MiB for a clean licence. That is the trade, made knowingly. **Do not swap
+back to a smaller non-commercial avatar to improve the numbers.**
 
-- **GLB**, Ready Player Me / PlayerZero **full-body** (the class expects a Mixamo-compatible
-  rig whose root object is named `Armature`; a head-only export will not load).
-- Exported **with the morph targets**, or the mouth will not move. The URL parameters
-  matter:
-  `?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png`
-- **Not** Draco-compressed (see trap 3).
-- Licensed for commercial use — a Ready Player Me developer account, or an avatar we own.
+### It is still a placeholder
 
-The smoke test will tell you if it rigged and how many visemes it has; if `visemeMorphs`
-comes back anything other than 15, the export was wrong, not the code.
+`mpfb.glb` is a generic MakeHuman figure. It proves the pipeline, not the brand — Iris
+still has to be chosen, and that is a brand decision, not an engineering one. Swapping
+her is a **one-file change with no code impact**: drop the new GLB at `assets/avatar.glb`
+and re-run `vendor/smoke.cjs`.
+
+### What a replacement avatar must satisfy
+
+"A Mixamo-compatible rig" is far too loose. The real contract, verified against the
+pinned npm 1.7.0 and asserted by `vendor/smoke.cjs`:
+
+- **Full body. Non-negotiable.** The required-bone list includes `LeftUpLeg`, `RightUpLeg`,
+  `Leg`, `Foot`, `ToeBase`. A half-body or head-only avatar is categorically incompatible,
+  even though the presenter only ever frames the upper body.
+- **Root object named exactly `Armature`.** On npm 1.7.0 the `mixamorig` prefix is **not**
+  stripped, so a GLB exported straight out of Mixamo works on git `main` and fails here.
+  This is a pin-specific trap.
+- **52 specifically-named bones**: `Hips`, `Spine`, `Spine1`, `Spine2`, `Neck`, `Head`,
+  and per side `Shoulder`, `Arm`, `ForeArm`, `Hand`, `UpLeg`, `Leg`, `Foot`, `ToeBase`,
+  plus all five finger chains `HandThumb1-3`, `HandIndex1-3`, `HandMiddle1-3`,
+  `HandRing1-3`, `HandPinky1-3`. These fail loudly — `Avatar object <name> not found`.
+- **`LeftEye` and `RightEye`.** These are the nasty ones: they are **not** in the library's
+  `required[]` check, but `showAvatar()` then calls
+  `this.objectLeftEye.getWorldPosition(plEye)` unguarded (~L1384) to estimate avatar
+  height. Without them you get `TypeError: Cannot read properties of undefined (reading
+  'getWorldPosition')`, which names nothing and points at nothing. The smoke test checks
+  them explicitly so a bad export fails with a sentence instead.
+- **52 ARKit blend shapes + 15 Oculus visemes** (`viseme_sil` may be absent, as above).
+  The 5 "extras" — `mouthOpen`, `mouthSmile`, `eyesClosed`, `eyesLookUp`, `eyesLookDown` —
+  are **optional**: TalkingHead synthesises them from ARKit shapes via `mtExtras`, and
+  the committed CC0 avatar ships none of them and works. So do not treat the old
+  RPM-era export URL as a requirements list.
+- **Not Draco-compressed** (see trap 3).
+- **Licensed for commercial use.** CC0, a licence we own, or an avatar we commission.
+
+Realistically, a brand-correct Iris now means **authoring a rig to that contract**
+(Blender + MPFB, or a commissioned model), because the service that used to make it a
+ten-minute job no longer exists.
+
+### If someone later optimises the size
+
+Worth doing once the final avatar is settled, not before. The order of preference:
+
+1. **`gltf-transform` with webp textures** — this is the route. Texture data, not
+   geometry, is the bulk of a 35 MiB humanoid.
+2. **Meshopt** — better than Draco, but TalkingHead only supports it on **git `main`**,
+   not the npm 1.7.0 we are pinned to. Taking it means taking `main`, which reintroduces
+   the unresolvable `retargeter.mjs` import described above.
+3. **Draco — no.** `dracoEnabled` fetches its decoder from `gstatic.com`. That is an
+   air-gap violation, which is the one thing this whole vendoring exercise exists to
+   prevent.
 
 ---
 
@@ -271,5 +341,5 @@ comes back anything other than 15, the export was wrong, not the code.
 | `vendor/build-vendor.mjs` | Shells esbuild with the four flags. Verifies the pins, then verifies its own output. |
 | `vendor/talkinghead.bundle.js` | **Generated — do not edit.** |
 | `vendor/smoke.html` | The page under test. Driven by the harness; needs the GLB handed to it. |
-| `vendor/smoke.cjs` | Playwright harness. Opens the page from `file://` and asserts the five behaviours above. |
-| `assets/avatar.glb` | Placeholder avatar. See the licence section. |
+| `vendor/smoke.cjs` | Playwright harness. Opens the page from `file://` and asserts the behaviours above, plus the full rig contract. |
+| `assets/avatar.glb` | Placeholder avatar — `mpfb.glb`, CC0, 35.11 MiB. See the avatar section. |
