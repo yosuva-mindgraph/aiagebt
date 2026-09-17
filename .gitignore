@@ -1,0 +1,4 @@
+config.js
+node_modules/
+shots/
+# dist/index.html is committed on purpose — it is the thing you double-click
