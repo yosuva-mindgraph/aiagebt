@@ -5,7 +5,7 @@
 
      1. ElevenLabs — used whenever CONFIG.elevenLabs.apiKey is set AND the page
         is served from a host that is allowed to reach api.elevenlabs.io.
-        Streams MP3, plays it through an AudioContext, and feeds real RMS to the
+        Fetches MP3, plays it through an AudioContext, and feeds real RMS to the
         avatar so the jaw follows actual speech rather than a text estimate.
 
      2. Web Speech (speechSynthesis) — the fallback. No key, no network, works
@@ -13,6 +13,29 @@
 
    Both resolve the same promise when the line finishes, so the narration loop
    does not care which one ran. Both are interruptible.
+
+   ── the fetch/play seam ──────────────────────────────────────────────────
+   Fetching and playing used to be one method. They are now separate:
+
+       synthesize(text)  → Clip | null   fetch + decode + word timings
+       play(clip)        → Promise       play it here, RMS → onLevel
+       speakBrowser(text)→ Promise       the Web Speech fallback, on its own
+       useAudioContext(ctx)              adopt an AudioContext made elsewhere
+
+   say() still does fetch-then-play and behaves exactly as it always has; it is
+   simply written in terms of those now. The seam exists for the 3D avatar
+   (met4citizen/TalkingHead), which drives visemes off its OWN audio clock and
+   therefore has to do the playing itself. The only thing that crosses that
+   line is a Clip:
+
+       { audioBuffer: AudioBuffer,   // decoded, in THIS Voice's AudioContext
+         words: string[],            // spoken words, in order
+         wtimes: number[],           // word start, integer MILLISECONDS
+         wdurations: number[],       // word length, integer MILLISECONDS
+         durationMs: number }        // whole clip, integer milliseconds
+
+   words / wtimes / wdurations are always the same length (possibly zero, if
+   ElevenLabs sent no usable alignment — the audio still plays).
 
    NOTE ON HOSTING: a published Claude Artifact runs under a strict CSP that
    blocks every external host, so ElevenLabs cannot be reached from there — the
@@ -28,6 +51,10 @@ export class Voice {
     this.audioCtx = null;
     this.onLevel = null;        // (rms 0..1) => void
     this.voice = null;
+    this._ownsCtx = false;      // did WE make audioCtx? only then may we close it
+    this._epoch = 0;            // bumped by stop(); lets an in-flight say() bail
+    this._warnedNoKey = false;
+    this._warnedNoAlign = false;
     this._pickVoice();
     if ('speechSynthesis' in window) {
       speechSynthesis.addEventListener?.('voiceschanged', () => this._pickVoice());
@@ -41,6 +68,7 @@ export class Voice {
   setMuted(m) { this.muted = m; if (m) this.stop(); }
 
   stop() {
+    this._epoch++;
     if (this.current) { try { this.current.cancel(); } catch {} this.current = null; }
     if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch {} }
     this.onLevel?.(null);
@@ -50,11 +78,187 @@ export class Voice {
   async say(text) {
     this.stop();
     if (this.muted || !text) { await sleep(estimate(text) * 0.35); return; }
-    if (this.usingElevenLabs) {
-      try { return await this._elevenLabs(text); }
-      catch (err) { console.warn('[voice] ElevenLabs failed, falling back to Web Speech:', err?.message || err); }
+
+    const my = this._epoch;
+    const clip = await this.synthesize(text);        // null = no key / failed
+    // stop() landed while we were fetching: do not start talking after a stop.
+    if (my !== this._epoch) return;
+    if (clip && await this._play(clip)) return;
+    if (my !== this._epoch || this.muted) return;
+    return this.speakBrowser(text);
+  }
+
+  /* ── audio context ──────────────────────────────────────────────────── */
+
+  /**
+   * Adopt an AudioContext created elsewhere.
+   *
+   * TalkingHead 1.7.0 builds its own context inside initAudioGraph() and gives
+   * you nowhere to inject one (`grep -c "audioCtx:"` → 0). If Voice decodes in
+   * its own context and TalkingHead plays in another, every clip is resampled
+   * across the boundary — so Voice adopts theirs instead. Any context we made
+   * ourselves is ours to close: an orphaned AudioContext keeps an output device
+   * open and browsers cap how many you may hold (~6 in Chrome), so leaking one
+   * per handover eventually throws.
+   */
+  useAudioContext(ctx) {
+    if (!ctx || ctx === this.audioCtx) return this.audioCtx;
+    const orphan = this._ownsCtx ? this.audioCtx : null;
+    this.stop();                        // whatever is playing belongs to the old ctx
+    this.audioCtx = ctx;
+    this._ownsCtx = false;
+    if (orphan) { try { orphan.close(); } catch {} }
+    return this.audioCtx;
+  }
+
+  /** Lazily make an AudioContext, remembering that it is ours to close. */
+  _ctx() {
+    if (this.audioCtx) return this.audioCtx;
+    const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+    if (!AC) return null;
+    this.audioCtx = new AC();
+    this._ownsCtx = true;
+    return this.audioCtx;
+  }
+
+  /* ── ElevenLabs: synthesize ─────────────────────────────────────────── */
+
+  /**
+   * Fetch one line and decode it into a Clip.
+   *
+   * Resolves null — never throws — when muted, keyless, or on any HTTP/decode
+   * failure, with one console.warn, so every caller can fall back to Web Speech
+   * the way say() always has.
+   */
+  async synthesize(text) {
+    if (this.muted || !text) return null;
+    if (!this.usingElevenLabs) {
+      // Keyless is the normal artifact case, not a fault — say it once per
+      // Voice rather than once per line, or the console fills with it.
+      if (!this._warnedNoKey) {
+        this._warnedNoKey = true;
+        console.warn('[voice] no ElevenLabs key — narrating with Web Speech.');
+      }
+      return null;
     }
-    return this._webSpeech(text);
+
+    const { apiKey, voiceId, modelId = 'eleven_turbo_v2_5', stability = 0.42, similarity = 0.80 } =
+      this.cfg.elevenLabs;
+
+    const controller = new AbortController();
+    // Registering the abort HERE, not only at playback, is what lets stop()
+    // interrupt a line that is still in flight.
+    const inflight = { cancel: () => { try { controller.abort(); } catch {} } };
+    this.current = inflight;
+
+    try {
+      const res = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}` +
+        `/with-timestamps?output_format=mp3_44100_128`,
+        {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            model_id: modelId,
+            voice_settings: { stability, similarity_boost: similarity, use_speaker_boost: true },
+          }),
+        }
+      );
+      if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 160)}`);
+
+      // /with-timestamps answers JSON, not audio bytes: the MP3 comes back
+      // base64 in audio_base64, with the character alignment beside it.
+      const payload = await res.json();
+      const bytes = base64ToBytes(payload?.audio_base64);
+      if (!bytes.length) throw new Error('ElevenLabs returned no audio_base64');
+
+      const ctx = this._ctx();
+      if (!ctx) throw new Error('no AudioContext available');
+      if (ctx.state === 'suspended') await ctx.resume();
+      const audioBuffer = await ctx.decodeAudioData(bytes.buffer);
+
+      const { words, wtimes, wdurations } = wordsFromAlignment(pickAlignment(payload));
+      if (!words.length && !this._warnedNoAlign) {
+        this._warnedNoAlign = true;
+        console.warn('[voice] ElevenLabs sent no usable alignment — clips will play without word timings.');
+      }
+
+      return {
+        audioBuffer,
+        words, wtimes, wdurations,
+        durationMs: Math.round(audioBuffer.duration * 1000),
+      };
+    } catch (err) {
+      console.warn('[voice] ElevenLabs failed, falling back to Web Speech:', err?.message || err);
+      return null;
+    } finally {
+      if (this.current === inflight) this.current = null;
+    }
+  }
+
+  /* ── playback ───────────────────────────────────────────────────────── */
+
+  /**
+   * Play a Clip, resolving when it ends. Always settles; never throws.
+   * (TalkingHead plays its own clips — nothing here assumes Voice is the only
+   * player, so play() takes a Clip rather than re-fetching one.)
+   */
+  async play(clip) { await this._play(clip); }
+
+  /** The real one. Resolves true only if the clip actually reached the speakers. */
+  async _play(clip) {
+    if (this.muted || !clip?.audioBuffer) return false;
+    const ctx = this._ctx();
+    if (!ctx) return false;
+    if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
+    if (ctx.state === 'closed') return false;      // someone closed it under us
+
+    return new Promise(resolve => {
+      let src, analyser;
+      try {
+        src = ctx.createBufferSource();
+        src.buffer = clip.audioBuffer;
+
+        // Real amplitude → the avatar's jaw. This is the whole reason for
+        // decoding rather than using an <audio> element.
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        src.connect(analyser); analyser.connect(ctx.destination);
+      } catch (err) {
+        console.warn('[voice] could not start playback:', err?.message || err);
+        resolve(false);            // caller falls back to Web Speech
+        return;
+      }
+
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      let raf = 0;
+      const tick = () => {
+        analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+        this.onLevel?.(Math.min(1, Math.sqrt(sum / data.length) * 3.2));
+        raf = requestAnimationFrame(tick);
+      };
+      tick();
+
+      let done = false;
+      const finish = () => {
+        if (done) return; done = true;
+        clearTimeout(guard);
+        cancelAnimationFrame(raf); this.onLevel?.(null);
+        try { src.disconnect(); analyser.disconnect(); } catch {}
+        resolve(true);
+      };
+      src.onended = finish;
+      // Belt and braces, as on the Web Speech side: a context that gets
+      // suspended mid-line never fires onended, and one unresolved line stalls
+      // the whole deck.
+      const guard = setTimeout(finish, (clip.durationMs || Math.round(clip.audioBuffer.duration * 1000)) + 3000);
+      this.current = { cancel: () => { try { src.stop(); } catch {} finish(); } };
+      src.start();
+    });
   }
 
   /* ── Web Speech ─────────────────────────────────────────────────────── */
@@ -77,7 +281,8 @@ export class Voice {
       || vs[0];
   }
 
-  _webSpeech(text) {
+  /** Speak one line with the browser's own synthesiser. Resolves when done. */
+  speakBrowser(text) {
     if (!('speechSynthesis' in window)) return sleep(estimate(text));
     return new Promise(resolve => {
       const u = new SpeechSynthesisUtterance(text);
@@ -95,66 +300,97 @@ export class Voice {
       try { speechSynthesis.speak(u); } catch { finish(); }
     });
   }
+}
 
-  /* ── ElevenLabs ─────────────────────────────────────────────────────── */
+/* ── alignment → word timings ──────────────────────────────────────────── */
 
-  async _elevenLabs(text) {
-    const { apiKey, voiceId, modelId = 'eleven_turbo_v2_5', stability = 0.42, similarity = 0.80 } =
-      this.cfg.elevenLabs;
+/**
+ * Which alignment block to read.
+ *
+ * ElevenLabs returns `alignment` (keyed to the characters you SENT) and
+ * `normalized_alignment` (keyed to the characters it actually SPOKE — "2025"
+ * read as "twenty twenty-five", "Dr." as "doctor"). The avatar needs the words
+ * that were spoken, so normalized_alignment wins whenever it is well formed;
+ * `alignment` is the fallback, and its word boundaries smear wherever the input
+ * contained digits or abbreviations. Exported for tests.
+ */
+export function pickAlignment(payload) {
+  const ok = a => a
+    && Array.isArray(a.characters)
+    && Array.isArray(a.character_start_times_seconds)
+    && Array.isArray(a.character_end_times_seconds)
+    && a.characters.length > 0
+    && a.characters.length === a.character_start_times_seconds.length
+    && a.characters.length === a.character_end_times_seconds.length;
+  if (ok(payload?.normalized_alignment)) return payload.normalized_alignment;
+  if (ok(payload?.alignment)) return payload.alignment;
+  return null;
+}
 
-    const controller = new AbortController();
-    const res = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
-      {
-        method: 'POST',
-        signal: controller.signal,
-        headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          model_id: modelId,
-          voice_settings: { stability, similarity_boost: similarity, use_speaker_boost: true },
-        }),
+/**
+ * Character-level alignment → word-level timings.
+ *
+ * ── THE UNIT CONVERSION. This is why this function exists. ──
+ * ElevenLabs reports per-CHARACTER times in SECONDS. TalkingHead's speakAudio()
+ * does integer-MILLISECOND arithmetic on what you hand it — `val.visemes.length
+ * * 150`, `Math.min(60, 2*d/3)`, `Math.min(25, d/2)` — so wtimes/wdurations
+ * must be ms, hence the ×1000 and the rounding below. Get it wrong and nothing
+ * looks broken: the mouth still moves, it just drifts, which is exactly why
+ * this is spelled out here and pinned by a test.
+ *
+ * Words are split on whitespace; a word starts at its FIRST character's start
+ * and runs to its LAST character's end. Returns three arrays of equal length.
+ */
+export function wordsFromAlignment(alignment) {
+  const words = [], wtimes = [], wdurations = [];
+  const chars = alignment?.characters;
+  const starts = alignment?.character_start_times_seconds;
+  const ends = alignment?.character_end_times_seconds;
+  if (!Array.isArray(chars) || !Array.isArray(starts) || !Array.isArray(ends)) {
+    return { words, wtimes, wdurations };
+  }
+
+  const n = Math.min(chars.length, starts.length, ends.length);
+  let text = '', first = -1, last = -1;
+
+  const flush = () => {
+    if (text && first >= 0) {
+      const t0 = Number(starts[first]);
+      const t1 = Number(ends[last]);
+      // Drop a word whose times are junk rather than emitting NaN: a NaN in
+      // wtimes poisons the avatar's whole schedule.
+      if (Number.isFinite(t0) && Number.isFinite(t1)) {
+        words.push(text);
+        wtimes.push(Math.round(t0 * 1000));                       // s → ms
+        wdurations.push(Math.max(0, Math.round((t1 - t0) * 1000)));// s → ms
       }
-    );
-    if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 160)}`);
+    }
+    text = ''; first = -1; last = -1;
+  };
 
-    const buf = await res.arrayBuffer();
-    this.audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
-    if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
-    const decoded = await this.audioCtx.decodeAudioData(buf);
+  for (let i = 0; i < n; i++) {
+    const c = String(chars[i] ?? '');
+    if (!/\S/.test(c)) { flush(); continue; }   // whitespace ends a word
+    if (first < 0) first = i;
+    last = i;
+    text += c;
+  }
+  flush();
 
-    return new Promise(resolve => {
-      const src = this.audioCtx.createBufferSource();
-      src.buffer = decoded;
+  return { words, wtimes, wdurations };
+}
 
-      // Real amplitude → the avatar's jaw. This is the whole reason for
-      // decoding rather than using an <audio> element.
-      const analyser = this.audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      src.connect(analyser); analyser.connect(this.audioCtx.destination);
-
-      let raf = 0;
-      const tick = () => {
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
-        this.onLevel?.(Math.min(1, Math.sqrt(sum / data.length) * 3.2));
-        raf = requestAnimationFrame(tick);
-      };
-      tick();
-
-      let done = false;
-      const finish = () => {
-        if (done) return; done = true;
-        cancelAnimationFrame(raf); this.onLevel?.(null);
-        try { src.disconnect(); analyser.disconnect(); } catch {}
-        resolve();
-      };
-      src.onended = finish;
-      this.current = { cancel: () => { controller.abort(); try { src.stop(); } catch {} finish(); } };
-      src.start();
-    });
+/** base64 → bytes, for the MP3 that /with-timestamps sends inline. */
+function base64ToBytes(b64) {
+  const clean = String(b64 || '').replace(/\s+/g, '');
+  if (!clean) return new Uint8Array(0);
+  try {
+    const bin = atob(clean);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return new Uint8Array(0);
   }
 }
 
