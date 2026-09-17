@@ -12,6 +12,11 @@
    a stand. Not fine for anything reachable from the internet — anyone can open
    dev tools and take it. For that, leave apiKey blank and point `endpoint` at a
    small proxy of your own that holds the key server-side. See README.
+
+   This file is inlined into EVERY build target, so that warning follows the
+   built files out of the door. `node build.js` prints `config INLINED` when it
+   has baked a key in; `node build.js --no-config` is how you produce something
+   safe to hand over.
    ========================================================================== */
 
 window.AIB_CONFIG = {
@@ -52,4 +57,27 @@ window.AIB_CONFIG = {
     maxTokens: 700,
     headers: {},                      // e.g. { Authorization: 'Bearer ...' } for a proxy
   },
+
+  /* ── The presenter ─────────────────────────────────────────────────────
+     NOTHING. Deliberately — and this note is here so you stop looking.
+
+     There is no `avatar` block because src/avatar3d.js reads no key from this
+     object at all. Its only globals are window.TalkingHead / window.LipsyncEn
+     (the vendored bundle) and window.AIB_AVATAR_GLB_B64 (the base64 avatar),
+     and both of those are PAYLOADS that build.js inlines — not settings. Do
+     not paste a 35 MB GLB in here.
+
+     Which presenter you get is therefore a BUILD decision, not a config one:
+
+         node build.js        canvas presenter — the deliverable
+         node build.js --3d   dist/index-3d.html, with TalkingHead and the GLB
+
+     and at runtime the 3D one still declines politely (no WebGL, reduced
+     motion, a rail with no size on a phone) and hands back to the canvas bust.
+
+     The 3D backend does have tunables — camera framing, model FPS — but they
+     are constructor options passed by src/presenter.js, defaulted in
+     AVATAR3D_DEFAULTS, and nothing wires them to this file. A key added here
+     for them would silently do nothing, which is worse than no key at all, so
+     wire it through src/app.js first if you ever need one.                  */
 };
