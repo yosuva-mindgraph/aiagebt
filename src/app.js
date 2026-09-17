@@ -181,7 +181,16 @@ class App {
 
     this._syncStrip();
     this.line = 0;
-    if (play) this.play(); else this._setState('idle');
+    /* Drop the flag before asking to play. play() guards against two narration
+       loops running at once with `if (this.playing) return`, but a scene change
+       is not a second loop — it IS the loop moving on, and this.token was
+       bumped at the top of render() so the old one is already dead. Without
+       this the guard swallows every auto-advance: scene 1 narrates, scene 2
+       renders, and the deck then sits there with playing=true, the button
+       reading "Pause presentation", and nothing speaking. Only the play branch
+       touches it, so the cold open's "Start presentation" copy is unchanged. */
+    if (play) { this.playing = false; this.play(); }
+    else this._setState('idle');
   }
 
   goto(id, opts = {}) {
