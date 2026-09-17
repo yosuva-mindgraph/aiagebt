@@ -1,0 +1,17 @@
+{
+  "name": "aib-presenter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Airport in a Box — avatar-led platform walkthrough. Builds to one offline HTML file.",
+  "scripts": {
+    "build": "node build.js",
+    "build:vendor": "node vendor/build-vendor.mjs",
+    "shoot": "node shoot.js",
+    "smoke:vendor": "node vendor/smoke.cjs"
+  },
+  "devDependencies": {
+    "@met4citizen/talkinghead": "1.7.0",
+    "esbuild": "0.28.2",
+    "three": "0.180.0"
+  }
+}

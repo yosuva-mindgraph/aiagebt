@@ -1,0 +1,148 @@
+<!doctype html>
+<!-- ============================================================================
+     Does the vendored bundle actually run from a file:// URL with no network?
+
+     Driven by vendor/smoke.cjs — don't open this by hand and expect it to pass.
+     It needs one thing the page cannot get for itself: the avatar bytes. Under
+     file://, fetch() of a sibling file:// URL is CORS-blocked by Chrome, so the
+     harness hands the GLB over as base64 through an exposed binding and the page
+     turns it into a Blob object URL.
+
+     That is not a test fixture — it IS the production path. dist/index.html is
+     one self-contained file (the fonts are already data URIs), so the shipped
+     avatar will arrive as bytes-in-the-page too, never as a fetch. Pinning the
+     Blob route here means the thing that works on a booth machine is the thing
+     under test.
+     ========================================================================= -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TalkingHead vendor smoke test</title>
+<style>
+  html, body { margin: 0; background: #0b1220; color: #e8edf7; font: 13px ui-monospace, monospace; }
+  /* TalkingHead measures its container, so it needs real dimensions before
+     showAvatar() — a zero-height div renders nothing and reports no error. */
+  #av { width: 640px; height: 640px; }
+  #log { padding: 12px; white-space: pre; }
+</style>
+</head>
+<body>
+
+<!-- Snapshot the globals BEFORE the bundle loads. Seam S1 says the bundle adds
+     exactly TalkingHead and LipsyncEn to window and nothing else; the only way
+     to assert "nothing else" is to diff against the page as it was. -->
+<!-- Two statements, not one: the key has to already exist when the snapshot is
+     taken, or the harness's own bookkeeping shows up as a global the bundle leaked. -->
+<script>
+window.__globalsBefore = null;
+window.__globalsBefore = Object.keys(window);
+</script>
+
+<script src="talkinghead.bundle.js"></script>
+
+<script>
+window.__globalsAdded = Object.keys(window).filter(k => !window.__globalsBefore.includes(k));
+</script>
+
+<div id="av"></div>
+<div id="log"></div>
+
+<script>
+/* Results land on window.__r; the harness polls for __r.done. Every failure is
+   captured into __r.err rather than thrown, so a broken assertion reads as a
+   result instead of as an unhandled pageerror the harness would double-report. */
+window.__r = { done: false };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+(async () => {
+  const r = window.__r;
+  try {
+    /* lipsyncModules: [] then hand the processor over by hand. TalkingHead's
+       lazy loader is `if (!this.lipsync.hasOwnProperty(lang))` around a computed
+       dynamic import() of './lipsync-<lang>.mjs' — a specifier that does not
+       exist once bundled and would need the network even if it did. Populating
+       the key first makes that branch a no-op, and the statically-bundled
+       LipsyncEn does the work. This is the whole trick to offline lipsync.
+
+       dracoEnabled stays at its default false: turning it on makes TalkingHead
+       fetch a decoder from gstatic.com, which is an air-gap violation. */
+    const th = new TalkingHead(document.getElementById('av'), {
+      lipsyncLang: 'en',
+      lipsyncModules: [],
+      cameraView: 'upper',
+      modelPixelRatio: 1,
+      modelFPS: 30,
+    });
+    window.__th = th;
+    th.lipsync['en'] = new LipsyncEn();
+    r.ctor = 'ok';
+
+    /* Prove the offline lipsync path end to end, not just that the object
+       exists — this is the call src/ will make for every line of narration. */
+    r.visemes = th.lipsyncWordsToVisemes('sources', 'en').visemes.join(',');
+
+    const b64 = await window.__readAvatarGlb();
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'model/gltf-binary' }));
+
+    const t0 = performance.now();
+    await th.showAvatar({ url, body: 'F', avatarMood: 'neutral', lipsyncLang: 'en' });
+    URL.revokeObjectURL(url);
+    r.showMs = Math.round(performance.now() - t0);
+    r.armature = !!th.armature;
+    r.morphs = Object.keys(th.mtAvatar || {}).length;
+    r.visemeMorphs = Object.keys(th.mtAvatar || {}).filter(k => k.startsWith('viseme_')).length;
+
+    /* A short synthetic buffer stands in for TTS audio. speakAudio wants the
+       word timings alongside it, which is exactly the shape ElevenLabs
+       character/word timestamps arrive in. */
+    const ctx = th.audioCtx;
+    await ctx.resume().catch(() => {});
+    const makeBuf = secs => {
+      const buf = ctx.createBuffer(1, Math.round(ctx.sampleRate * secs), ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.sin(i / 24) * 0.05;
+      return buf;
+    };
+
+    /* ── 1. a marker queued behind speech fires when the speech ends ──────── */
+    r.marker = 'pending';
+    th.speakAudio(
+      { audio: makeBuf(1.2), words: ['Twenty-one', 'sources', 'governed'], wtimes: [0, 450, 850], wdurations: [430, 380, 340] },
+      { lipsyncLang: 'en' },
+    );
+    th.speakMarker(() => { r.marker = 'fired'; });
+    for (let i = 0; i < 60 && r.marker !== 'fired'; i++) await sleep(100);
+
+    /* ── 2. …and is SILENTLY DROPPED if the speech is interrupted ─────────
+
+       stopSpeaking() does `this.speechQueue.length = 0` (talkinghead.mjs
+       ~L3446). A pending marker is in that queue, so it is discarded without
+       ever being called. Anything that uses speakMarker as an "and then advance
+       the scene" callback will therefore hang the moment a user interrupts
+       Iris with a question — which is the one thing this presenter is built to
+       allow. Pinned here so the behaviour is a known constraint and not a
+       surprise found on a stand. */
+    r.markerAfterStop = false;
+    th.speakAudio(
+      { audio: makeBuf(1.6), words: ['again'], wtimes: [0], wdurations: [900] },
+      { lipsyncLang: 'en' },
+    );
+    th.speakMarker(() => { r.markerAfterStop = true; });
+    await sleep(300);
+    th.stopSpeaking();
+    await sleep(900);
+
+    r.queueLen = th.speechQueue.length;
+    r.globalsAdded = window.__globalsAdded.slice().sort().join(',');
+  } catch (e) {
+    r.err = (e && e.message) + ' :: ' + String(e && e.stack).slice(0, 400);
+  }
+  document.getElementById('log').textContent = JSON.stringify(r, null, 1);
+  r.done = true;
+})();
+</script>
+</body>
+</html>

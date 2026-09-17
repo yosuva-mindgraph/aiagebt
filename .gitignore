@@ -2,3 +2,6 @@ config.js
 node_modules/
 shots/
 # dist/index.html is committed on purpose — it is the thing you double-click
+# vendor/talkinghead.bundle.js and assets/avatar.glb are committed for the same
+# reason: the booth machine has no npm and no network. `npm ci` is how you
+# regenerate the bundle, never how you obtain it. See docs/TALKINGHEAD.md
