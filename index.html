@@ -31,6 +31,11 @@
   <aside id="rail">
     <div id="stageCanvasWrap">
       <canvas id="avatar" aria-hidden="true"></canvas>
+      <!-- The 3D presenter's box. Starts `hidden` (= display:none) so an empty
+           frame can never sit over the canvas bust; app.js un-hides it just
+           long enough for Avatar3D to measure, and puts it back if the canvas
+           backend wins. Exactly one of the two is ever on screen. -->
+      <div id="avatar3d" hidden></div>
       <div id="avatarState" data-state="idle">
         <span class="dot"></span><span class="label">standing by</span>
       </div>
@@ -90,6 +95,16 @@
   </div>
 </div>
 
+<!-- Seam S5. Both are OPTIONAL by design and both are classic scripts, loaded
+     before the module so window.TalkingHead / window.AIB_AVATAR_GLB_B64 exist by
+     the time app.js runs. Neither is in git as a loadable file on every branch —
+     build.js inlines them into dist/index.html — and a 404 here is silent and
+     harmless: Avatar3D.create() answers null when window.TalkingHead is missing
+     and falls back to a relative assets/avatar.glb when the base64 is. The
+     walkthrough then runs on the canvas bust exactly as it always has.
+     Do not rename or reformat these two tags: build.js matches them literally. -->
+<script src="vendor/talkinghead.bundle.js"></script>
+<script src="assets/avatar-glb.js"></script>
 <script type="module" src="src/app.js"></script>
 </body>
 </html>

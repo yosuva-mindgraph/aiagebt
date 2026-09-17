@@ -5,11 +5,24 @@
    stage, runs its narration line by line through the voice, keeps the caption
    and the film strip in step, and handles a question at any moment — which
    pauses the walkthrough, answers, and offers to resume.
+
+   It does NOT know which avatar is on screen. There are two — a rigged GLB in
+   WebGL and the drawn canvas bust — and they disagree about who plays the
+   audio, so the Presenter owns that argument (src/presenter.js, seam S4) and
+   this file speaks one line at a time through it:
+
+       await this.presenter.say(text)
+
+   That call always settles: at the end of the line, or within a frame or two of
+   presenter.cancel(). Which is why the token/epoch dance below still works
+   unchanged — every await is followed by `if (my !== this.token) return`, and
+   an interrupted line comes back in about a millisecond rather than hanging on
+   to the walkthrough it was told to let go of.
    ========================================================================== */
 
 import { SCENES, sceneIndex } from './scenes.js';
-import { Avatar } from './avatar.js';
 import { Voice, createRecogniser, estimate } from './voice.js';
+import { Presenter } from './presenter.js';
 import { Ask, spokenForm } from './ask.js';
 
 const $ = sel => document.querySelector(sel);
@@ -25,11 +38,13 @@ class App {
     this.token = 0;                 // invalidates in-flight narration
     this.leaveHooks = [];
     this.lineHooks = new Map();
+    this.muted = false;
+    this.words = [];                // caption word spans, for _word()
+    this.wordAt = 0;
 
     this.voice = new Voice(CONFIG);
     this.ask = new Ask(CONFIG);
-    this.avatar = new Avatar($('#avatar'));
-    this.voice.onLevel = v => this.avatar.setLevel(v);
+    this.presenter = null;          // attached out of band — see _attach()
 
     this.el = {
       stage: $('#stage'), title: $('#sceneTitle'), caption: $('#captionText'),
@@ -43,10 +58,71 @@ class App {
 
     this._buildStrip();
     this._wire();
+    this.ready = this._attach();    // kicked off, deliberately NOT awaited
     this._setState('idle');
     this.el.caption.classList.add('idle');
     this.el.caption.textContent = 'Press start and I’ll take you through it. Stop me with a question whenever you like.';
     this.render(0, { play: false });
+  }
+
+  /* ── the presenter ────────────────────────────────────────────────────
+
+     Presenter.create() is async — it probes WebGL, builds a renderer and pulls
+     in a rigged GLB of several megabytes — and this constructor is not. Nothing
+     the viewer can see depends on the result, so scene 0 paints immediately and
+     the presenter attaches behind it. The only thing that ever waits on
+     `this.ready` is a line about to be spoken (play(), handleAsk()).
+
+     create() does not throw and does not signal failure: a backendKind of
+     'canvas' is the NORMAL fallback, not an error state, and it is the path
+     that ships today. */
+  async _attach() {
+    const canvas = $('#avatar');
+    const mount = $('#avatar3d');
+
+    /* The mount ships `hidden`, which is display:none, and Avatar3D.create()
+       declines a mount that is display:none or measures under 8px — so the
+       attribute has to come off BEFORE it looks, and go back on if the canvas
+       backend won. Un-hiding is not the same as forcing a size: #rail is
+       display:none under 760px, so on a phone this still measures 0x0 and
+       create() still declines, which is the point — an invisible WebGL context
+       costs exactly as much as a visible one. */
+    if (mount) {
+      mount.hidden = false;
+      mount.setAttribute('aria-hidden', 'true');   // decorative, like #avatar
+    }
+
+    let presenter = null;
+    try {
+      presenter = await Presenter.create({
+        voice: this.voice,
+        canvas,
+        mount,
+        onWord: () => this._word(),
+      });
+    } catch (err) {
+      console.warn('[app] the presenter did not come up:', err?.message || err);
+    }
+
+    /* create() is documented never to throw — it stands in an inert backend
+       rather than returning nothing. This is for the day that stops being true:
+       losing the presenter has to cost the room the VOICE, not the walkthrough,
+       so the stand-in still takes a line's worth of time and then returns.
+       Resolving instantly here would sprint through all twelve scenes. */
+    this.presenter = presenter || {
+      backendKind: 'none',
+      say: t => wait(estimate(t)),
+      cancel() {}, setState() {}, setMuted() {},
+    };
+
+    // Exactly one backend on screen: 3D won and Presenter already hid the
+    // canvas, or it did not and the empty mount goes back out of the way.
+    if (mount && this.presenter.backendKind !== 'talkinghead') mount.hidden = true;
+
+    // Catch up on anything the shell decided while we were still loading.
+    if (this.muted) this.presenter.setMuted(true);
+    this.presenter.setState(this.el.state.dataset.state || 'idle');
+    return this.presenter;
   }
 
   /* ── film strip ───────────────────────────────────────────────────── */
@@ -82,8 +158,9 @@ class App {
     this.leaveHooks.forEach(fn => { try { fn(); } catch {} });
     this.leaveHooks = [];
     this.lineHooks = new Map();
-    this.voice.stop();
-    this.avatar.stopSpeaking();
+    // One call for both halves: cancel() stops the sound AND the face, whichever
+    // backend is up, and resolves the say() that was in flight.
+    this.presenter?.cancel();
 
     this.i = Math.max(0, Math.min(SCENES.length - 1, i));
     this.seen.add(this.i);
@@ -104,7 +181,16 @@ class App {
 
     this._syncStrip();
     this.line = 0;
-    if (play) this.play(); else this._setState('idle');
+    /* Drop the flag before asking to play. play() guards against two narration
+       loops running at once with `if (this.playing) return`, but a scene change
+       is not a second loop — it IS the loop moving on, and this.token was
+       bumped at the top of render() so the old one is already dead. Without
+       this the guard swallows every auto-advance: scene 1 narrates, scene 2
+       renders, and the deck then sits there with playing=true, the button
+       reading "Pause presentation", and nothing speaking. Only the play branch
+       touches it, so the cold open's "Start presentation" copy is unchanged. */
+    if (play) { this.playing = false; this.play(); }
+    else this._setState('idle');
   }
 
   goto(id, opts = {}) {
@@ -127,6 +213,13 @@ class App {
     const my = ++this.token;
     const scene = SCENES[this.i];
 
+    // Normally already resolved long before anyone presses start; this is for
+    // the viewer who clicks inside the first second. See _attach().
+    if (!this.presenter) {
+      await this.ready;
+      if (my !== this.token) return;
+    }
+
     for (let n = this.line; n < scene.lines.length; n++) {
       if (my !== this.token) return;
       this.line = n;
@@ -135,12 +228,11 @@ class App {
       this._caption(text);
       this.lineHooks.get(n)?.();
       this._setState('speaking');
-      this.avatar.speak(text, estimate(text));
 
-      await this.voice.say(text);
+      await this.presenter.say(text);
       if (my !== this.token) return;
 
-      this.avatar.stopSpeaking();
+      this._captionDone();
       await wait(340);
       if (my !== this.token) return;
     }
@@ -160,8 +252,7 @@ class App {
   pause() {
     this.playing = false;
     this.token++;
-    this.voice.stop();
-    this.avatar.stopSpeaking();
+    this.presenter?.cancel();
     this._setState('idle');
     this._syncPlayBtn();
   }
@@ -173,14 +264,49 @@ class App {
     this.el.play.classList.toggle('primary', !this.playing);
   }
 
+  /* One span per word, so the 3D backend's word-timed subtitles can light the
+     line up as it is spoken (see _word). Whitespace stays as text nodes so the
+     caption still wraps and reads exactly as it did. textContent per token
+     rather than innerHTML — an answer's spoken form comes back from a model,
+     and this element is not a place to hand it markup. */
   _caption(text) {
     this.el.caption.classList.remove('idle');
-    this.el.caption.textContent = text;
+    const frag = document.createDocumentFragment();
+    for (const tok of String(text).split(/(\s+)/)) {
+      if (!tok) continue;
+      if (/^\s+$/.test(tok)) { frag.append(tok); continue; }
+      const w = document.createElement('span');
+      w.textContent = tok;
+      frag.append(w);
+    }
+    this.el.caption.replaceChildren(frag);
+    this.words = [...this.el.caption.children];
+    this.wordAt = 0;
     this.el.caption.parentElement.scrollTop = 0;
   }
 
+  /* TalkingHead's onsubtitles, one word at a time, on its own audio clock. It
+     hands over a STRING, and its stream is tokenised by whoever produced the
+     timings (ElevenLabs' alignment, or our own split when there was none), so
+     this walks the spans in ORDER rather than matching their text — order
+     cannot drift out of step, a content match can. The canvas backend has no
+     word clock and never calls this, so there the caption stays as it has
+     always been: one static, fully-lit line. */
+  _word() {
+    this.words[this.wordAt++]?.classList.add('said');
+  }
+
+  /* A line that ran to the end is fully said, whatever the timings covered —
+     otherwise a stream that stops a word or two short leaves the tail dimmed
+     and reads as a caption that stalled. NOT called on an interruption: there
+     the half-lit line is the truth. */
+  _captionDone() {
+    for (const w of this.words) w.classList.add('said');
+    this.wordAt = this.words.length;
+  }
+
   _setState(s) {
-    this.avatar.setState(s);
+    this.presenter?.setState(s);
     this.el.state.dataset.state = s;
     this.el.state.querySelector('.label').textContent =
       s === 'speaking' ? 'speaking' : s === 'listening' ? 'listening' : s === 'thinking' ? 'thinking' : 'standing by';
@@ -228,13 +354,16 @@ class App {
     });
 
     // speak the answer
+    if (!this.presenter) {
+      await this.ready;
+      if (my !== this.token) return;
+    }
     const spoken = spokenForm(html);
     this._caption(spoken.length > 240 ? spoken.slice(0, 237) + '…' : spoken);
     this._setState('speaking');
-    this.avatar.speak(spoken, estimate(spoken));
-    await this.voice.say(spoken);
+    await this.presenter.say(spoken);
     if (my !== this.token) return;
-    this.avatar.stopSpeaking();
+    this._captionDone();
     this._setState('idle');
   }
 
@@ -253,11 +382,18 @@ class App {
       this.handleAsk(this.el.askInput.value);
     });
 
+    /* presenter.setMuted(), NOT voice.setMuted(). Once the 3D backend is up it
+       owns playback, so the buffer is inside TalkingHead's own audio graph and
+       voice.stop() has no handle on th.audioSpeechSource — muting Voice alone
+       would leave the room listening to a presenter it had just silenced.
+       Presenter mutes Voice AND takes the mixer gain to zero. The flag is kept
+       here rather than read back off the presenter so the button still works in
+       the first second, before _attach() resolves. */
     this.el.mute.addEventListener('click', () => {
-      const m = !this.voice.muted;
-      this.voice.setMuted(m);
-      this.el.mute.setAttribute('aria-pressed', String(!m));
-      this.el.mute.textContent = m ? '🔇 Sound off' : '🔊 Sound on';
+      this.muted = !this.muted;
+      this.presenter?.setMuted(this.muted);
+      this.el.mute.setAttribute('aria-pressed', String(!this.muted));
+      this.el.mute.textContent = this.muted ? '🔇 Sound off' : '🔊 Sound on';
     });
 
     try {
