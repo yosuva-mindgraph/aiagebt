@@ -10,8 +10,12 @@
     "smoke:vendor": "node vendor/smoke.cjs"
   },
   "devDependencies": {
+    "@gltf-transform/core": "4.5.0",
+    "@gltf-transform/extensions": "4.5.0",
+    "@gltf-transform/functions": "4.5.0",
     "@met4citizen/talkinghead": "1.7.0",
     "esbuild": "0.28.2",
+    "meshoptimizer": "1.2.0",
     "three": "0.180.0"
   }
 }
