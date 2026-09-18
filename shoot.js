@@ -14,7 +14,10 @@
        node shoot.js --open          keep the browser open
 
    Output lands in shots/ (gitignored). --3d writes shots/3d-* so a canvas run
-   and a 3D run can sit side by side without overwriting each other.
+   and a 3D run can sit side by side without overwriting each other. Each run
+   DELETES its own prefix first: a stale PNG that survives a failed run is a
+   screenshot of a page nobody looked at, and the tally at the bottom would
+   count it.
 
    ── the default target stays the CANVAS one, deliberately ─────────────────
    dist/index.html is the deliverable and it shoots in about twenty seconds.
@@ -80,6 +83,18 @@ const TARGET = WANT_3D
 
 const FILE = 'file://' + path.join(ROOT, TARGET.file);
 
+/* The deck is twelve scenes; index.html's strip head says "scene 1 / 12" in
+   markup for the same reason. If a scene is ever added, this number and that
+   string both move — deliberately, together. */
+const EXPECTED_SCENES = 12;
+
+/* ONE predicate, used by both the pre-run clean and the post-run count, so the
+   two can never disagree about which files belong to this run. The canvas
+   target's prefix is the empty string, which every filename starts with, so it
+   has to exclude the 3D run's shots explicitly. */
+const mine = f => f.endsWith('.png') && f.startsWith(TARGET.prefix)
+  && (TARGET.prefix || !f.startsWith('3d-'));
+
 const SIZES = [
   { name: '1080p', width: 1920, height: 1080 },
   { name: 'laptop', width: 1440, height: 900 },
@@ -97,9 +112,19 @@ const argScene = (() => {
     process.exit(1);
   }
 
+  /* Clean this target's shots BEFORE shooting, not after. mkdirSync alone left
+     the previous run's PNGs on disk, so the count printed at the end could be
+     satisfied entirely by stale files: a run that photographed NOTHING still
+     reported "28 shots → shots/*" and exited 0. Every PNG under shots/ after
+     this line was taken by THIS run. */
   fs.mkdirSync(OUT, { recursive: true });
+  const stale = fs.readdirSync(OUT).filter(mine);
+  stale.forEach(f => fs.rmSync(path.join(OUT, f), { force: true }));
+  if (stale.length) console.log(`cleared ${stale.length} shot(s) from the previous run`);
+
   const browser = await chromium.launch();
   const problems = [];
+  let taken = 0;   // counted here, not read off the directory — see the tally below
   console.log(`shooting ${TARGET.file} — ${TARGET.label}`);
 
   for (const size of SIZES) {
@@ -127,15 +152,59 @@ const argScene = (() => {
     await page.waitForTimeout(TARGET.settle);
 
     // cold open
-    await page.screenshot({ path: path.join(OUT, `${TARGET.prefix}${size.name}-00-open.png`) });
+    await page.screenshot({ path: path.join(OUT, `${TARGET.prefix}${size.name}-00-open.png`) }); taken++;
 
     // start, but silence the voice so the run is fast and deterministic
     await page.evaluate(() => { window.speechSynthesis && (window.speechSynthesis.speak = () => {}); });
     await page.click('#skipIntroBtn');
     await page.waitForTimeout(300);
 
-    const scenes = await page.evaluate(() =>
-      [...document.querySelectorAll('#sceneList .strip-item')].map((b, i) => ({ i, t: b.querySelector('.t').textContent })));
+    /* ── the gate's own load-bearing assumption, checked out loud ─────────
+       These two CSS classes are the only class-name selectors in the whole
+       automated gate, and they are written in src/app.js by _buildStrip(). A
+       brand pass that renames either one USED TO END THE RUN SILENTLY:
+
+         .strip-item renamed → querySelectorAll returns []; the per-scene loop
+           below never runs, so ZERO screenshots are taken and ZERO overflow
+           checks happen; `problems` stays empty and this file prints "no
+           overflow, no page errors" and exits 0.
+         .t renamed → b.querySelector('.t') is null and .textContent threw
+           inside page.evaluate — red, but as an unhandled rejection with a
+           stack pointing at this file rather than at the renamed class.
+
+       So the titles are read null-safely and the shape is ASSERTED instead:
+       one strip item per scene, each with a readable title. A visual gate that
+       cannot photograph anything must say so, not congratulate itself. */
+    const strip = await page.evaluate(() => {
+      const items = [...document.querySelectorAll('#sceneList .strip-item')];
+      return {
+        titles: items.map(b => {
+          const el = b.querySelector('.t');
+          return el ? el.textContent : null;
+        }),
+        declared: typeof SCENES !== 'undefined' ? SCENES.length : null,
+      };
+    });
+
+    const blind = [];
+    if (strip.titles.length !== EXPECTED_SCENES) {
+      blind.push(`'#sceneList .strip-item' matched ${strip.titles.length} element(s), expected ${EXPECTED_SCENES}`
+        + ` (the deck declares ${strip.declared} scenes) — renamed class, or the strip never built`);
+    }
+    const untitled = strip.titles.filter(t => t === null).length;
+    if (untitled) {
+      blind.push(`${untitled} strip item(s) have no '.t' title element — renamed class in src/app.js _buildStrip()`);
+    }
+    if (blind.length) {
+      console.error('\nshoot.js: the scene strip is unreadable, so no scene can be photographed'
+        + ' or checked for overflow.');
+      blind.forEach(b => console.error('  ✗ ' + b));
+      console.error('  Fix the selectors in shoot.js to match src/app.js, or fix the strip.');
+      await browser.close();
+      process.exit(1);
+    }
+
+    const scenes = strip.titles.map((t, i) => ({ i, t }));
 
     for (const s of scenes) {
       await page.evaluate(i => window.app.render(i, { play: false }), s.i);
@@ -145,7 +214,7 @@ const argScene = (() => {
       if (argScene && !String(id).toLowerCase().includes(argScene.toLowerCase())) continue;
 
       const slug = String(s.t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      await page.screenshot({ path: path.join(OUT, `${TARGET.prefix}${size.name}-${String(s.i + 1).padStart(2, '0')}-${slug}.png`) });
+      await page.screenshot({ path: path.join(OUT, `${TARGET.prefix}${size.name}-${String(s.i + 1).padStart(2, '0')}-${slug}.png`) }); taken++;
 
       const overflow = await page.evaluate(() => ({
         body: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -158,16 +227,27 @@ const argScene = (() => {
     // the answer sheet, on a real question
     await page.evaluate(() => window.app.handleAsk('How do you stop an AI agent seeing data it should not see?'));
     await page.waitForTimeout(TARGET.answer);
-    await page.screenshot({ path: path.join(OUT, `${TARGET.prefix}${size.name}-99-answer.png`) });
+    await page.screenshot({ path: path.join(OUT, `${TARGET.prefix}${size.name}-99-answer.png`) }); taken++;
 
     if (!process.argv.includes('--open')) await ctx.close();
   }
 
   if (!process.argv.includes('--open')) await browser.close();
 
-  const shots = fs.readdirSync(OUT).filter(f => f.endsWith('.png') && f.startsWith(TARGET.prefix)
-    && (TARGET.prefix || !f.startsWith('3d-'))).length;
+  /* The tally is now an assertion rather than a remark. shots/ was emptied of
+     this target's PNGs at the start, so the two numbers have to agree: what the
+     run believes it photographed, and what is actually on disk. And with no
+     --scene filter the full set is knowable — one cold open, twelve scenes and
+     one answer sheet, at each of the two sizes. */
+  const shots = fs.readdirSync(OUT).filter(mine).length;
   console.log(`${shots} shots → shots/${TARGET.prefix}*`);
+  if (shots !== taken) {
+    problems.push(`took ${taken} screenshot(s) but shots/${TARGET.prefix}* holds ${shots} — the directory was not clean`);
+  }
+  if (!argScene) {
+    const want = SIZES.length * (EXPECTED_SCENES + 2);
+    if (taken !== want) problems.push(`took ${taken} screenshot(s), expected ${want} (${SIZES.length} sizes × ${EXPECTED_SCENES} scenes + open + answer)`);
+  }
   if (problems.length) {
     console.log(`\n${problems.length} problem(s):`);
     problems.forEach(p => console.log('  ✗ ' + p));

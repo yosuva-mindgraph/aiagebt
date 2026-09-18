@@ -57,6 +57,15 @@
   --gold:     #a85e00;
   --peach:    #a85e00;
   --true-blue:#0b3f9e;
+  /* --royal and --red carry over from the dark theme unchanged: Royal reads
+     8.15:1 on Canvas here and Red 4.58:1, so both already hold. They are
+     declared rather than inherited because src/avatar.js reads --royal every
+     frame and getPropertyValue() answers '' — not an error — for a token this
+     block does not define. Leaving it out is what made the bust paint light
+     mode in the DARK theme's Royal, silently, on every light-theme panel.
+     tests/guards.test.mjs asserts all three blocks now. */
+  --royal:    #004aac;
+  --red:      #d14600;
   --melon:    #c0410f;
   --ok:       #1d7a4a;
 }
@@ -65,7 +74,8 @@
     --midnight: #f6f3f0; --abyss: #ece8e3; --slab: #ffffff; --slab-2: #f2eee9;
     --rule: #d6cec4; --canvas: #0e1020; --ink: #0e1020; --ink-2: #4a5070;
     --ink-3: #7b82a6; --sky: #004aac; --gold: #a85e00; --peach: #a85e00;
-    --true-blue: #0b3f9e; --melon: #c0410f; --ok: #1d7a4a;
+    --true-blue: #0b3f9e; --royal: #004aac; --red: #d14600;
+    --melon: #c0410f; --ok: #1d7a4a;
   }
 }
 

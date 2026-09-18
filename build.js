@@ -132,6 +132,47 @@ function splice(html, re, text, what) {
   return html.replace(re, () => text);
 }
 
+/* ── the other kind of seam: a POSITION rather than a replacement ─────────
+   The artifact target does not replace these tags, it CUTS AT them, so it
+   needs offsets rather than splice(). That is the only reason they were raw
+   indexOf() — and it made them the two seams in this file that fail SILENTLY,
+   because indexOf answers -1 instead of throwing and -1 is a usable offset.
+
+   Both traps produce a build that exits 0:
+
+   1. `<body>` GAINS AN ATTRIBUTE (<body class="dxc-2026">). indexOf → -1,
+      slice(-1 + 6) = slice(5), and the "body" now starts five characters into
+      `<!doctype html>` — so the doctype, <html>, <head> and the whole ~762 KB
+      inlined <style> are copied into the artifact a second time. The file goes
+      945 KB → 1.71 MB. Loud, but only by luck: what catches it today is the
+      1.4 MB cap in tests/build.test.mjs, which reports it as a SIZE failure and
+      sends you looking at the fonts.
+
+   2. `<style>` GAINS AN ATTRIBUTE. indexOf → -1, slice(-1, N) is empty, and the
+      artifact ships with NO CSS AT ALL. It gets SMALLER, so every size
+      assertion passes; nothing else asserted the artifact contains any CSS.
+      That one is silent end to end and it is exactly what a brand pass trips.
+
+   So: no literal, no build. The message names the literal that moved, because
+   the person reading it is holding a reformatted index.html and needs to know
+   which tag this file was promised. */
+function at(html, literal, what, { last = false } = {}) {
+  const i = last ? html.lastIndexOf(literal) : html.indexOf(literal);
+  if (i < 0) {
+    console.error(`build.js: cannot find ${JSON.stringify(literal)} — the ${what} seam has moved.`);
+    console.error('  dist/artifact.html is cut out of the canvas build by OFFSET, so this tag is');
+    console.error('  matched literally. If it was renamed, reformatted, or given an attribute,');
+    console.error('  update the literal here to match it.');
+    // Where to look, because it is not the same file for both tags and the
+    // <style> one sends people grepping index.html for a tag that was never in it.
+    console.error(literal.includes('style')
+      ? '  NOTE: <style> is not in index.html — THIS file emits it, at the styles.css seam above.'
+      : '  It is in index.html.');
+    process.exit(1);
+  }
+  return i;
+}
+
 /* Seam S5 — the two OPTIONAL classic scripts at the bottom of index.html.
    Matched literally, which is the promise index.html's comment makes on this
    file's behalf. */
@@ -267,10 +308,16 @@ function build({ withConfig = true, want3d = false, wantArtifact = false } = {})
      decision: a published Artifact's CSP blocks external hosts, and an inline
      payload of tens of megabytes would not survive the round trip anyway. */
   if (wantArtifact) {
+    /* Every offset below goes through at(), and the lengths come off the
+       literals rather than being typed as 6 and 8 — the two magic numbers that
+       silently become wrong the moment a tag gains an attribute. */
+    const BODY = '<body>', BODY_END = '</body>', STYLE = '<style>', STYLE_END = '</style>';
     const body = canvas
-      .slice(canvas.indexOf('<body>') + 6, canvas.lastIndexOf('</body>'))
+      .slice(at(canvas, BODY, 'artifact <body>') + BODY.length,
+        at(canvas, BODY_END, 'artifact </body>', { last: true }))
       .trim();
-    const head = canvas.slice(canvas.indexOf('<style>'), canvas.indexOf('</style>') + 8);
+    const head = canvas.slice(at(canvas, STYLE, 'artifact <style>'),
+      at(canvas, STYLE_END, 'artifact </style>') + STYLE_END.length);
     const artifactBytes = write('artifact.html',
       `<title>Airport in a Box — walkthrough</title>\n${head}\n` +
       `<script>document.documentElement.dataset.theme = ` +

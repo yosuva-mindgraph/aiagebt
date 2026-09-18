@@ -82,6 +82,34 @@ export async function run(t) {
   t.ok(size('dist/artifact.html') < 1.4 * 1024 * 1024,
     'dist/artifact.html is under 1.4 MB', mb(size('dist/artifact.html')));
 
+  /* ── 1b. the artifact is the page MINUS its scaffolding, PLUS its CSS ──
+     build.js cuts dist/artifact.html out of the canvas build by offset, at
+     `<body>` and `<style>`. Before this block, nothing here described the SHAPE
+     of the result, and that gap had a specific consequence: if the <style> seam
+     moved, the head came out EMPTY, the artifact shipped with no CSS at all,
+     and — because it got SMALLER — it sailed through every size assertion
+     above. A hosted preview of unstyled HTML, green gate. The five checks below
+     are what make that impossible; the build now also refuses to produce it.
+
+     `<head` is deliberately matched as `<head[\s>]`: the page's own <header>
+     starts with those five characters and a bare substring test is red on a
+     correct file. */
+  t.ok(artifact.startsWith('<title>'),
+    'dist/artifact.html starts at <title> — no page scaffolding above it',
+    JSON.stringify(artifact.slice(0, 48)));
+  for (const [name, re] of [
+    ['<!doctype', /<!doctype/i], ['<html>', /<html[\s>]/i], ['<head>', /<head[\s>]/i],
+  ]) {
+    t.ok(!re.test(artifact),
+      `dist/artifact.html carries no ${name} (an Artifact supplies its own)`,
+      `${(artifact.match(new RegExp(re.source, 'gi')) || []).length} occurrence(s)`);
+  }
+  const styleBlock = artifact.match(/<style>([\s\S]*?)<\/style>/);
+  const styleKb = styleBlock ? Buffer.byteLength(styleBlock[1], 'utf8') / 1024 : 0;
+  t.ok(styleKb > 10,
+    'dist/artifact.html still carries its CSS — a >10 KB <style> block, not an empty one',
+    styleBlock ? `${styleKb.toFixed(1)} KB between <style> and </style>` : 'NO <style> BLOCK AT ALL');
+
   // And the S5 tags are removed rather than left to 404 under file://.
   for (const [n, s] of [['index.html', canvas], ['artifact.html', artifact]]) {
     t.ok(!/<script src="vendor\/talkinghead\.bundle\.js">/.test(s)

@@ -20,6 +20,9 @@
    ── what each suite is for ────────────────────────────────────────────────
    build        the three targets as FILES: what is in them, what is not in
                 them, how big they are, and whether the size guard still bites.
+   guards       the seams that used to fail OPEN — chiefly the palette contract
+                between src/styles.css and the canvas avatar, which no browser
+                check can see because the bust is pixels on a canvas.
    units        the character-seconds → word-integer-milliseconds conversion,
                 tested against src/ AND against the code actually inlined into
                 dist/index.html.
@@ -44,6 +47,7 @@ import { T, ROOT } from './lib/harness.mjs';
 
 const SUITES = [
   ['build', () => import('./build.test.mjs')],
+  ['guards', () => import('./guards.test.mjs')],
   ['units', () => import('./units.test.mjs')],
   ['autoadvance', () => import('./autoadvance.test.mjs')],
   ['cancel', () => import('./cancel.test.mjs')],
@@ -73,8 +77,23 @@ const t0 = Date.now();
 
 if (!process.argv.includes('--no-build')) {
   console.log('── building the three targets ─────────────────────────────────');
-  const out = execFileSync(process.execPath, ['build.js', '--3d', '--artifact'],
-    { cwd: ROOT, encoding: 'utf8' });
+  /* A build that exits non-zero has to END the gate, not be swallowed and not
+     be reported as a stack trace from this file. build.js is fail-loud on every
+     seam in index.html, and its own stderr — which names the literal that moved
+     — is inherited straight to the terminal above this line. Everything below
+     would only be testing yesterday's dist/. */
+  let out;
+  try {
+    out = execFileSync(process.execPath, ['build.js', '--3d', '--artifact'],
+      { cwd: ROOT, encoding: 'utf8' });
+  } catch (err) {
+    if (err.stdout) process.stdout.write(String(err.stdout).replace(/^/gm, '  '));
+    console.log('');
+    console.log('the build FAILED — see build.js\'s message above. Nothing was tested:');
+    console.log('  the gate builds the three targets first, on purpose, so it can never');
+    console.log('  pass against a dist/ that is older than src/.');
+    process.exit(1);
+  }
   process.stdout.write(out.replace(/^/gm, '  '));
   console.log('');
 }
