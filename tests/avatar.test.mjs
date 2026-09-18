@@ -61,13 +61,41 @@ const MAY_BE_INERT = [
   'mouthShrugUpper', 'viseme_sil',
 ];
 
-/* Measured POSITION deltas on the shipped avatar run from 0.0045 (viseme_FF, a
-   lip-and-teeth shape that barely moves a vertex) to 0.036 (viseme_RR). The
-   floor sits below the smallest of those.
+/* ── RE-BASELINED on the Hispanic_F_3_Busi swap — and it did NOT move ───────
+   The presenter was changed from Black_F_1_Busi to Hispanic_F_3_Busi. A source
+   swap is exactly the kind of change that ought to shift this set, so all 67
+   targets were re-measured on both files rather than the set being re-asserted
+   on faith. Result: byte-for-byte the same six names, nothing added, nothing
+   removed.
 
-   It does NOT need much margin, and tightening it would be a mistake: this is a
-   zero/not-zero test, not a quality bar. sparse() writes exact 0.0 — it does not
-   write 0.004. Anything that has to argue about the threshold is asking the
+   That is not luck, and the reason is worth writing down because it tells you
+   when this set WILL move. These six are placeholders BY CONSTRUCTION — they are
+   the six specs in convert-valid-avatar.mjs whose `mix` is literally `{}`, so
+   they are emitted as zero-delta accessors regardless of what the source avatar
+   contains. The other 61 are built from named Daz/Mimic shapes, and both avatars
+   carry the identical source morph set (65 on `h_expressions`, 31 on `h_teeth`),
+   so every one of those 61 resolved on both and moved on both. This set moves
+   only if a future source avatar is MISSING one of the mapped Daz shapes — at
+   which point remapPrimitive silently skips that spec and the placeholder branch
+   picks it up, which is precisely the drift this exact-set assertion is for.
+
+   Measured maxima either side of the swap (largest |POSITION| delta per target,
+   max over the meshes carrying it, read via getElement / getX-Y-Z):
+     articulating visemes   14/14 moved on both; smallest viseme_FF
+                            0.0045 → 0.0040, largest viseme_RR 0.0356 → 0.0356
+     targets over FLOOR     61 of 67, on BOTH files
+     tightest margin        mouthLeft / mouthRight 0.00218 → 0.00128 — still
+                            1.3× FLOOR, and now the closest thing in the file to
+                            it. These two are `LlipSide`/`RlipSide`, a sideways
+                            slide that genuinely barely displaces a vertex. If a
+                            later avatar pushes them under 1e-3 the symptom will
+                            be the `moving >= 60` assertion below dropping to 59,
+                            NOT the inert-set assertion — so read that failure as
+                            "a real shape got small", not "a delta got zeroed".
+
+   FLOOR does NOT need much margin, and tightening it would be a mistake: this is
+   a zero/not-zero test, not a quality bar. sparse() writes exact 0.0 — it does
+   not write 0.004. Anything that has to argue about the threshold is asking the
    wrong question. */
 const FLOOR = 1e-3;
 

@@ -74,6 +74,19 @@
    centre and store the result as morph deltas. That is real motion derived from
    the real geometry, not an approximation of a different shape.
 
+   ── and one thing that is not broken, just wrong-looking ─────────────────────
+
+   VALID's materials are `roughnessFactor: 0.5, metallicFactor: 0` with no
+   metallicRoughness texture. 0.5 is semi-gloss plastic, so the suit and the hair
+   come up with a wet patent-leather sheen — the thing the operator called
+   looking like "a kid did it". It is NOT the lighting and NOT the environment
+   map: an envMapIntensity sweep at 1.0/0.45/0.18/0 showed no visible difference,
+   while clamping roughness turned wet vinyl into matt wool in one step. So
+   `clampMaterials` floors roughness at 0.72 and caps metallic at 0.05 HERE, so
+   the shipped GLB is right in any viewer and no runtime patch is needed. Base
+   colour and textures are untouched — this changes how the cloth catches light,
+   not what colour it is. See stage 4 and docs/AVATAR.md §6.
+
    ── determinism ──────────────────────────────────────────────────────────────
 
    Same input bytes ⇒ same output bytes — verified by running it twice and by
@@ -111,24 +124,37 @@ const ROOT = path.resolve(fileURLToPath(import.meta.url), '../..');
    Blender round-trip to reach glTF at all, so this is both the shorter path and
    the one upstream points at.
 
-   Why Black_F_1_Busi: argued in full in docs/AVATAR.md. In short — business
-   attire because the audience is airport executives; joint-highest validated
-   agreement in the whole library (0.98 ethnicity, 0.98 gender, n=132 across 33
-   countries, from VALID's own published Agreement-Rates); and the only one of
-   the top-ranked candidates whose face survives TalkingHead's default lighting,
-   which clips the palest avatars to white. Changing it is this constant plus a
-   sha256; the rest of the pipeline is avatar-agnostic and was verified on three. */
+   Why Hispanic_F_3_Busi: argued in full in docs/AVATAR.md §2. In short — the
+   library's female `Busi` outfit is NOT the male one. Male Busi is a charcoal
+   suit over a white shirt and a striped tie; female Busi is an open blazer over
+   a LILAC CREW-NECK KNIT, and that lilac panel is the thing that reads as a
+   "shiny catsuit" on a rendered presenter. Hispanic_F_3_Busi is the exception in
+   the whole female Busi set: her knit is GREY, so the torso reads as tailoring
+   rather than as a costume. That is the primary reason for the pick.
+
+   It replaces Black_F_1_Busi, whose selection argument no longer holds. That one
+   was chosen partly because it was the only top-ranked candidate whose face
+   survived TalkingHead's DEFAULT lighting — i.e. it was a workaround for a
+   lighting bug that is being fixed separately, so the criterion is obsolete. It
+   also reads about thirty years old, which is not the presenter this deck wants.
+
+   Changing it is this constant plus a sha256; the rest of the pipeline is
+   avatar-agnostic and was verified on four. NOTE this one carries an EIGHTH mesh
+   the incumbent did not — `h_wig`, hair as separate geometry with its own `Hair`
+   material — which is handled without a special case (buildArmature reparents
+   all NINE scene roots; clampMaterials walks both materials) and is most of the
+   +347 KB of source and +504 KB of converted size. */
 const SOURCE = {
-  avatar: 'Black_F_1_Busi',
-  ethnicity: 'Black',
+  avatar: 'Hispanic_F_3_Busi',
+  ethnicity: 'Hispanic',
   /* Pinned to a COMMIT, not to `main`. The `main` URL in docs/AVATAR.md resolves
      to the same bytes today; this one will still resolve to them after an
      upstream force-push, and the sha256 below is checked on every run either
      way. c-frame/valid-avatars-glb @ c4719df, 2023-12-16. */
-  url: 'https://raw.githubusercontent.com/c-frame/valid-avatars-glb/c4719df7a2b60a96cc7f56d67e247674b68c4ea7/avatars/Black/Black_F_1_Busi.glb',
+  url: 'https://raw.githubusercontent.com/c-frame/valid-avatars-glb/c4719df7a2b60a96cc7f56d67e247674b68c4ea7/avatars/Hispanic/Hispanic_F_3_Busi.glb',
   commit: 'c4719df7a2b60a96cc7f56d67e247674b68c4ea7',
-  bytes: 1718008,
-  sha256: 'e8158244ef013f65fa4724d0831a860bd6bc4bb5fdaa1b81c0050910beb44a83',
+  bytes: 2064884,
+  sha256: '82840256e75dbab736b95757b9a8fb1ba46c265b04f11d185f7ac139d2d8161f',
 };
 
 /* ── the morph map ──────────────────────────────────────────────────────────
@@ -977,7 +1003,59 @@ function remapMorphTargets(doc, opts, log) {
   return { covered, needPlaceholder };
 }
 
-/* ── stage 4: gaze ──────────────────────────────────────────────────────── */
+/* ── stage 4: materials — kill the sheen AT CONVERT TIME ────────────────────
+
+   The operator's complaint was that the presenter looked like "a kid did it",
+   and the specific thing being reacted to was a wet, patent-leather sheen across
+   the torso and the hair — the avatar read as a shiny catsuit rather than as
+   clothing.
+
+   THE SHEEN IS THE GLB'S OWN MATERIAL, NOT THE LIGHTING AND NOT THE ENVIRONMENT
+   MAP. That was established by elimination, not by argument: an
+   `envMapIntensity` sweep at 1.0 / 0.45 / 0.18 / 0 showed no visible difference
+   at all, while clamping roughness turned wet vinyl into matt wool in one step.
+   Both VALID materials ship `roughnessFactor: 0.5, metallicFactor: 0` with NO
+   metallicRoughness texture — so the specular lobe is a single flat number, and
+   0.5 is a semi-gloss plastic. Wool suiting and a knit are ~0.7-0.9.
+
+   It is fixed HERE, at convert time, rather than in the renderer, for three
+   reasons that all point the same way:
+
+     · The shipped artifact is then correct on its own terms. Anyone who loads
+       assets/avatar.glb in any viewer — not just through our TalkingHead page —
+       gets the matt version. A runtime patch is invisible to every other tool.
+     · A runtime patch has to run AFTER the loader and BEFORE the first frame,
+       on a code path TalkingHead owns. That is a hook we would have to keep
+       working across TalkingHead versions forever, to fix bytes we control.
+     · The 3D lighting is being tuned separately against this artifact. If the
+       sheen were being cancelled by a runtime patch, the lighting task would be
+       tuning against a surface property that is not in the file it is holding.
+
+   MIN_ROUGHNESS 0.72 is the floor, applied with max() so a material that is
+   already mattER is left alone. MAX_METALLIC 0.05 is a ceiling applied with
+   min(); VALID already ships 0, so it changes nothing today and is there so a
+   future source avatar with a metallic value cannot reintroduce the same look
+   silently. Neither touches base colour, normals or textures — the albedo is
+   exactly as authored, so this changes how the cloth catches light and nothing
+   about what colour it is.                                                    */
+
+const MIN_ROUGHNESS = 0.72;
+const MAX_METALLIC = 0.05;
+
+function clampMaterials(doc, log) {
+  const changed = [];
+  for (const m of doc.getRoot().listMaterials()) {
+    const r0 = m.getRoughnessFactor();
+    const m0 = m.getMetallicFactor();
+    m.setRoughnessFactor(Math.max(r0, MIN_ROUGHNESS));
+    m.setMetallicFactor(Math.min(m0, MAX_METALLIC));
+    changed.push(`${m.getName() || '(unnamed)'} rough ${r0}→${m.getRoughnessFactor()} metal ${m0}→${m.getMetallicFactor()}`);
+  }
+  if (!changed.length) throw new Error('no materials found — the sheen clamp had nothing to clamp, which means the document is not what this tool thinks it is');
+  log(`materials: clamped ${changed.length} → ${changed.join(' · ')}`);
+}
+
+/* ── stage 5: gaze ──────────────────────────────────────────────────────── */
 
 /**
  * The REST transform of a rigidly-skinned mesh's vertices.
@@ -1142,6 +1220,10 @@ async function main() {
     for (const s of ARKIT_MAP) console.log(`  ${s.out.padEnd(20)} ← ${Object.entries(s.mix).map(([k, v]) => `${k}×${v}`).join(' + ') || '(zero-delta)'}\n      ${s.why}`);
     console.log('\nGAZE (synthesised geometry, not mapped)');
     for (const g of GAZE_MAP) console.log(`  ${g.out.padEnd(20)} ← rotate ${g.eye === 'L' ? 'h_L_eye' : 'h_R_eye'} ${GAZE_DEG}° ${g.pitch ? (g.pitch > 0 ? 'up' : 'down') : (g.yaw > 0 ? 'yaw+' : 'yaw-')}`);
+    console.log('\nMATERIALS (the sheen clamp — stage 4)');
+    console.log(`  roughnessFactor      ← max(source, ${MIN_ROUGHNESS})   VALID ships 0.5 = semi-gloss plastic; suiting and knit are 0.7-0.9`);
+    console.log(`  metallicFactor       ← min(source, ${MAX_METALLIC})   VALID ships 0, so this is a guard against a future source, not a fix`);
+    console.log('  base colour, normals and textures are NOT touched — this is specular only.');
     return;
   }
 
@@ -1196,6 +1278,7 @@ async function main() {
   buildArmature(doc, log);
   retargetRestPose(doc, 'side', log);
   remapMorphTargets(doc, opts, log);
+  clampMaterials(doc, log);
   synthesiseGaze(doc, log);
 
   /* prune (drops the source accessors nothing references any more), dedup (the
@@ -1232,8 +1315,19 @@ async function main() {
   census('packed ');
 
   /* Fixed generator string: the toolchain's own would change with every
-     gltf-transform bump and break byte-for-byte reproducibility. */
-  doc.getRoot().getAsset().generator = `aib-presenter tools/convert-valid-avatar.mjs (source: ${SOURCE.avatar})`;
+     gltf-transform bump and break byte-for-byte reproducibility.
+
+     The label names the avatar ACTUALLY converted, not SOURCE.avatar. Those are
+     the same thing for the shipped file — so this does not move its bytes — but
+     they diverge under `--source`, and they used to be labelled SOURCE.avatar
+     regardless. Every one of the eight candidate GLBs converted during the
+     avatar survey therefore claims `(source: Black_F_1_Busi)` in its asset
+     metadata whatever avatar is actually inside it, which is a provenance string
+     that lies. Debug artifacts get audited too. */
+  const converted = opts.source
+    ? path.basename(opts.source).replace(/\.glb$/i, '')
+    : SOURCE.avatar;
+  doc.getRoot().getAsset().generator = `aib-presenter tools/convert-valid-avatar.mjs (source: ${converted})`;
   doc.getRoot().getAsset().copyright = 'VALID avatar library — MIT, Copyright (c) 2022 Tiffany Do. See docs/AVATAR.md.';
 
   const bytes = await io.writeBinary(doc);
