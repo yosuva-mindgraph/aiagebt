@@ -36,6 +36,13 @@
    degrade      no key, no WebGL: the canvas bust, all twelve scenes, answers.
    avatar       the GLB's morph deltas are real geometry and the influences
                 actually move — a clean load is not proof.
+   integration  the checks that only exist once every branch is in one tree:
+                build CONSERVATION (every inlined line survives verbatim — the
+                generic form of the five "correct in source, broken in the
+                artifact" failures), first paint on all three targets, the
+                aperture's translucency contract in BOTH themes, a real question
+                answered in both, the theme toggle surviving a reload, both
+                backends narrating twelve scenes, and zero emoji anywhere.
 
    shoot.js is the separate visual gate (`node shoot.js`, `node shoot.js --3d`)
    and vendor/smoke.cjs the bundle's own. Both are run by the same CI line; they
@@ -54,6 +61,7 @@ const SUITES = [
   ['offline', () => import('./offline.test.mjs')],
   ['degrade', () => import('./degrade.test.mjs')],
   ['avatar', () => import('./avatar.test.mjs')],
+  ['integration', () => import('./integration.test.mjs')],
 ];
 
 const argOf = flag => {

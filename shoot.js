@@ -39,10 +39,18 @@
 
        node tests/run.mjs
 
-   ── headless Chromium here has no emoji font ──────────────────────────────
-   The scene-2 chooser icons therefore render as tofu boxes in every shot. That
-   is a missing font on the test box, not a fault in the deck; nothing here
-   inspects glyph coverage and nothing here should.
+   ── the emoji caveat that used to live here is GONE, and so is its cause ──
+   This block used to warn that the scene-2 chooser rendered as tofu boxes in
+   every shot, because headless Chromium on this box has no emoji font. That was
+   true of the emoji chooser. It is no longer true of anything: the chooser rows
+   now carry their destination scene's own DXC glyph as inline SVG, and there is
+   not a single emoji codepoint left in any of the three built targets —
+   tests/integration.test.mjs §7 asserts that over all three, with a positive
+   control, so the claim is measured rather than remembered.
+
+   The shots are therefore load-bearing again. A tofu box in one of them is now
+   a real defect and not a known artefact of the test box, which is precisely
+   what a stale caveat costs you: it teaches the reader to discount the evidence.
    ========================================================================== */
 
 const path = require('path');
