@@ -17,16 +17,26 @@
 <div id="shell">
 
   <header>
-    <!-- .box is the sky-accent hook in src/styles.css. The class name is a
-         leftover from the old product name and that file belongs to another
-         task, so the hook is reused rather than renamed: the accent falls on
-         "Intelligent" because sky is the platform's colour and the airport is
-         the customer's. -->
-    <div class="wordmark"><span class="box">Intelligent</span> Airport <span class="by">MindGraph × DXC</span></div>
+    <!-- ONE lockup, then one rule, then the scene. The DXC mark is inlined at
+         currentColor by src/icons.js (data-dxc-mark = its height in px, 17,
+         cap-height matched to the product name beside it) so it needs no second
+         asset for the light theme and no network for either.
+
+         There is no second wordmark here on purpose: "MindGraph × DXC" reads on
+         the cold open and again on scene 1's eyebrow, and a header carrying two
+         marks and an attribution is three things competing to be the brand.
+
+         Sound and Light are WORDS, not glyphs. The DXC pack has no speaker,
+         mute, sun, moon or bell — borrowing a lookalike from another set would
+         be decoration wearing a brand's clothes. See src/icons.js. -->
+    <div class="lockup">
+      <span class="mark" data-dxc-mark="17"></span>
+      <span class="product">Intelligent Airport</span>
+    </div>
     <div id="sceneTitle">Intelligent Airport</div>
     <div class="head-actions">
-      <button class="btn" id="muteBtn" aria-pressed="true">🔊 Sound on</button>
-      <button class="btn ghost" id="themeBtn" title="Switch light / dark">◐</button>
+      <button class="btn" id="muteBtn" aria-pressed="true">Sound on</button>
+      <button class="btn ghost" id="themeBtn" title="Switch light / dark">Light</button>
     </div>
   </header>
 
@@ -52,9 +62,15 @@
     <div id="caption" aria-live="polite">
       <div id="captionText" class="idle"></div>
     </div>
+    <!-- step-back / step-forward at 15px: these ARE the control, so the glyph
+         leads on the way back and trails on the way on. -->
     <div class="rail-foot">
-      <button class="btn" id="backBtn">‹ Back</button>
-      <button class="btn" id="skipBtn">Skip ›</button>
+      <button class="btn" id="backBtn">
+        <span class="ico" data-dxc-icon="step-back" data-size="15"></span><span class="lbl">Back</span>
+      </button>
+      <button class="btn" id="skipBtn">
+        <span class="lbl">Skip</span><span class="ico" data-dxc-icon="step-forward" data-size="15"></span>
+      </button>
     </div>
   </aside>
 
@@ -63,16 +79,38 @@
   <aside id="strip">
     <div class="strip-head"><span id="sceneCounter">scene 1 / 12</span><span>walkthrough</span></div>
     <div id="sceneList"></div>
+    <!-- The transport proper. #playBtn's LABEL is a child span, not the button's
+         own text node: src/app.js swaps the words and the play/pause glyph
+         independently, and setting textContent on the button would delete the
+         icon on the first press. -->
     <div class="transport">
-      <button class="btn primary" id="playBtn">▸ Start presentation</button>
+      <button class="btn" id="prevBtn" aria-label="Previous scene" title="Previous scene">
+        <span class="ico" data-dxc-icon="step-back" data-size="15"></span>
+      </button>
+      <button class="btn primary" id="playBtn">
+        <span class="ico" data-dxc-icon="play" data-size="15"></span><span class="lbl">Start presentation</span>
+      </button>
+      <button class="btn" id="nextBtn" aria-label="Next scene" title="Next scene">
+        <span class="ico" data-dxc-icon="step-forward" data-size="15"></span>
+      </button>
     </div>
   </aside>
 
+  <!-- search INSIDE the field (it is the field's affordance, not a label),
+       chat-ai on Speak, and sparkle on Ask — sparkle is the pack's mark for
+       GENERATED output, so it is an honesty signal rather than a flourish. -->
   <div id="askbar">
-    <button class="btn" id="micBtn" title="Ask out loud">🎤 Speak</button>
+    <button class="btn" id="micBtn" title="Ask out loud">
+      <span class="ico" data-dxc-icon="chat-ai" data-size="16"></span><span class="lbl">Speak</span>
+    </button>
     <form id="askForm" autocomplete="off">
-      <input id="askInput" type="text" placeholder="Ask Iris anything about the platform…  (press / to focus)" aria-label="Ask a question">
-      <button class="btn primary" type="submit">Ask</button>
+      <div class="askfield">
+        <span class="ico" data-dxc-icon="search" data-size="16"></span>
+        <input id="askInput" type="text" placeholder="Ask Iris anything about the platform…  (press / to focus)" aria-label="Ask a question">
+      </div>
+      <button class="btn primary" type="submit">
+        <span class="ico" data-dxc-icon="sparkle" data-size="16"></span><span class="lbl">Ask</span>
+      </button>
     </form>
   </div>
 
@@ -81,8 +119,11 @@
 <!-- answer sheet -->
 <section id="answer" aria-live="polite">
   <div class="ans-head">
+    <span class="ico" data-dxc-icon="answered" data-size="15"></span>
     <span class="q" id="ansQ"></span>
-    <button class="btn ghost" id="ansClose">Close ✕</button>
+    <button class="btn ghost" id="ansClose">
+      <span class="ico" data-dxc-icon="chevron-down" data-size="14"></span><span class="lbl">Close</span>
+    </button>
   </div>
   <div class="ans-body" id="ansBody"></div>
 </section>
@@ -90,12 +131,21 @@
 <!-- cold open. The click is what unlocks audio autoplay, so it has to exist. -->
 <div id="overlay">
   <div class="opencard">
+    <!-- The mark alone at 20px. NOT the Tagline Lockup (1199×240) — that is a
+         title-card asset and this card already says the words underneath it. -->
+    <span class="mark open-mark" data-dxc-mark="20"></span>
     <p class="kicker">MindGraph × DXC · Airport vertical</p>
     <h1><em>Intelligent</em> Airport</h1>
     <p>I’m Iris. In about ten minutes I’ll show you the whole platform — the data foundation, what
       gets built on it, and how it stays governed. Stop me with a question at any point.</p>
-    <button class="btn primary" id="startBtn">▸ Start the walkthrough</button>
-    <div style="margin-top:14px"><button class="btn ghost" id="skipIntroBtn">Skip — I’ll just ask questions</button></div>
+    <div class="open-actions">
+      <button class="btn primary" id="startBtn">
+        <span class="ico" data-dxc-icon="play" data-size="16"></span><span class="lbl">Start the walkthrough</span>
+      </button>
+      <button class="btn ghost" id="skipIntroBtn">
+        <span class="ico" data-dxc-icon="chat-ai" data-size="16"></span><span class="lbl">Skip — I’ll just ask questions</span>
+      </button>
+    </div>
     <p class="fine">Sound is on. Use the toggle in the top right if you’d rather read.</p>
   </div>
 </div>

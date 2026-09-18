@@ -85,11 +85,13 @@
   --font-display: "GT Standard", "Helvetica Neue", Arial, sans-serif;
   --font-body:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-meta:    var(--font-body);
-  /* Kept as a compatibility alias, NOT as a face: src/scenes.js sets
-     font-family with it inline on the FEED STALE badge and that file is
-     another task's scope. It now resolves to the meta face like everything
-     else, so nothing on the page is monospace. */
-  --mono: var(--font-meta);
+  /* --mono is GONE. It survived the type pass only as a compatibility alias,
+     because its single consumer was an inline style on the FEED STALE badge in
+     src/scenes.js — `font-family:var(--mono);font-size:11px`, the last orphan
+     font-size in the product, in a file that pass did not own. That badge is
+     now `.badge.stale` below, on --step--2 with the rest of the instrumentation
+     voice, so the alias has nothing left to point at and an alias to a face
+     that does not exist is a trap for the next person who types var(--mono). */
 
   --num: tabular-nums;   /* Inter's real tabular figures, for columnar digits */
 
@@ -272,12 +274,12 @@ body {
    larger than the 9.5px system mono it replaces, so these labels came out
    BIGGER, not smaller. Each selector below then sets only its colour, which is
    what stops eighteen near-identical six-line declarations drifting apart. */
-.wordmark .by,
 #avatarState,
 .presenter .role,
 .eyebrow,
 .card .roi b,
 .chip,
+.badge,
 .metric .l,
 .ba b,
 .screen-bar,
@@ -310,6 +312,23 @@ body {
   font-variant-numeric: var(--num);
 }
 
+/* ── the icon primitive ───────────────────────────────────────────────────
+   Every DXC icon on the page arrives as an <svg fill="currentColor"> inside a
+   `.ico` span (src/icons.js). The span exists rather than the bare svg because
+   an inline <svg> sits on the text baseline and carries the line-height's
+   leading with it, which lands it 2-3px low next to every label in the product;
+   a flex box is the only thing that centres it reliably at every size.
+
+   `flex: 0 0 auto` is load-bearing in the strip and the chooser: without it a
+   flex sibling that runs out of room squeezes the ICON before it squeezes the
+   text, and a half-width glyph is worse than no glyph.
+
+   Colour is never set here. An icon is currentColor by construction, so it
+   inherits whatever its container is already painting — which is what lets one
+   copy of the DXC mark serve the dark and the light theme. */
+.ico { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.ico svg { display: block; }
+
 /* ── shell ────────────────────────────────────────────────────────────── */
 
 #shell {
@@ -334,14 +353,28 @@ header {
   border-bottom: 1px solid var(--rule);
   background: var(--recess);
 }
-.wordmark {
-  font-family: var(--font-display); font-weight: 700;
-  font-size: var(--step-0); letter-spacing: var(--track-caps);
-  display: flex; align-items: baseline; gap: 9px;
-  white-space: nowrap;
+/* ── the lockup: mark, 12px, product name, 1px rule, scene ────────────────
+   One lockup and one rule, in that order, and nothing else competing to be the
+   brand. The mark inherits --ink, so it is White on Midnight and Midnight on
+   Canvas from ONE path — the DXC pack's Light and Dark marks are the same
+   geometry and differ only in fill, so a second asset would be a second copy of
+   the same thing waiting to diverge.
+
+   The mark's own height is set in index.html (data-dxc-mark="17") rather than
+   here, because src/icons.js derives the WIDTH from it at the brand's 3.583:1
+   and a height in CSS would let the two disagree. 17px is cap-height matched to
+   the product name beside it. */
+.lockup {
+  display: flex; align-items: center; gap: 12px;
+  white-space: nowrap; flex: 0 0 auto;
 }
-.wordmark .box { color: var(--sky); }
-.wordmark .by { color: var(--ink-3); }
+.lockup .mark { display: flex; align-items: center; color: var(--ink); }
+.lockup .product {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-0); line-height: 1;
+  letter-spacing: var(--track-caps);
+  color: var(--ink);
+}
 #sceneTitle {
   font-family: var(--font-display); font-weight: 500;
   font-size: var(--step-1); line-height: var(--lh-1);
@@ -354,6 +387,12 @@ header {
 }
 .head-actions { display: flex; gap: 8px; align-items: center; }
 
+/* A button is now `[icon] label` or `label [icon]` or an icon on its own, so it
+   is a flex box rather than a run of inline text. `min-width: 0` plus the
+   ellipsis on `.lbl` below is what stops a long label pushing a button out of a
+   narrow grid track and scrolling the whole page sideways — the strip is 244px
+   wide between 1041 and 1240, and "Pause presentation" does not fit in the
+   middle of three columns there. */
 .btn {
   font: inherit; font-size: var(--step--1); font-weight: 500;
   color: var(--ink-2); background: var(--surface-1);
@@ -361,7 +400,11 @@ header {
   padding: 7px 12px; cursor: pointer;
   transition: border-color .16s var(--e), color .16s var(--e), background .16s var(--e);
   white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-width: 0;
 }
+.btn .lbl { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.btn.wide { width: 100%; }
 .btn:hover { color: var(--ink); border-color: var(--rule-loud); }
 .btn[aria-pressed="true"] { color: var(--sky); border-color: var(--sky); }
 .btn.primary {
@@ -548,6 +591,11 @@ header {
   font-size: var(--step-1); line-height: var(--lh-1);
   letter-spacing: var(--track-tight);
 }
+/* The card classifier, above the title, at 24px — the floor below which
+   data-model, data-pipeline, table-masked and agent start to smudge. It is
+   --sky (the platform's voice) because what these icons classify is always a
+   part of the platform. */
+.card.has-ico .ico { color: var(--sky); margin-bottom: 11px; }
 .card p { margin: 0; font-size: var(--step--1); line-height: var(--lh--1); color: var(--ink-2); }
 .card .roi {
   margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--rule);
@@ -565,24 +613,47 @@ header {
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
 .card-head h3 { margin: 0; }
 
-/* metric row */
+/* An inline instrumentation badge — the FEED STALE banner scene 11 quotes.
+   This is where the product's LAST orphan font-size went: it used to be
+   `style="font-family:var(--mono);font-size:11px"` typed into the markup, an
+   eleventh size on a scale of ten and the only surviving consumer of --mono.
+   It is one of the few places a glyph is genuinely load-bearing — a stale-feed
+   banner that does not look like a warning is not a warning. */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 6px; border-radius: var(--r-xs);
+  border: 1px solid currentColor; white-space: nowrap;
+  vertical-align: baseline;
+}
+.badge.stale { color: var(--melon); }
+
+/* metric row — the glyph classifies the numeral, on the numeral's own line, and
+   takes its colour, so a --gold "human" metric stays gold end to end. */
 .metrics { display: flex; flex-wrap: wrap; gap: 30px; margin: 22px 0 8px; }
+.metric .mh { display: flex; align-items: center; gap: 10px; }
+.metric .mh .ico { color: var(--sky); }
 .metric .n {
   font-family: var(--font-display); font-weight: 700;
   font-size: var(--step-fig); line-height: var(--lh-4);
   color: var(--sky);
 }
 .metric .n.human { color: var(--gold); }
+.metric:has(.n.human) .mh .ico { color: var(--gold); }
 .metric .l { color: var(--ink-3); margin-top: 7px; }
 
-/* the gate — the one rule that makes it safe */
+/* the gate — the one rule that makes it safe.
+   `approved` opens every one of the five, at 20px, on the text's own baseline
+   row rather than centred over it: the gate is a sentence, and the mark is the
+   stamp at the start of it. */
 .gate {
   margin: 22px 0 0; padding: 12px 16px; border-radius: var(--r-md);
   border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
   background: color-mix(in srgb, var(--gold) 9%, transparent);
   color: var(--gold); font-size: var(--step-0); line-height: var(--lh-0);
-  text-align: center;
+  display: flex; align-items: flex-start; gap: 12px;
 }
+.gate .ico { color: var(--gold); margin-top: 1px; }
+.gate p { margin: 0; min-width: 0; }
 
 .note {
   margin-top: 20px; font-size: var(--step--1); line-height: var(--lh--1);
@@ -607,19 +678,26 @@ header {
   border: 1px solid var(--rule); background: var(--surface-1); color: var(--ink-2);
 }
 
-/* chooser (scene 2) */
+/* chooser (scenes 2 and 12) — [glyph] label [arrow].
+   Scene 2's rows carry their destination scene's own icon at 20px; scene 12's
+   questions carry none, so `.lb` takes the slack in both and the arrow stays
+   pinned right whether there are two children or three. */
 .chooser { display: grid; gap: 9px; max-width: 620px; }
+.chooser.wide { max-width: 100%; }
 .chooser button {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  display: flex; align-items: center; gap: 14px;
   width: 100%; text-align: left; cursor: pointer;
   font: inherit; font-size: var(--step-0);
   background: var(--surface-1); color: var(--ink);
   border: 1px solid var(--rule); border-radius: var(--r-md); padding: 14px 18px;
   transition: border-color .16s var(--e), transform .16s var(--e), background .16s var(--e);
 }
+.chooser button .lb { flex: 1; min-width: 0; text-wrap: pretty; }
+.chooser button .ico { color: var(--sky); }
 .chooser button:hover { border-color: var(--sky); transform: translateX(3px); }
-.chooser button .arrow { color: var(--sky); font-size: var(--step-1); }
+.chooser button .arrow { color: var(--sky); }
 .chooser button.full { border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
+.chooser button.full .ico,
 .chooser button.full .arrow { color: var(--gold); }
 
 /* ── the console scene (screen carousel) ──────────────────────────────── */
@@ -674,7 +752,7 @@ header {
 #sceneList::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--r-pill); }
 
 .strip-item {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 9px;
   font: inherit; font-size: var(--step--1); line-height: var(--lh--1);
   text-align: left; cursor: pointer;
   background: var(--surface-1); color: var(--ink-2);
@@ -687,18 +765,35 @@ header {
   background: var(--recess); border-radius: var(--r-xs);
   width: 19px; height: 19px; display: grid; place-items: center; flex: 0 0 auto;
 }
+/* The scene's glyph, at 18px, between the numeral and the title. It carries the
+   dimmed --ink-3 until the row is the current one, so twelve icons in a column
+   read as an index rather than as twelve competing accents. */
+.strip-item .ico { color: var(--ink-3); transition: color .16s var(--e); }
 .strip-item .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .strip-item.seen { color: var(--ink-3); }
+.strip-item:hover .ico { color: var(--ink-2); }
 .strip-item.current {
   color: var(--ink); border-color: var(--sky);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sky) 30%, transparent);
 }
 .strip-item.current .n { background: var(--sky); color: var(--on-platform); }
-.strip-item .flag { color: var(--sky); }
+.strip-item.current .ico { color: var(--sky); }
+/* The "live" badge's dot is drawn, not typed: it used to be a ● character in
+   the markup, which is one more glyph at the mercy of a fallback font. */
+.strip-item .flag { color: var(--sky); display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.strip-item .flag::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; flex: 0 0 auto;
+}
 
-.transport { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+/* [step-back] [ play / pause ] [step-forward] — the transport in reading order,
+   with the two glyph-only buttons pinned and the labelled one taking the slack.
+   minmax(0,1fr) rather than 1fr: a `1fr` track has an `auto` minimum, so it
+   refuses to shrink below its content and a long label scrolls the page
+   sideways instead of ellipsising. */
+.transport { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; }
 .transport .btn { text-align: center; }
-#playBtn { grid-column: 1 / -1; }
+.transport #prevBtn, .transport #nextBtn { padding: 7px 9px; }
 
 /* ── ask bar ──────────────────────────────────────────────────────────── */
 
@@ -709,15 +804,25 @@ header {
   padding: 0 20px;
 }
 #askForm { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+/* The search glyph sits INSIDE the field, absolutely, so it is the field's own
+   affordance and not a label beside it. The input keeps its own border and
+   focus ring — wrapping it in a bordered box instead would have meant
+   re-plumbing :focus onto the wrapper via :focus-within, for no gain. */
+.askfield { position: relative; flex: 1; min-width: 0; display: flex; }
+.askfield > .ico {
+  position: absolute; left: 14px; top: 0; bottom: 0;
+  color: var(--ink-3); pointer-events: none;
+}
 #askInput {
   flex: 1; min-width: 0;
   font: inherit; font-size: var(--step-0);
   background: var(--surface-1); color: var(--ink);
   border: 1px solid var(--rule); border-radius: var(--r-md);
-  padding: 12px 16px;
+  padding: 12px 16px 12px 40px;
   transition: border-color .16s var(--e);
 }
 #askInput:focus { border-color: var(--sky); outline: none; }
+.askfield:focus-within > .ico { color: var(--sky); }
 #askInput::placeholder { color: var(--ink-3); }
 #micBtn.rec { color: var(--gold); border-color: var(--gold); }
 
@@ -737,7 +842,8 @@ header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 20px; border-bottom: 1px solid var(--rule);
 }
-.ans-head .q { color: var(--gold); }
+.ans-head > .ico { color: var(--gold); }
+.ans-head .q { color: var(--gold); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ans-body { padding: 18px 20px 22px; overflow-y: auto; }
 .ans-body::-webkit-scrollbar { width: 6px; }
 .ans-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--r-pill); }
@@ -749,13 +855,20 @@ header {
   margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--rule);
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
 }
-.ans-src .lbl { color: var(--ink-3); }
+/* `checklist` — the pack's audit-trail glyph — before "grounded in". The label
+   is a claim about provenance, and the glyph is the one that means provenance
+   in this set. */
+.ans-src .lbl { color: var(--ink-3); display: inline-flex; align-items: center; gap: 6px; }
+/* A jump chip wears its DESTINATION scene's own icon, the same one that row has
+   in the navigator, so "where does this go" is answerable without reading. */
 .jump {
   font: inherit; font-size: var(--step--1); cursor: pointer;
   background: transparent; color: var(--sky);
   border: 1px solid color-mix(in srgb, var(--sky) 40%, transparent);
   border-radius: var(--r-pill); padding: 5px 12px;
+  display: inline-flex; align-items: center; gap: 7px;
 }
+.jump svg { display: block; flex: 0 0 auto; }
 .jump:hover { border-color: var(--sky); }
 
 /* ── overlay (cold open / config) ─────────────────────────────────────── */
@@ -768,6 +881,10 @@ header {
 }
 #overlay[hidden] { display: none; }
 .opencard { max-width: 620px; text-align: center; }
+/* The mark alone, above the kicker, at 20px. Not the Tagline Lockup: that asset
+   is 1199×240 and belongs on a title card, not over a paragraph. */
+.opencard .open-mark { display: block; color: var(--ink); margin: 0 auto 22px; width: max-content; }
+.opencard .open-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .opencard .kicker { color: var(--sky); margin-bottom: 20px; }
 .opencard h1 {
   font-family: var(--font-display); font-weight: 700;
@@ -814,14 +931,17 @@ header {
   background: var(--surface-1); border: 1px solid var(--rule);
   border-radius: var(--r-md); padding: 16px 18px;
 }
-.stage-step .sn { color: var(--ink-3); }
+.stage-step .sn { color: var(--ink-3); display: flex; align-items: center; gap: 10px; }
+.stage-step .sn .ico { color: var(--sky); }
 .stage-step .sv {
   font-family: var(--font-display); font-weight: 700;
   font-size: var(--step-fig); line-height: var(--lh-4);
   color: var(--sky); margin: 8px 0 8px;
 }
 .stage-step .sd { font-size: var(--step--1); line-height: var(--lh--1); color: var(--ink-2); }
-.arrow-r { align-self: center; color: var(--rule-loud); font-size: var(--step-2); }
+/* The pack's own arrow, where a "→" character used to be. Same picture, minus
+   the dependency on whatever font the booth machine falls back to. */
+.arrow-r { align-self: center; color: var(--rule-loud); display: flex; align-items: center; }
 
 /* ── assistant Q&A (scene: ask it anything) ───────────────────────────── */
 
@@ -840,7 +960,7 @@ header {
   border-radius: var(--r-xs); padding: 2px 6px; margin-right: 9px;
 }
 .cites { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding-top: 12px; border-top: 1px solid var(--rule); }
-.cites .lbl { color: var(--ink-3); }
+.cites .lbl { color: var(--ink-3); display: inline-flex; align-items: center; gap: 6px; }
 .cite {
   font-family: var(--font-meta); font-size: var(--step--1); line-height: var(--lh--1);
   border: 1px solid var(--rule); border-radius: var(--r-xs);
@@ -852,6 +972,19 @@ header {
 .run { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap: 18px; align-items: start; }
 @media (max-width: 1150px) { .run { grid-template-columns: 1fr; } }
 .run-screen { border: 1px solid var(--rule); border-radius: var(--r-md); overflow: hidden; background: var(--recess); }
+.run-side #runBtn { margin-top: 12px; }
+
+/* The workflow's status lamp. One data-state attribute drives the dot and the
+   words together; it used to be a ● character plus an inline style.color set
+   from three places in scenes.js's enter(). */
+.screen-bar .status { margin-left: auto; display: flex; align-items: center; gap: 7px; overflow: visible; }
+.screen-bar .status .lamp {
+  width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+  flex: 0 0 auto; display: block;
+}
+.screen-bar .status[data-state="off"]     { color: var(--ink-3); }
+.screen-bar .status[data-state="running"] { color: var(--gold); }
+.screen-bar .status[data-state="human"]   { color: var(--gold); }
 
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .steps li {

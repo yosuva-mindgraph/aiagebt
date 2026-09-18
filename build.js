@@ -43,8 +43,15 @@ const exists = p => fs.existsSync(path.join(ROOT, p));
 /* Dependency order, leaves first. avatar3d.js imports avatar.js, presenter.js
    imports both it and voice.js, app.js imports presenter.js — so the two 3D
    files sit between voice.js and ask.js. Get this wrong and the built file
-   still parses; it just dies at `Presenter is not defined` on first paint. */
+   still parses; it just dies at `Presenter is not defined` on first paint.
+
+   src/icons.js is the deepest leaf — it imports nothing and both scenes.js and
+   app.js import it — so it goes FIRST. Its exports are all prefixed (DXC_ICONS,
+   DXC_MARK, dxcIcon, dxcMark, dxcHydrate) because two of the 48 icon names it
+   carries, `pause` and `search`, are already top-level functions in this scope;
+   assertNoCollisions() below is what keeps that honest. */
 const MODULES = [
+  'src/icons.js',
   'src/knowledge.js',
   'src/scenes.js',
   'src/avatar.js',

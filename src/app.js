@@ -24,6 +24,7 @@ import { SCENES, sceneIndex, PRODUCT } from './scenes.js';
 import { Voice, createRecogniser, estimate } from './voice.js';
 import { Presenter } from './presenter.js';
 import { Ask, spokenForm } from './ask.js';
+import { dxcIcon, dxcHydrate } from './icons.js';
 
 const $ = sel => document.querySelector(sel);
 
@@ -50,6 +51,7 @@ class App {
       stage: $('#stage'), title: $('#sceneTitle'), caption: $('#captionText'),
       list: $('#sceneList'), counter: $('#sceneCounter'), progress: $('#progressFill'),
       play: $('#playBtn'), back: $('#backBtn'), skip: $('#skipBtn'),
+      prev: $('#prevBtn'), next: $('#nextBtn'),
       mute: $('#muteBtn'), theme: $('#themeBtn'),
       answer: $('#answer'), ansBody: $('#ansBody'), ansQ: $('#ansQ'), ansClose: $('#ansClose'),
       askForm: $('#askForm'), askInput: $('#askInput'), mic: $('#micBtn'),
@@ -125,16 +127,28 @@ class App {
     return this.presenter;
   }
 
-  /* ── film strip ───────────────────────────────────────────────────── */
+  /* ── film strip ───────────────────────────────────────────────────────
+     `.strip-item` and `.t` are the ONLY class-name selectors in the entire
+     automated visual gate (shoot.js:138) and they are written HERE. Renaming
+     either used to end a shoot silently — zero screenshots, zero overflow
+     checks, "no overflow, no page errors", exit 0. They are load-bearing names,
+     not styling hooks; the icon below is ADDED ALONGSIDE them rather than
+     wrapping or replacing either.
 
+     The icon is the scene's own glyph at 18px and it is not decoration: this is
+     a twelve-row list in a 310px column (244px under 1240) where `.t` truncates
+     with an ellipsis, so on a narrow panel the glyph is frequently the only
+     part of a row that still identifies the scene. */
   _buildStrip() {
     this.el.list.innerHTML = '';
     SCENES.forEach((s, i) => {
       const b = document.createElement('button');
       b.className = 'strip-item';
       b.type = 'button';
-      b.innerHTML = `<span class="n">${i + 1}</span><span class="t">${s.title}</span>` +
-        (s.flag ? `<span class="flag">● ${s.flag}</span>` : '');
+      b.innerHTML = `<span class="n">${i + 1}</span>` +
+        `<span class="ico">${dxcIcon(s.icon, 18)}</span>` +
+        `<span class="t">${s.title}</span>` +
+        (s.flag ? `<span class="flag">${s.flag}</span>` : '');
       b.addEventListener('click', () => this.goto(s.id, { play: this.playing }));
       this.el.list.appendChild(b);
     });
@@ -264,8 +278,17 @@ class App {
 
   toggle() { this.playing ? this.pause() : this.play(); }
 
+  /* The transport button is a GLYPH plus a LABEL, and the two are swapped
+     separately. It used to be ONE textContent assignment, with the play and
+     pause characters living inside the string — which is why this is worth a
+     note: setting textContent on the button now would delete the svg with it,
+     and the button would lose its icon on the very first press and never get it
+     back. Write to the two children, never to the button. */
   _syncPlayBtn() {
-    this.el.play.textContent = this.playing ? '⏸ Pause presentation' : '▸ Resume presentation';
+    const ico = this.el.play.querySelector('.ico');
+    const lbl = this.el.play.querySelector('.lbl');
+    if (ico) ico.innerHTML = dxcIcon(this.playing ? 'pause' : 'play', 15);
+    if (lbl) lbl.textContent = this.playing ? 'Pause presentation' : 'Resume presentation';
     this.el.play.classList.toggle('primary', !this.playing);
   }
 
@@ -352,15 +375,24 @@ class App {
       console.warn(`[app] answer pointed at unknown scene id "${scene}" — no jump offered.` +
         ' src/knowledge.js has a scene id that src/scenes.js does not.');
     }
+    /* The jump chip wears its DESTINATION's glyph — the same one that row has
+       in the navigator — so "where would this take me" is answerable before
+       reading the label. It is read off the RESOLVED scene object, like the id
+       beside it, so it cannot name a scene that is not there.
+
+       The label is still the scene's own title and nothing else: the pinned-id
+       half of tests/guards.test.mjs asserts the button NAMES the scene it will
+       take you to, and it reads button.textContent — which an <svg> contributes
+       nothing to, because none of these icons carries a <title>. */
     const jump = target
-      ? `<button class="jump" data-jump="${target.id}">Take me to “${target.title}” →</button>`
+      ? `<button class="jump" data-jump="${target.id}">${dxcIcon(target.icon, 14)}<span>${target.title}</span></button>`
       : '';
     const resume = wasPlaying
-      ? `<button class="jump" data-resume="1">↩ Resume the walkthrough</button>` : '';
+      ? `<button class="jump" data-resume="1">${dxcIcon('play', 14)}<span>Resume the walkthrough</span></button>` : '';
 
     this.el.ansBody.innerHTML = html + (jump || resume ? `
       <div class="ans-src">
-        <span class="lbl">${via === 'llm' ? 'answered by Iris · grounded' : 'answered from the briefing'}</span>
+        <span class="lbl">${dxcIcon('checklist', 13)}${via === 'llm' ? 'answered by Iris · grounded' : 'answered from the briefing'}</span>
         ${jump}${resume}
       </div>` : '');
 
@@ -395,6 +427,12 @@ class App {
     this.el.play.addEventListener('click', () => this.toggle());
     this.el.back.addEventListener('click', () => this.prev());
     this.el.skip.addEventListener('click', () => this.next());
+    /* The strip's own step-back / step-forward. They sit either side of the
+       transport button, where a viewer looks for them, and they are the two
+       controls on the page that are a glyph and nothing else — so the aria-label
+       is on the BUTTON in index.html, and the icons stay aria-hidden. */
+    this.el.prev?.addEventListener('click', () => this.prev());
+    this.el.next?.addEventListener('click', () => this.next());
     this.el.ansClose.addEventListener('click', () => this._closeAnswer());
 
     this.el.askForm.addEventListener('submit', e => {
@@ -408,22 +446,35 @@ class App {
        would leave the room listening to a presenter it had just silenced.
        Presenter mutes Voice AND takes the mixer gain to zero. The flag is kept
        here rather than read back off the presenter so the button still works in
-       the first second, before _attach() resolves. */
+       the first second, before _attach() resolves.
+
+       And it says so in WORDS, not in a glyph. The DXC pack has no speaker, no
+       mute and no waveform, and the nearest lookalike from any other set would
+       be a different designer's drawing sitting next to 48 that are not. Same
+       for the theme toggle below: no sun, no moon, no half-filled circle. Both
+       buttons read as what they do. */
     this.el.mute.addEventListener('click', () => {
       this.muted = !this.muted;
       this.presenter?.setMuted(this.muted);
       this.el.mute.setAttribute('aria-pressed', String(!this.muted));
-      this.el.mute.textContent = this.muted ? '🔇 Sound off' : '🔊 Sound on';
+      this.el.mute.textContent = this.muted ? 'Sound off' : 'Sound on';
     });
 
     try {
       const saved = localStorage.getItem('aib-theme');
       if (saved) document.documentElement.dataset.theme = saved;
     } catch {}
+    // The button names the theme it will SWITCH TO, which is why it reads
+    // "Light" on the dark deck that ships by default.
+    const syncTheme = () => {
+      this.el.theme.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light' : 'Dark';
+    };
+    syncTheme();
     this.el.theme.addEventListener('click', () => {
       const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
       try { localStorage.setItem('aib-theme', next); } catch {}
+      syncTheme();
     });
 
     // voice input
@@ -471,4 +522,14 @@ class App {
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-window.addEventListener('DOMContentLoaded', () => { window.app = new App(); });
+/* Hydrate the shell's icon placeholders BEFORE the App is constructed.
+   index.html ships `data-dxc-icon="step-back"` rather than 300 characters of
+   bezier, so the path data exists exactly once (src/icons.js) and the shell
+   stays readable. Doing it here, synchronously, ahead of `new App()`, is what
+   guarantees nothing is ever measured or photographed mid-hydration: shoot.js
+   and every browser suite wait on `window.app`, which does not exist until the
+   line below has finished. */
+window.addEventListener('DOMContentLoaded', () => {
+  dxcHydrate(document);
+  window.app = new App();
+});

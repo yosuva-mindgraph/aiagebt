@@ -21,11 +21,26 @@
                scene 2's chooser jumps by them. Renaming one is a breaking
                change, not a copy edit.
      title     header + filmstrip label
+     icon      the scene's IDENTIFIER in the navigator, and on every jump chip
+               the answer sheet offers. Not decoration: the navigator is twelve
+               rows in a 310px column where titles truncate, so at 18px the
+               glyph is frequently the only part of a row that survives. One
+               name from src/icons.js; see the table beside SCENES below.
      flag      optional filmstrip badge ("live")
      lines     narration, one caption at a time
      html()    the stage
      enter(ctx) optional — runs after the stage mounts
+
+   `eyebrow` USED TO BE a thirteenth field. It duplicated, as data, the string
+   each html() already hard-codes into its own <p class="eyebrow">, nothing ever
+   read it, and by the time it went the two copies had drifted apart in three
+   scenes. So had `data-full="1"` on the chooser's last button, which nothing
+   has read since the chooser stopped special-casing it. Both are gone; the
+   rendered eyebrow is the only copy, and it carries NO icon — an eyebrow is
+   already a label, and labelling a label is the definition of decoration.
    ========================================================================== */
+
+import { dxcIcon } from './icons.js';
 
 /* small helpers so the stage markup stays readable */
 const card = (title, body, foot, chip) => `
@@ -35,8 +50,62 @@ const card = (title, body, foot, chip) => `
     ${foot ? `<div class="roi">${foot}</div>` : ''}
   </div>`;
 
-const metric = (n, l, human) => `
-  <div class="metric"><div class="n${human ? ' human' : ''}">${n}</div><div class="l">${l}</div></div>`;
+/* The same card with a 24px classifier above its title.
+   24px because three of the glyphs used this way — data-model, data-pipeline,
+   table-masked — carry enough internal structure to smudge below it, and a grid
+   whose icons are two different sizes reads as a mistake. It is all-or-nothing
+   per GRID for the same reason: one card with an icon among five without looks
+   like a card that failed to load. */
+const icard = (icon, title, body, foot) => `
+  <div class="card has-ico">
+    <span class="ico">${dxcIcon(icon, 24)}</span>
+    <h3>${title}</h3>
+    <p>${body}</p>
+    ${foot ? `<div class="roi">${foot}</div>` : ''}
+  </div>`;
+
+const metric = (icon, n, l, human) => `
+  <div class="metric">
+    <div class="mh"><span class="ico">${dxcIcon(icon, 20)}</span><div class="n${human ? ' human' : ''}">${n}</div></div>
+    <div class="l">${l}</div>
+  </div>`;
+
+/* The gate — the one rule that makes the platform safe to point at a live
+   airport — always opens with `approved`, the pack's human-approval glyph. It
+   is the one icon in the deck that is repeated deliberately: five scenes make
+   the same promise and the mark is what makes them read as the same promise. */
+const gate = body => `
+  <div class="gate"><span class="ico">${dxcIcon('approved', 20)}</span><p>${body}</p></div>`;
+
+/* A chooser row: the destination scene's own glyph at 20px, the label, and the
+   pack's arrow where a text "→" used to be. The arrow is the one glyph here
+   that IS decoration — but it was already on the page as a character, and a
+   character is at the mercy of the machine's fallback font in a way a path is
+   not. Like for like, minus the font dependency. */
+const choice = (to, icon, label, cls) => `
+      <button${cls ? ` class="${cls}"` : ''} data-goto="${to}">
+        <span class="ico">${dxcIcon(icon, 20)}</span>
+        <span class="lb">${label}</span>
+        <span class="ico arrow">${dxcIcon('arrow-right', 18)}</span>
+      </button>`;
+
+/* One stage of the data pipeline. The icon is 24px and sits on the label row:
+   the three steps are what the whole deck rests on, and they are the one place
+   a reader scans left-to-right for a SHAPE rather than for a word. */
+const step = (icon, name, value, detail) => `
+      <div class="stage-step">
+        <div class="sn"><span class="ico">${dxcIcon(icon, 24)}</span>${name}</div>
+        <div class="sv">${value}</div>
+        <div class="sd">${detail}</div>
+      </div>`;
+
+/* The same row shape for scene 12's questions — no leading glyph, because six
+   rows carrying the same "question" icon would say nothing six times. */
+const question = (q, label) => `
+      <button data-q="${q}">
+        <span class="lb">${label}</span>
+        <span class="ico arrow">${dxcIcon('arrow-right', 18)}</span>
+      </button>`;
 
 /* The product's name, in one place, because it is spoken aloud and it has been
    renamed once already. NOT the same thing as AIRIS (the engine named in the
@@ -45,13 +114,29 @@ const metric = (n, l, human) => `
    purpose, and the knowledge base has an entry that explains the difference. */
 export const PRODUCT = 'Intelligent Airport';
 
+/* ── the navigator's twelve glyphs, and why each one ──────────────────────
+     1  airline        an airport product, so the aircraft — NOT the pack's
+                       TRAVEL & TRANSPORTATION glyph, which draws a train
+     2  target         "where should I start?" is the objective, chosen
+     3  idea           the proposition
+     4  database       all of the airport's data
+     5  graph-nodes    the airport modelled. `data-model` is the glyph this
+                       title asks for and it is TIER 3: at the navigator's 18px
+                       it is a grey smear, so the tier-1 graph reads instead
+     6  chat-ai        the assistant
+     7  cubes          build anything on it
+     8  monitor        watch it work — a console
+     9  sparkle        the pack's mark for generated output
+    10  shield-check   governance holds
+    11  plane-arrival  how it lands, literally
+    12  users          let's talk — the people in the room                    */
 export const SCENES = [
 
 /* 1 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'open',
   title: PRODUCT,
-  eyebrow: 'Airport vertical · MindGraph × DXC',
+  icon: 'airline',
   lines: [
     "I'm Iris, and I speak for Intelligent Airport — the platform MindGraph and DXC put on top of an airport you already run.",
     "Let me be clear about what this is before anything else. It is not an application. It is not a fixed list of modules you pick from a menu.",
@@ -67,38 +152,55 @@ export const SCENES = [
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
     <div class="metrics">
-      ${metric('58', 'Canonical entities')}
-      ${metric('201', 'Governed KPIs')}
-      ${metric('5', 'Control centres')}
-      ${metric('0', 'Systems replaced', true)}
-      ${metric('∞', 'Things you can build', true)}
+      ${metric('database', '58', 'Canonical entities')}
+      ${metric('chart-bar', '201', 'Governed KPIs')}
+      ${metric('monitor', '5', 'Control centres')}
+      ${metric('server', '0', 'Systems replaced', true)}
+      ${metric('cubes', '∞', 'Things you can build', true)}
     </div>
-    <div class="gate">One governed pipeline. Every question, every board, every workflow and every
-      agent resolves through it — so access, masking and audit are the same everywhere.</div>`
+    ${gate(`One governed pipeline. Every question, every board, every workflow and every
+      agent resolves through it — so access, masking and audit are the same everywhere.`)}`
 },
 
 /* 2 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'start',
   title: 'Where should I start?',
-  eyebrow: '▸ where should I start?',
+  icon: 'target',
   lines: [
     "Before I dive in — where would you like me to start?",
     "Pick whatever you're most curious about and I'll take you straight there. Or choose the full walkthrough and I'll give you the whole tour.",
     "You can scrub back with the film strip on the right at any point, and you can stop me with a question whenever you like."
   ],
+  /* THE EMOJI FIX. Every row here used to open with an emoji and two &nbsp; —
+     a compass, a file box, a brick wall, a stopwatch, a shield, a departing
+     plane, none of them named here as characters because the acceptance grep
+     for this change counts emoji in this file and a comment is still a hit.
+
+     It was a typographic and an operational problem at once. Typographic: an
+     emoji is somebody else's illustration in somebody else's colour palette,
+     sitting in a deck that is otherwise two DXC typefaces and ten DXC colours.
+     Operational: the glyph comes from whatever emoji font the MACHINE happens
+     to have, so it renders as a different picture on macOS, on Windows and on
+     Android — and as a tofu box on a headless Linux booth image with no emoji
+     font at all, which is exactly what shoot.js has been photographing.
+
+     Each row's icon is now the DESTINATION SCENE's own glyph at 20px, so the
+     chooser and the navigator agree about what a scene looks like. The last row
+     is the transport's `play`, because "give me the full walkthrough" is not a
+     seventh destination — it is pressing start. */
   html: () => `
-    <p class="eyebrow">▸ where should I start?</p>
+    <p class="eyebrow">where should I start?</p>
     <h1>Where should I take you first?</h1>
     <p class="lede">Tap one — I'll jump right there.</p>
     <div class="chooser">
-      <button data-goto="proposition"><span>🧭&nbsp;&nbsp;What it actually is</span><span class="arrow">→</span></button>
-      <button data-goto="data"><span>🗄&nbsp;&nbsp;The data foundation — what it knows</span><span class="arrow">→</span></button>
-      <button data-goto="build"><span>🧱&nbsp;&nbsp;Building boards, apps, workflows and agents</span><span class="arrow">→</span></button>
-      <button data-goto="live"><span>⏱&nbsp;&nbsp;Show me it working — live</span><span class="arrow">→</span></button>
-      <button data-goto="governance"><span>🛡&nbsp;&nbsp;Governance, risk and compliance</span><span class="arrow">→</span></button>
-      <button data-goto="deploy"><span>🛫&nbsp;&nbsp;How it would land in my airport</span><span class="arrow">→</span></button>
-      <button class="full" data-goto="proposition" data-full="1"><span>▸&nbsp;&nbsp;Give me the full walkthrough</span><span class="arrow">→</span></button>
+      ${choice('proposition', 'idea', 'What it actually is')}
+      ${choice('data', 'database', 'The data foundation — what it knows')}
+      ${choice('build', 'cubes', 'Building boards, apps, workflows and agents')}
+      ${choice('live', 'monitor', 'Show me it working — live')}
+      ${choice('governance', 'shield-check', 'Governance, risk and compliance')}
+      ${choice('deploy', 'plane-arrival', 'How it would land in my airport')}
+      ${choice('proposition', 'play', 'Give me the full walkthrough', 'full')}
     </div>`,
   enter(ctx) {
     ctx.root.querySelectorAll('[data-goto]').forEach(b =>
@@ -110,7 +212,7 @@ export const SCENES = [
 {
   id: 'proposition',
   title: 'The proposition',
-  eyebrow: '01 · the proposition',
+  icon: 'idea',
   lines: [
     "Here is the proposition in one sentence. We do not replace a single system you own.",
     "What we add is a non-invasive overlay. It connects to every source system, unifies the data into one canonical model, and puts AI, prediction, automation and a single command picture on top.",
@@ -141,10 +243,10 @@ export const SCENES = [
 
     <h2>The four levers everything is measured against</h2>
     <div class="grid g4">
-      ${card('Cost out', 'Utilities, maintenance, labour — the fastest and most visible payback on the P&amp;L.')}
-      ${card('Capex deferred', 'Sweat the stands, belts and terminal you already own instead of building more.')}
-      ${card('Revenue up', 'Non-aeronautical spend per passenger, on the same footfall.')}
-      ${card('Risk removed', 'Compliance, carbon and security exposure closed, with the audit trail behind it.')}
+      ${icard('chart-bar', 'Cost out', 'Utilities, maintenance, labour — the fastest and most visible payback on the P&amp;L.')}
+      ${icard('layers', 'Capex deferred', 'Sweat the stands, belts and terminal you already own instead of building more.')}
+      ${icard('chart-line-up', 'Revenue up', 'Non-aeronautical spend per passenger, on the same footfall.')}
+      ${icard('shield-check', 'Risk removed', 'Compliance, carbon and security exposure closed, with the audit trail behind it.')}
     </div>
     <div class="note">Any ROI range quoted in this walkthrough is an indicative industry figure. It is
       replaced by your own number in a short baseline assessment during onboarding — never quoted as a
@@ -155,7 +257,7 @@ export const SCENES = [
 {
   id: 'data',
   title: 'All the data',
-  eyebrow: '02 · the data fabric',
+  icon: 'database',
   lines: [
     "Everything else I'm going to show you rests on this scene, so let me spend a moment here.",
     "Source systems land in the lakehouse and are mapped into one canonical model of the airport. Fifty-eight entities — flight, bag, passenger, cargo, retail transaction, energy, roster, revenue, sensor, emergency event, IT system, and so on. Two hundred and one KPIs defined once, on top of them.",
@@ -168,32 +270,32 @@ export const SCENES = [
     <h1>Every source, one model,<br>one definition of the truth.</h1>
 
     <div class="pipeline">
-      <div class="stage-step"><div class="sn">Sources</div><div class="sv">21</div><div class="sd">mapped feeds — AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data</div></div>
-      <div class="arrow-r">→</div>
-      <div class="stage-step"><div class="sn">Canonical model</div><div class="sv">58</div><div class="sd">entities — the airport described once, independent of the system it came from</div></div>
-      <div class="arrow-r">→</div>
-      <div class="stage-step"><div class="sn">Governed KPIs</div><div class="sv">201</div><div class="sd">measures defined once and reused by every board, workflow, agent and answer</div></div>
+      ${step('data-exchange', 'Sources', '21', 'mapped feeds — AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data')}
+      <div class="arrow-r">${dxcIcon('arrow-right', 20)}</div>
+      ${step('graph-nodes', 'Canonical model', '58', 'entities — the airport described once, independent of the system it came from')}
+      <div class="arrow-r">${dxcIcon('arrow-right', 20)}</div>
+      ${step('chart-bar', 'Governed KPIs', '201', 'measures defined once and reused by every board, workflow, agent and answer')}
     </div>
 
     <h2>What sits around it</h2>
     <div class="grid g2">
-      ${card('Catalog', 'Every table and document in the estate, browsable, with lineage back to the source system and forward to everything that consumes it.')}
-      ${card('Airport model', 'The canonical schema and its source mappings. Map a new system’s entity here and everything downstream lights up — no downstream change.')}
-      ${card('Business glossary', 'The word a director uses, bound to the field an engineer built. Proposed terms go through review before they become canon.')}
-      ${card('Governed explorer', 'SQL for people who want SQL — through the same pipeline, so masking, row policies and audit apply identically.')}
-      ${card('Documents', 'SOPs, data-sharing policies, data dictionaries and compliance rules, searchable and citable by the assistant alongside the structured data.')}
-      ${card('Sources', 'Connect and manage feeds. Real-time streaming, scheduled ETL, REST pulls, webhooks and file drops all land in the same place.')}
+      ${icard('layers', 'Catalog', 'Every table and document in the estate, browsable, with lineage back to the source system and forward to everything that consumes it.')}
+      ${icard('data-model', 'Airport model', 'The canonical schema and its source mappings. Map a new system’s entity here and everything downstream lights up — no downstream change.')}
+      ${icard('file', 'Business glossary', 'The word a director uses, bound to the field an engineer built. Proposed terms go through review before they become canon.')}
+      ${icard('code-window', 'Governed explorer', 'SQL for people who want SQL — through the same pipeline, so masking, row policies and audit apply identically.')}
+      ${icard('folder', 'Documents', 'SOPs, data-sharing policies, data dictionaries and compliance rules, searchable and citable by the assistant alongside the structured data.')}
+      ${icard('data-exchange', 'Sources', 'Connect and manage feeds. Real-time streaming, scheduled ETL, REST pulls, webhooks and file drops all land in the same place.')}
     </div>
-    <div class="gate">One governed pipeline. A question, a dashboard tile, a workflow threshold and an
+    ${gate(`One governed pipeline. A question, a dashboard tile, a workflow threshold and an
       agent’s answer all resolve the same way — so there is exactly one place to change a definition,
-      and exactly one place to audit who saw what.</div>`
+      and exactly one place to audit who saw what.`)}`
 },
 
 /* 5 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'model',
   title: 'The airport, modelled',
-  eyebrow: '03 · the operating model',
+  icon: 'graph-nodes',
   lines: [
     "On top of the data sits the airport itself — modelled the way you actually run it.",
     "Five control centres. The AOCC for day-to-day flight, baggage, passenger and resource operations. The tower. The emergency operations centre, structured to your airport emergency plan. The network and IT operations centre. And the security operations centre, physical and cyber together.",
@@ -206,14 +308,19 @@ export const SCENES = [
     <p class="eyebrow">03 · the operating model</p>
     <h1>The airport, modelled<br>the way you run it.</h1>
 
+    <!-- The estate, iconed: a console, a tower, an incident, a rack, a camera.
+         Six three-letter acronyms in a grid are six near-identical rectangles
+         to anyone who does not already know what AOCC and NOC stand for — the
+         glyph is the only thing that distinguishes them at a glance, which is
+         precisely the case where an icon communicates rather than decorates. -->
     <h2>Five control centres</h2>
     <div class="grid g3">
-      ${card('AOCC', 'Airport Operations Control Centre — day-to-day flight, baggage, passenger and resource operations.', 'Flight / FIDS · Cargo · Baggage · Retail · Airline · Passenger · Ticketing / DCS · Vehicle / Landside · Feedback')}
-      ${card('ATC', 'Air Traffic Control Tower — runway and airspace movements: tower, ground and approach.', 'Runway movements · Tower watch · Airspace feed')}
-      ${card('EOC', 'Emergency Operations Centre — crisis coordination per the Airport Emergency Plan (ICAO Annex 14 / FAA Part 139).', 'Emergency incidents · Response resources · Mass notification &amp; mustering')}
-      ${card('NOC', 'Network / IT Operations Centre — the technology backbone that runs the airport: uptime, network, applications, incidents.', 'System uptime · Network &amp; telecoms · IT incidents')}
-      ${card('SOC', 'Security Operations Centre — physical and cyber security monitoring and response, in one place.', 'CCTV &amp; access control · Checkpoint screening · Perimeter &amp; restricted areas · Cyber / SIEM')}
-      ${card('…and the next one', 'A control centre is a metadata file. Name it, give it subdomains, point them at entities — it appears with the standard governed dashboard.', 'Added by an administrator in the product, not by us in a release.')}
+      ${icard('monitor', 'AOCC', 'Airport Operations Control Centre — day-to-day flight, baggage, passenger and resource operations.', 'Flight / FIDS · Cargo · Baggage · Retail · Airline · Passenger · Ticketing / DCS · Vehicle / Landside · Feedback')}
+      ${icard('broadcast', 'ATC', 'Air Traffic Control Tower — runway and airspace movements: tower, ground and approach.', 'Runway movements · Tower watch · Airspace feed')}
+      ${icard('warning', 'EOC', 'Emergency Operations Centre — crisis coordination per the Airport Emergency Plan (ICAO Annex 14 / FAA Part 139).', 'Emergency incidents · Response resources · Mass notification &amp; mustering')}
+      ${icard('server', 'NOC', 'Network / IT Operations Centre — the technology backbone that runs the airport: uptime, network, applications, incidents.', 'System uptime · Network &amp; telecoms · IT incidents')}
+      ${icard('cctv', 'SOC', 'Security Operations Centre — physical and cyber security monitoring and response, in one place.', 'CCTV &amp; access control · Checkpoint screening · Perimeter &amp; restricted areas · Cyber / SIEM')}
+      ${icard('sparkle', '…and the next one', 'A control centre is a metadata file. Name it, give it subdomains, point them at entities — it appears with the standard governed dashboard.', 'Added by an administrator in the product, not by us in a release.')}
     </div>
 
     <h2>Business domains</h2>
@@ -232,15 +339,15 @@ export const SCENES = [
       ${card('Published boards', 'Any board can be published to a viewer audience — partners, executives, a regulator — with its own access scope.')}
     </div>
 
-    <div class="gate">Adding a domain or a control centre is <b>metadata, not code</b>. It gets the
-      standard governed dashboard immediately, and lights up the moment its entity is mapped.</div>`
+    ${gate(`Adding a domain or a control centre is <b>metadata, not code</b>. It gets the
+      standard governed dashboard immediately, and lights up the moment its entity is mapped.`)}`
 },
 
 /* 6 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'ask',
   title: 'Ask it anything',
-  eyebrow: '04 · the assistant',
+  icon: 'chat-ai',
   lines: [
     "With the model in place, the first thing it buys you is the end of the report queue.",
     "Anyone in the building asks an operational question in plain language and gets an answer, with a chart, in seconds. Across every connected source at once. No SQL. No ticket to the analytics team. No two-day wait for a report that was stale when it arrived.",
@@ -267,7 +374,7 @@ export const SCENES = [
             returned as a ranked chart with the stand breakdown beneath it, in seconds.
           </div>
           <div class="cites">
-            <span class="lbl">resolved through</span>
+            <span class="lbl"><span class="ico">${dxcIcon('checklist', 13)}</span>resolved through</span>
             <span class="cite">canonical · FlightLeg</span>
             <span class="cite">canonical · AirlinePerformance</span>
             <span class="cite">kpi · otp_pct</span>
@@ -279,12 +386,12 @@ export const SCENES = [
 
     <h2>What makes it safe to put in front of the floor</h2>
     <div class="grid g3">
-      ${card('It only sees your scope', 'The assistant runs under the asker’s identity. Column masking and row policies are applied by the pipeline, not by the prompt.')}
-      ${card('It shows its working', 'Every answer names the entities and KPIs it resolved through, so the number can be followed back to source.')}
-      ${card('It is logged', 'Question, scope and result land in the audit trail — the same trail a regulator would be shown.')}
-      ${card('It reads documents too', 'SOPs, data dictionaries and policy documents are searchable alongside the structured data, so “what is our rule for this?” is answerable.')}
-      ${card('Engines are yours to choose', 'Which model serves which purpose is an administrator setting. Swap the engine without touching a single board or workflow.')}
-      ${card('It can be wrong out loud', 'An ambiguous question comes back as a question. That is deliberate — a confident wrong number is worse than no number.')}
+      ${icard('user-shield', 'It only sees your scope', 'The assistant runs under the asker’s identity. Column masking and row policies are applied by the pipeline, not by the prompt.')}
+      ${icard('checklist', 'It shows its working', 'Every answer names the entities and KPIs it resolved through, so the number can be followed back to source.')}
+      ${icard('stamp', 'It is logged', 'Question, scope and result land in the audit trail — the same trail a regulator would be shown.')}
+      ${icard('file', 'It reads documents too', 'SOPs, data dictionaries and policy documents are searchable alongside the structured data, so “what is our rule for this?” is answerable.')}
+      ${icard('sliders', 'Engines are yours to choose', 'Which model serves which purpose is an administrator setting. Swap the engine without touching a single board or workflow.')}
+      ${icard('warning', 'It can be wrong out loud', 'An ambiguous question comes back as a question. That is deliberate — a confident wrong number is worse than no number.')}
     </div>`
 },
 
@@ -292,7 +399,7 @@ export const SCENES = [
 {
   id: 'build',
   title: 'Build anything on it',
-  eyebrow: '05 · the build surfaces',
+  icon: 'cubes',
   lines: [
     "Now the part that makes this a platform rather than a product.",
     "Four things get built on that data model, and all four are built by the people who need them rather than by an engineering backlog.",
@@ -306,11 +413,14 @@ export const SCENES = [
     <p class="eyebrow">05 · the build surfaces</p>
     <h1>Boards, apps, workflows, agents.<br>Built by the people who need them.</h1>
 
+    <!-- The four build surfaces at 24px. data-pipeline and agent are TIER 3 —
+         they smudge below 24 — which is why they are here and not, say, in the
+         navigator. -->
     <div class="grid g2">
-      ${card('Dashboards — endless', 'A canvas of tiles over any governed measure, in any combination, saved and shared. Publish a board to an audience — a partner, an executive, a regulator — with its own access scope. There is no fixed set, and the twentieth costs what the second did.', 'Every tile resolves through the governed pipeline. A board cannot show a number its viewer is not allowed to see.')}
-      ${card('Applications — described, then generated', 'Describe the application you want on your data and it is generated against the canonical model, from a component library: hero, navbar, KPI, chart, data table, timeline, filter bar, search, status badge, flight board, map, gallery, form. Then edited by hand where you want it precise.', 'Generated apps inherit the same scopes and audit as everything else — they are not a side door to the data.')}
-      ${card('Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Eleven playbooks ship with the product, disabled, so a fresh install has something real to turn on. They are examples — not the ceiling.')}
-      ${card('Agents — registered, not improvised', 'Purpose-built agents over the same data scope, each with a risk tier, a declared tool set, evaluations and guardrails. A catalog, a run history, and a topology view of which agent calls what.', 'Shipped today: Airport Hub Analyst, Ops Analyst, Baggage Analyst, Retail Analyst, Data Steward, Compliance Explainer.')}
+      ${icard('monitor', 'Dashboards — endless', 'A canvas of tiles over any governed measure, in any combination, saved and shared. Publish a board to an audience — a partner, an executive, a regulator — with its own access scope. There is no fixed set, and the twentieth costs what the second did.', 'Every tile resolves through the governed pipeline. A board cannot show a number its viewer is not allowed to see.')}
+      ${icard('code-window', 'Applications — described, then generated', 'Describe the application you want on your data and it is generated against the canonical model, from a component library: hero, navbar, KPI, chart, data table, timeline, filter bar, search, status badge, flight board, map, gallery, form. Then edited by hand where you want it precise.', 'Generated apps inherit the same scopes and audit as everything else — they are not a side door to the data.')}
+      ${icard('data-pipeline', 'Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Eleven playbooks ship with the product, disabled, so a fresh install has something real to turn on. They are examples — not the ceiling.')}
+      ${icard('agent', 'Agents — registered, not improvised', 'Purpose-built agents over the same data scope, each with a risk tier, a declared tool set, evaluations and guardrails. A catalog, a run history, and a topology view of which agent calls what.', 'Shipped today: Airport Hub Analyst, Ops Analyst, Baggage Analyst, Retail Analyst, Data Steward, Compliance Explainer.')}
     </div>
 
     <h2>The trigger people forget</h2>
@@ -327,8 +437,8 @@ export const SCENES = [
 {
   id: 'live',
   title: 'Watch it work — live',
+  icon: 'monitor',
   flag: 'live',
-  eyebrow: '06 · one workflow, end to end',
   lines: [
     "Let me stop describing it and run one.",
     "This is a shipped playbook: a security queue has been over the airport's wait-time target for two minutes. Watch every stage, because every stage is a node you can swap.",
@@ -349,7 +459,11 @@ export const SCENES = [
         <div class="screen-bar">
           <span class="lamps"><i style="background:var(--melon)"></i><i style="background:var(--gold)"></i><i style="background:var(--ok)"></i></span>
           <span>workflow · security wait above target</span>
-          <span style="margin-left:auto" id="runStatus">● DISABLED</span>
+          <!-- The lamp is a CSS circle, not a ● character: the status is the one
+               thing on this bar that CHANGES while the workflow runs, and it
+               used to be a glyph plus an inline style.color set from three
+               places in enter(). One data-state attribute now drives both. -->
+          <span class="status" id="runStatus" data-state="off"><i class="lamp"></i><span class="rs">DISABLED</span></span>
         </div>
         <div class="screen-body">
           <ol class="steps" id="runSteps">
@@ -381,38 +495,46 @@ export const SCENES = [
             IT availability &amp; SLA breach · Emergency response watch
           </div>
         </div>
-        <button class="btn primary" id="runBtn" style="margin-top:12px;width:100%">▸ Run the workflow</button>
+        <button class="btn primary wide" id="runBtn">
+          <span class="ico">${dxcIcon('play', 15)}</span><span class="lbl">Run the workflow</span>
+        </button>
       </div>
     </div>
 
-    <div class="gate">The machine watches, queries, explains and drafts. <b>A person makes the call.</b>
-      That is the rule that makes this safe to point at a live airport.</div>`,
+    ${gate(`The machine watches, queries, explains and drafts. <b>A person makes the call.</b>
+      That is the rule that makes this safe to point at a live airport.`)}`,
   enter(ctx) {
     const steps = [...ctx.root.querySelectorAll('#runSteps li')];
     const status = ctx.root.querySelector('#runStatus');
+    const statusText = status.querySelector('.rs');
     const btn = ctx.root.querySelector('#runBtn');
+    /* The BUTTON's label, not the button: #runBtn now carries a play glyph as
+       its first child, and setting textContent on the button itself would
+       delete it on the first press. */
+    const btnLabel = btn.querySelector('.lbl');
     let timers = [];
+
+    const say = (state, text) => { status.dataset.state = state; statusText.textContent = text; };
 
     const clear = () => { timers.forEach(clearTimeout); timers = []; };
     const reset = () => {
       clear();
       steps.forEach(s => s.classList.remove('lit', 'waiting'));
-      status.textContent = '● DISABLED'; status.style.color = 'var(--ink-3)';
-      btn.textContent = '▸ Run the workflow'; btn.disabled = false;
+      say('off', 'DISABLED');
+      btnLabel.textContent = 'Run the workflow'; btn.disabled = false;
     };
 
     const run = () => {
       reset();
-      btn.disabled = true; btn.textContent = 'Running…';
-      status.textContent = '● RUNNING'; status.style.color = 'var(--gold)';
+      btn.disabled = true; btnLabel.textContent = 'Running…';
+      say('running', 'RUNNING');
       steps.forEach((s, i) => {
         timers.push(setTimeout(() => {
           s.classList.add('lit');
           if (i === steps.length - 1) {
             s.classList.add('waiting');
-            status.textContent = '● WAITING FOR A HUMAN';
-            status.style.color = 'var(--gold)';
-            btn.disabled = false; btn.textContent = '↻ Run it again';
+            say('human', 'WAITING FOR A HUMAN');
+            btn.disabled = false; btnLabel.textContent = 'Run it again';
           }
         }, 380 + i * 780));
       });
@@ -428,7 +550,7 @@ export const SCENES = [
 {
   id: 'agents',
   title: 'Agents, governed',
-  eyebrow: '07 · the agents',
+  icon: 'sparkle',
   lines: [
     "A word about the agents, because this is where most AI platforms quietly stop being auditable.",
     "An agent here is not a prompt somebody pasted into a chat window. It's a registered object with a purpose, a risk tier, a declared set of tools, its own governed data scope, an evaluation suite and guardrails.",
@@ -449,25 +571,33 @@ export const SCENES = [
       ${card('Compliance Explainer', 'Translates an obligation into what it means for this airport, citing the document it came from.', '', '<span class="chip live">shipped</span>')}
     </div>
 
+    <!-- The six SHIPPED agents above carry no icon on purpose: they already
+         carry a "shipped" chip, and six cards each wearing the same agent
+         glyph would be six copies of a word the heading has already said.
+
+         Note for anyone adding a comment here: this is inside a TEMPLATE
+         LITERAL, so a backtick in the prose ends the template and the built
+         file dies at first paint with "Unexpected identifier". Say the icon
+         names in plain words, not in code quotes. -->
     <h2>What every agent carries</h2>
     <div class="grid g3">
-      ${card('A risk tier', 'Declared, not inferred. What an agent is allowed to reach is a function of its tier, and changing a tier is a governed change.')}
-      ${card('A data scope', 'It runs under its own scope through the same pipeline. An agent cannot see what its scope forbids, whoever asked it.')}
-      ${card('Declared tools', 'The tool set is written down. The topology view renders it, so “what can this thing actually do?” has a visual answer.')}
-      ${card('Evaluations', 'A suite that runs against it. An agent whose behaviour drifts is caught by its evals, not by a passenger.')}
-      ${card('Guardrails', 'Explicit constraints on output and action, enforced outside the prompt.')}
-      ${card('A run history', 'Every run, its inputs, its scope and its result — replayable.')}
+      ${icard('flag', 'A risk tier', 'Declared, not inferred. What an agent is allowed to reach is a function of its tier, and changing a tier is a governed change.')}
+      ${icard('lock', 'A data scope', 'It runs under its own scope through the same pipeline. An agent cannot see what its scope forbids, whoever asked it.')}
+      ${icard('sliders', 'Declared tools', 'The tool set is written down. The topology view renders it, so “what can this thing actually do?” has a visual answer.')}
+      ${icard('checklist', 'Evaluations', 'A suite that runs against it. An agent whose behaviour drifts is caught by its evals, not by a passenger.')}
+      ${icard('shield-check', 'Guardrails', 'Explicit constraints on output and action, enforced outside the prompt.')}
+      ${icard('eye-clock', 'A run history', 'Every run, its inputs, its scope and its result — replayable.')}
     </div>
 
-    <div class="gate">Anything irreversible lands in one <b>approvals inbox</b> and waits for a person.
-      Human-in-the-loop is the shape of the platform, not a setting on it.</div>`
+    ${gate(`Anything irreversible lands in one <b>approvals inbox</b> and waits for a person.
+      Human-in-the-loop is the shape of the platform, not a setting on it.`)}`
 },
 
 /* 10 ─────────────────────────────────────────────────────────────────────── */
 {
   id: 'governance',
   title: 'Governance, risk & compliance',
-  eyebrow: '08 · GRC',
+  icon: 'shield-check',
   lines: [
     "Most platforms treat governance as a module you buy later. Here it is one of the five things in the navigation, and it governs the platform itself as well as the airport.",
     "The obligation register carries what you're actually held to. ICAO Annex 19 safety management, Annex 17 security, Annex 14 aerodrome, your emergency plan, IGOM ground operations, slot punctuality, ESG reporting, personal data and cross-border transfer, breach notification, access control, audit evidence — and, increasingly, AI governance and model provenance.",
@@ -505,12 +635,12 @@ export const SCENES = [
 
     <h2>The controls behind them</h2>
     <div class="grid g3">
-      ${card('Column-level access', 'An access matrix down to the column. Masking is applied by the pipeline, so it holds for a board, a query, a workflow and an agent equally.')}
-      ${card('Trust view', 'Data protection and AI governance posture in one place — the view you would put in front of an auditor.')}
-      ${card('Activity &amp; telemetry', 'Audit across every surface: who asked, under what scope, what came back, and what was approved.')}
-      ${card('Governance packs', 'Obligations and policies ship as packs, so a new airport starts with the aviation baseline rather than a blank register.')}
-      ${card('Proposed vs active', 'Policies and glossary terms have a proposed state and an active state. A definition changes through review, not by edit.')}
-      ${card('Members &amp; access', 'Groups, grants and packs — with an editor / viewer split, so most of the building can read the platform safely.')}
+      ${icard('table-masked', 'Column-level access', 'An access matrix down to the column. Masking is applied by the pipeline, so it holds for a board, a query, a workflow and an agent equally.')}
+      ${icard('badge-check', 'Trust view', 'Data protection and AI governance posture in one place — the view you would put in front of an auditor.')}
+      ${icard('stamp', 'Activity &amp; telemetry', 'Audit across every surface: who asked, under what scope, what came back, and what was approved.')}
+      ${icard('layers', 'Governance packs', 'Obligations and policies ship as packs, so a new airport starts with the aviation baseline rather than a blank register.')}
+      ${icard('filter', 'Proposed vs active', 'Policies and glossary terms have a proposed state and an active state. A definition changes through review, not by edit.')}
+      ${icard('user-group', 'Members &amp; access', 'Groups, grants and packs — with an editor / viewer split, so most of the building can read the platform safely.')}
     </div>`
 },
 
@@ -518,7 +648,7 @@ export const SCENES = [
 {
   id: 'deploy',
   title: 'How it lands',
-  eyebrow: '09 · delivery',
+  icon: 'plane-arrival',
   lines: [
     "So how does it actually land in your airport?",
     "About eighty-five percent of what you'd deploy already exists and is proven in production. The remaining fifteen is your brand, your terminal and zone maps, your local regulations, language and currency, your workflows and SLAs, and your data migration.",
@@ -548,19 +678,21 @@ export const SCENES = [
 
     <h2>Where it runs</h2>
     <div class="grid g3">
-      ${card('Anywhere', 'Cloud, on-premise, hybrid, or fully air-gapped. No cloud or network dependency at runtime.')}
-      ${card('Degrades honestly', 'When a feed or the backend drops, the board keeps rendering the last known state behind a clear <span style="color:var(--melon);font-family:var(--mono);font-size:11px">FEED STALE</span> banner — and says how old it is.')}
-      ${card('Ingest-only by default', 'It reads. It does not write back into an operational system unless you have explicitly opened that door.')}
+      ${icard('location-dot', 'Anywhere', 'Cloud, on-premise, hybrid, or fully air-gapped. No cloud or network dependency at runtime.')}
+      ${icard('warning', 'Degrades honestly', 'When a feed or the backend drops, the board keeps rendering the last known state behind a clear '
+        + `<span class="badge stale">${dxcIcon('warning', 12)}FEED STALE</span>`
+        + ' banner — and says how old it is.')}
+      ${icard('lock', 'Ingest-only by default', 'It reads. It does not write back into an operational system unless you have explicitly opened that door.')}
     </div>
 
     <h2>The track record behind it</h2>
     <div class="metrics">
-      ${metric('15', 'Services in production')}
-      ${metric('5', 'Airports live')}
-      ${metric('12', 'AI systems')}
-      ${metric('70+', 'Dashboards')}
-      ${metric('16+', 'Automation bots', true)}
-      ${metric('8', 'Departments unified', true)}
+      ${metric('server', '15', 'Services in production')}
+      ${metric('location-dot', '5', 'Airports live')}
+      ${metric('ai-chip', '12', 'AI systems')}
+      ${metric('monitor', '70+', 'Dashboards')}
+      ${metric('agent', '16+', 'Automation bots', true)}
+      ${metric('user-group', '8', 'Departments unified', true)}
     </div>
     <div class="note">Security paperwork down ~80% and fully offline-capable in restricted zones;
       complaint response ~25% faster with a ~35% CX uplift across five airports; zero paper contracts
@@ -572,7 +704,7 @@ export const SCENES = [
 {
   id: 'talk',
   title: "Let's talk",
-  eyebrow: '10 · next',
+  icon: 'users',
   lines: [
     "That's the tour.",
     "If you take one thing from it: airports do not have a systems problem. They have a coordination problem sitting on top of systems that already work — and a data problem underneath it that nobody has solved once, properly, in one place.",
@@ -593,13 +725,13 @@ export const SCENES = [
     </div>
 
     <h2>Questions I get asked most</h2>
-    <div class="chooser" style="max-width:100%">
-      <button data-q="Will this replace my AODB or my existing systems?"><span>Will this replace my existing systems?</span><span class="arrow">→</span></button>
-      <button data-q="What is actually built today versus what still has to be built?"><span>What's actually built today?</span><span class="arrow">→</span></button>
-      <button data-q="Can it run air-gapped with no network at all?"><span>Can it run air-gapped?</span><span class="arrow">→</span></button>
-      <button data-q="How do you stop an AI agent seeing data it should not see?"><span>How do you stop an agent over-reaching?</span><span class="arrow">→</span></button>
-      <button data-q="Can we build our own dashboards and workflows without you?"><span>Can we build our own, without you?</span><span class="arrow">→</span></button>
-      <button data-q="How long does it take to onboard an airport?"><span>How long does onboarding take?</span><span class="arrow">→</span></button>
+    <div class="chooser wide">
+      ${question('Will this replace my AODB or my existing systems?', 'Will this replace my existing systems?')}
+      ${question('What is actually built today versus what still has to be built?', "What's actually built today?")}
+      ${question('Can it run air-gapped with no network at all?', 'Can it run air-gapped?')}
+      ${question('How do you stop an AI agent seeing data it should not see?', 'How do you stop an agent over-reaching?')}
+      ${question('Can we build our own dashboards and workflows without you?', 'Can we build our own, without you?')}
+      ${question('How long does it take to onboard an airport?', 'How long does onboarding take?')}
     </div>`,
   enter(ctx) {
     ctx.root.querySelectorAll('[data-q]').forEach(b =>
