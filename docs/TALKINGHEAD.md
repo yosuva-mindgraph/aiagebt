@@ -16,7 +16,7 @@ The short version: **`vendor/talkinghead.bundle.js` is a generated, committed, c
 | File | Size | Why it is in git |
 |---|---|---|
 | `vendor/talkinghead.bundle.js` | 812 KB (831,359 B) | The deliverable is `dist/index.html` — one file you double-click on a booth machine with no network and no npm. A dependency you have to install is not a deliverable. |
-| `assets/avatar.glb` | **6.56 MiB (6,877,280 B)** | Same reason. A **VALID** avatar (MIT), converted by `tools/convert-valid-avatar.mjs` — see `docs/AVATAR.md`. |
+| `assets/avatar.glb` | **7.04 MiB (7,381,268 B)** | Same reason. A **VALID** avatar (MIT), converted by `tools/convert-valid-avatar.mjs` — see `docs/AVATAR.md`. |
 | `package-lock.json` | — | The bundle is only reproducible if the inputs are. |
 
 This is the same call the repo already made for the 731 KB `assets/fonts.css` (fonts as
@@ -247,16 +247,191 @@ case; the callback will not arrive.
 
 ---
 
+## The rig — lighting, framing, and the chin-up
+
+Everything above is about making TalkingHead *run*. This section is about making it not
+look like a model viewer. All of it lives in `AVATAR3D_DEFAULTS` in `src/avatar3d.js`,
+all of it was rendered and compared rather than reasoned about, and **every option name
+is greppable in `vendor/talkinghead.bundle.js`** — the README on `main` documents options
+this pinned npm 1.7.0 does not have, and TalkingHead reads its options with plain
+`hasOwnProperty` checks, so an unknown key is not rejected, it is **ignored in silence**.
+Check the bundle, not the docs site.
+
+### What ships
+
+```js
+cameraView: 'mid',  cameraDistance: -1.95,  cameraY: -0.33,      // framing
+lightDirectColor: 0xA1E6FF,  lightDirectIntensity: 3,            // DXC Sky, was 0x8888AA / 30
+lightDirectPhi: 1.0,         lightDirectTheta: 2.0,              // stock angle, kept
+lightAmbientColor: 0xFFC982, lightAmbientIntensity: 2.0,         // DXC Peach
+lightSpotIntensity: 0,
+avatarIdleEyeContact: 1,     avatarIdleHeadMove: 0,              // stock: 0.2 / 0.5
+avatarSpeakingEyeContact: 1, avatarSpeakingHeadMove: 0.15,
+```
+
+### `lightDirectIntensity: 30` is the "blown out and flat"
+
+Stock is a `0x8888AA` directional at **intensity 30**, at `lightDirectPhi 1` /
+`lightDirectTheta 2`. `setLighting()` turns that pair into a position with
+`setFromSphericalCoords(2, phi, theta)`:
+
+```
+(2·sin φ·sin θ, 2·cos φ, 2·sin φ·cos θ) = (1.53, 1.08, −0.70)
+```
+
+— above, camera-**right**, and **behind** the head, aimed at the light's default target,
+the origin, which is the avatar's **feet**. A rake light at intensity 30. That single
+number is most of the complaint, and it is why pale-faced candidates clipped to white.
+
+The **angle** is a perfectly good three-quarter rim; only the intensity was wrong. So
+`phi`/`theta` are kept and the budget goes on colour instead — DXC Sky as a cool rim,
+DXC Peach as a warm ambient fill. Warm key / cool rim is the broadcast cue that makes a
+render read as a lit person rather than as a mesh, and it costs nothing per frame.
+
+`lightSpotIntensity` stays **0**: the spot is aimed at the origin too, so up at head
+height all it adds is a hard edge across the jaw. `setLighting()` flips `visible` to
+false on a zero intensity, so an off light is genuinely off rather than shading black.
+
+**The residual sheen is not this light.** Measured on the avatar branch: dropping 30→3
+moves brightness (p50 0.470 → 0.424) and leaves gloss essentially flat
+(0.01416 → 0.01588). The material clamp already shipped inside the GLB. What is left
+comes from `lightAmbientIntensity` and from the `RoomEnvironment` probe the constructor
+installs unconditionally —
+
+```js
+this.scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;
+```
+
+— which has **no construction option at all**. If gloss ever has to come down further,
+those two are where to look; do not go back to `lightDirectIntensity`.
+
+### `lookAtCamera()` is the chin-up — and the fix is subtler than deleting a line
+
+`src/avatar3d.js` used to call `th.lookAtCamera(1200)` from `setState()` on `'listening'`
+and `'speaking'`. **That call is gone and must not come back.** Why, precisely:
+
+We never set `speakTo`, so `lookAtCamera()` falls through to `lookAt(null, null, dur)` —
+and lookAt's `null` defaults are **the screen position of the avatar's own eyes**, which
+it projects and then aims at. The vertical target works out as
+
+```
+convertRange(eyeScreenY, [c − y, c + y], [−0.3, 0.6]) − u + d
+```
+
+with `eyeScreenY` *being* `c`, i.e. always the midpoint of that range. So it resolves to
+a **constant +0.15 pitch bias** minus the head chain's current pitch `u`. It is not
+aiming at the camera in any meaningful sense. From the idle pose it is simply a fixed
+backward tilt — and it fired exactly when she started to speak, so she was level while
+silent and lifted her chin the instant anyone looked at her.
+
+Three things were rendered and rejected before landing on "delete the call":
+
+| | Result |
+|---|---|
+| Cancel it with a manual `Head.rotation.x` | Over-corrects. The value it must cancel depends on the current pose, so it is wrong in every state but the one it was tuned in. |
+| `avatarIgnoreCamera: true` — the apparent official escape hatch | **Worse.** `lookAtCamera()` does check it, and diverts to `lookAhead()`, which queues `eyeContact: [0]` plus a random `bodyRotateX/Y` of ±0.125. Instead of a chin-up you get a presenter glancing off to one side mid-sentence. Leave it false. |
+| Delete the call | Correct. A/B'd on **fresh page loads** under an identical audio line. |
+
+Fresh page loads matter: `lookAtCamera()`/`lookAt()` write a persistent pose target, so
+once either has run there is no way back to the rest pose. Any A/B inside a single page
+measures a transition, not a steady state, and will mislead you.
+
+**Know that we are not the only caller.** `startSpeaking()` has
+
+```js
+else if (t.audio) t.isRaw || (this.lookAtCamera(500), this.speakWithHands(), this.resetLips()), …
+```
+
+so the library re-issues it on **every line that carries audio** — which is the shipped
+ElevenLabs path. That one cannot be removed from outside the vendor bundle, and measured,
+it does not need to be: fired from the speaking pose its `u` term very nearly cancels the
++0.15 and it renders level. Do not monkey-patch it.
+
+What actually holds the viewer is `avatarIdleEyeContact` / `avatarSpeakingEyeContact` at
+**1** — the eyes, which is what the call was reaching for, without pitching the whole head
+to get it. Stock is 0.2 idle with `avatarIdleHeadMove` 0.5; on a demo page that reads as
+life, in a 339 px panel beside a deck it reads as a presenter who is not listening to you.
+
+### Framing — the arithmetic, and why the suit read as a leotard
+
+`cameraView` accepts **only** `'full' | 'mid' | 'upper' | 'head'`; `setView()` does a
+silent `return` on anything else, so a typo costs an hour. The camera is then put at
+`(0, u, h)` looking level at `(0, u, 0)`, so the shot is a band of the model in world Y.
+With the camera's fov **10°** (fixed, not an option) and `avatarHeight` H — which is *not*
+the model's height, it is `LeftEye.getWorldPosition().y + 0.2`, so **1.814** for the
+shipped avatar:
+
+```
+h      = cameraDistance + { head: 2, upper: 4.5, mid: 8, full: 12 }
+base   = { head: 4H/5, upper: 2H/3, mid: H/3, full: 0 }
+bottom = base − cameraY·tan(5°)·h
+top    = base + (2 − cameraY)·tan(5°)·h
+```
+
+Three consequences, none of them obvious:
+
+1. **`cameraDistance` is not a dolly, it is a zoom about the bottom edge.** At `cameraY`
+   0 the bottom is pinned to `base` whatever the distance, so pulling in crops the
+   ceiling and leaves the waistline exactly where it was. Reaching for it to "see more of
+   her" is the natural move and it does nothing.
+2. **`cameraY` is the vertical pan and it is inverted** — it enters as `(1 − cameraY)`,
+   so *positive lowers the frame*. It is the only control that moves the bottom edge.
+3. **The view name is only that `base` offset.** It is not a lens and not a crop: any
+   frame reachable from one name is reachable from any other by compensating with
+   `cameraY`. Arguing `'upper'` vs `'mid'` is arguing about nothing — what matters is the
+   pair of trims. Pick the name whose trims come out small and honest.
+
+Because the panel is `aspect-ratio: 1/1` and the fov is vertical, the framing is
+**viewport-independent**: 1440 and 1920 differ in pixels (the panel is 339 px square at
+both, capped by the rail width, not by `max-height: 46vh`), never in crop.
+
+**The leotard.** Landmarks on the shipped avatar, measured in world Y: hair crown ≈ 1.78,
+eyes 1.600, chin ≈ 1.53, shoulders 1.39, Spine2 1.19, **jacket button ≈ 1.06**,
+**jacket hem ≈ 0.96**, hips 0.98, trousers below that. The old framing
+(`'upper'`, −0.6, −0.02) is the band **[1.216, 1.899]** — its bottom edge sits at
+*mid-chest*, above both the button and the hem. This avatar's jacket has no lapel notch
+and almost no geometric relief, so with every garment cue outside the frame what is left
+is a grey torso with a lighter panel down the middle. It reads as a **leotard**. It is
+not a material fault and no amount of relighting fixes it.
+
+Rendered at the real 339 px panel, the ladder is:
+
+| Bottom edge | What appears | Reads as |
+|---|---|---|
+| 1.216 (old) | nothing | leotard |
+| ≤ 1.05 | the button | leotard with a button |
+| ≤ 0.90 | the hem line | starting to read as a jacket |
+| **≤ 0.80** | **hem + the top of the trousers together** | **a trouser suit** |
+
+So the shipped frame is **[0.779, 1.838]** — `'mid'`, `cameraDistance −1.95`,
+`cameraY −0.33`. The crown at 1.78 sits 0.06 below the top edge, which is headroom that
+survives `avatarSpeakingHeadMove` without ever clipping the hair, and the hands enter the
+bottom corners, where the idle/speaking gesture reads as a presenter's gesture instead of
+an elbow appearing from off-frame — which is what the old crop did.
+
+**The cost, stated plainly.** Chin-to-crown goes from 145 px to 74 px of the 339 px
+panel. That is still ample for lip-sync: driving `viseme_aa` to 1 and back gives a clearly
+visible aperture at every candidate down to a 1.19 m band, and the shipped frame is
+tighter than that. Nobody reads *visemes* at this size at any framing — what reads is
+"the mouth is moving in time with the voice", and that survives. **Do not "fix" the head
+size by cropping back up; the leotard comes back with it.**
+
+If a future avatar has a jacket with real lapel geometry, this trade disappears and the
+frame can come back up — re-run the ladder above against the new model rather than
+inheriting these numbers.
+
+---
+
 ## The avatar — VALID, MIT, and converted
 
-`assets/avatar.glb` is **`Black_F_1_Busi` from the VALID library**, MIT, converted for
+`assets/avatar.glb` is **`Hispanic_F_3_Busi` from the VALID library**, MIT, converted for
 this pinned TalkingHead by `tools/convert-valid-avatar.mjs`:
 
 ```
-source   c-frame/valid-avatars-glb @ c4719df  ·  avatars/Black/Black_F_1_Busi.glb
-         sha256 e8158244ef013f65fa4724d0831a860bd6bc4bb5fdaa1b81c0050910beb44a83
-output   sha256 410f99339be663b806bb3060032f30dfbdc9fa7491e5b4d8d2d724f927d4e66d
-         6,877,280 bytes  ·  6.56 MiB  ·  glTF 2.0 binary
+source   c-frame/valid-avatars-glb @ c4719df  ·  avatars/Hispanic/Hispanic_F_3_Busi.glb
+         sha256 82840256e75dbab736b95757b9a8fb1ba46c265b04f11d185f7ac139d2d8161f
+output   sha256 70fbdc0efd10b595c7181dc0e4082d8a415e68f6b46d5522ccf73f83d0cf8e35
+         7,381,268 bytes  ·  7.04 MiB  ·  glTF 2.0 binary
 licence  MIT, Copyright (c) 2022 Tiffany Do
 ```
 
@@ -358,11 +533,12 @@ decode.
 
 ### Size — done, and where the bytes went
 
-35.11 MiB → **6.56 MiB**, via `gltf-transform` in `tools/convert-valid-avatar.mjs`.
+35.11 MiB → **7.04 MiB**, via `gltf-transform` in `tools/convert-valid-avatar.mjs`.
+(The 6.56 MiB recorded here previously was the earlier `Black_F_1_Busi` export.)
 
 The bulk was **not** texture data, which is the usual guess and was the guess recorded
-here: the VALID source ships two webp maps totalling 240 KB and they are passed through
-untouched (three r180 reads `EXT_texture_webp` natively). It was **morph-target
+here: `Hispanic_F_3_Busi` ships four webp maps and they are passed through untouched
+(three r180 reads `EXT_texture_webp` natively). It was **morph-target
 storage** — 67 targets over a 22k-vertex mesh is ~30 MB of mostly zeroes, because a
 viseme does not move the scalp. glTF **sparse accessors** store only the vertices that
 move. Measurements, and the one ordering that produces a smaller file that is silently
@@ -390,6 +566,6 @@ Still excluded, unchanged:
 | `vendor/talkinghead.bundle.js` | **Generated — do not edit.** |
 | `vendor/smoke.html` | The page under test. Driven by the harness; needs the GLB handed to it. |
 | `vendor/smoke.cjs` | Playwright harness. Opens the page from `file://` and asserts the behaviours above, plus the full rig contract. |
-| `assets/avatar.glb` | The avatar — VALID `Black_F_1_Busi`, MIT, 6.56 MiB. **Generated** by `tools/convert-valid-avatar.mjs`; committed because the booth machine has no npm. See `docs/AVATAR.md`. |
+| `assets/avatar.glb` | The avatar — VALID `Hispanic_F_3_Busi`, MIT, 7.04 MiB. **Generated** by `tools/convert-valid-avatar.mjs`; committed because the booth machine has no npm. See `docs/AVATAR.md`. |
 | `tools/convert-valid-avatar.mjs` | Builds `assets/avatar.glb` from the pinned VALID source: reparents, retargets the rest pose, remaps 96 Daz morphs onto 15 visemes + 52 ARKit shapes, synthesises gaze. Deterministic. |
 | `tools/check-avatar-glb.mjs` | The avatar acceptance gate. No npm dependencies — parses the GLB by hand so it can be run against a candidate before anything is installed. |
