@@ -1,25 +1,101 @@
 /* ============================================================================
    IRIS — the presenter.
 
-   A canvas bust, drawn rather than filmed. The name is not decoration: the
-   source briefing says "like an iris, AIRIS enables an airport to SEE and
-   understand its operations", so the eye is the thing this face is built
-   around and everything else is quieter than it.
+   NOT A FACE. AN APERTURE.
 
-   Deliberately stylised. A half-convincing photoreal head reads as a failure;
-   a confident drawn one reads as a choice. It is lit sky when the platform is
-   speaking and gold when it is the human's turn — the same rule the rest of
-   the page holds to.
+   The source briefing is where the name comes from: "like an iris, AIRIS
+   enables an Airport to SEE and understand its operations." So this draws the
+   metaphor the product is named after, and nothing else — a level ring, two
+   hairlines, a datum across the middle and a small light at the centre of it.
+
+   ── and the centre is NOT an eye ─────────────────────────────────────────
+   The first cut of this aperture put a large, near-opaque disc inside the
+   hairlines with a hard hole cut dead centre. Its own author flagged that it
+   "does read as a stylised eye"; at rail width, beside a live caption and a
+   name badge, it read as something blunter than that. A pale disc with a dark
+   middle inside a ring is an EYEBALL — sclera, pupil, orbit — whatever it is
+   called in the comments, and it held eye contact with the room for the length
+   of a walkthrough. That is a worse failure than the flat bust it replaced: the
+   bust was merely lifeless, and this stared.
+
+   Three things made it one, and all three are gone.
+     · SIZE — the disc very nearly touched the inner hairline, so the centre was
+       the visual mass and the ring was a frame around it. The light is now
+       about a fifth of that area with clear air all round it.
+     · A CLOSED, HIGH-CONTRAST SHAPE WITH A DARKER MIDDLE — the whole schematic
+       of an eye, in two elements. There is now no fill, no boundary stroke and
+       no hole: a bloom that falls off into the ground and closes nothing.
+     · BILATERAL SYMMETRY ABOUT THE VERTICAL — what makes any round thing read
+       as a face. A datum now runs straight through the middle with an UNEQUAL
+       reading on it, filling rightward. A gauge cannot be a pupil.
+   The test is to look at it small: if the eye reaches the centre before the
+   ring, it is still an eye. The ring is the subject; the centre is a reading.
+
+   ── why the bust went ────────────────────────────────────────────────────
+   The file that was here said, correctly, that "a half-convincing photoreal
+   head reads as a failure; a confident drawn one reads as a choice" — and then
+   drew a flat, perfectly symmetrical mask: one ellipse head, two identical
+   eyes, arc brows, a nose that met nothing, translucent hair that read as a
+   swim cap. Nothing in it was asymmetric, shaded off-axis or highlighted.
+
+   Improving that drawing is a fight it cannot win. The 3D build ships a
+   photoreal GLB, so a better drawing competes with a real head on the real
+   head's ground — and it does so in the DEFAULT build, which is the one most
+   clients see. An aperture cannot fall into the uncanny valley, because it is
+   not attempting a face. That is the whole argument.
+
+   Literal aperture BLADES were tried first and cut: overlapping polygons read
+   as a sci-fi rune, not an instrument. A literal PUPIL was tried second and cut
+   for the reason above. What is left is a dial, which is what it should have
+   been from the start — the metaphor is what the product SEES WITH, not an
+   organ drawn at the viewer.
+
+   ── one number drives all of it ──────────────────────────────────────────
+   setLevel() carries real RMS when ElevenLabs is present. When it is null —
+   Web Speech, or no key at all, which is the common case — the envelope is
+   synthesised from the viseme track, so the ring never sits dead through a
+   line. Count of lit ticks, the two hairline radii, the size and brightness of
+   the centre light, and the length of the bar on the datum are all functions of
+   that single value — four channels reading out one number.
+
+   ── the rules this file does not get to reinterpret ──────────────────────
+   COLOUR. Sky when the platform speaks, Gold when it is the human's turn,
+   Peach while thinking. Held without exception across the product.
+
+   TOKENS. tests/guards.test.mjs DERIVES the list of custom properties this file
+   looks up — by parsing the getPropertyValue call sites out of this source —
+   and requires each one to be literal hex in :root, in [data-theme="light"]
+   AND in the prefers-color-scheme block. (Do not write an EXAMPLE lookup in a
+   comment here: the parser cannot tell prose from code, and a made-up property
+   name in a comment becomes a token the guard then demands the stylesheet
+   define.) The reason for the hex rule is that
+   _alpha() parses #rgb/#rrggbb and returns anything else unchanged, which
+   silently turns every translucent layer opaque. Only four tokens satisfy that
+   in all three blocks: --sky, --gold, --royal and --ink-3. --peach is
+   `var(--dxc-peach)` / `var(--dxc-melon)`, an indirection rather than a
+   literal, so the thinking hue is TINTED FROM --gold here instead. That
+   tracks the semantic in both themes (Midnight: #FFAE41 → a peach; Canvas:
+   #D14600 → a melon, which is what --peach resolves to there anyway).
+
+   PERFORMANCE. The old file called getComputedStyle() inside the frame loop at
+   60fps, and read a token it never used. Tokens are resolved on construction
+   and on a theme change — never per frame.
+
+   MOTION. prefers-reduced-motion is honoured through this.reduced: no ring
+   rotation, no pulse, no easing. A real audio level still moves the ring,
+   because that is information rather than decoration.
+
+   PUBLIC SURFACE IS UNCHANGED — src/presenter.js and src/avatar3d.js depend on
+   it. visemesFor() and VISEME stay exported and working even though an
+   aperture has no mouth: the 3D backend consumes them.
 
    States: idle · speaking · listening · thinking
-   Lip-sync: visemes derived from the text being spoken, advanced on a clock
-   that matches the measured duration of the utterance, with an amplitude
-   jitter on top so it never looks metronomic. When a real audio buffer is
-   available (ElevenLabs), setLevel() drives the jaw from actual RMS instead.
    ========================================================================== */
 
 /* Viseme set — mouth width, mouth height, roundness, teeth. Small on purpose:
-   beyond about eight shapes the eye stops reading individual phonemes anyway. */
+   beyond about eight shapes the eye stops reading individual phonemes anyway.
+   The aperture draws no mouth; it reads `h` as speech openness to synthesise an
+   envelope, and src/avatar3d.js still consumes the whole table. */
 const VISEME = {
   rest: { w: .42, h: .05, r: .30, t: 0 },
   AA:   { w: .58, h: .40, r: .18, t: .3 },   // father, cat
@@ -61,6 +137,25 @@ export function visemesFor(text) {
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const TAU = Math.PI * 2;
+
+/* 36 ticks: 10° apart. Enough that the lit run reads as a continuous arc at a
+   glance and still resolves as individual marks at rail width; few enough that
+   one tick is a legible 1/36th step of the level. */
+const TICKS = 36;
+
+/* The widest openness in the viseme table, so the synthesised envelope is
+   normalised against the data rather than against a magic number. */
+const MAX_OPEN = Math.max(...Object.values(VISEME).map(v => v.h));
+
+/* MediaQueryList listeners, tolerating the pre-2021 Safari shape. */
+const mqOn = (mq, fn) => {
+  try { mq.addEventListener('change', fn); } catch { try { mq.addListener(fn); } catch { /* fixed query */ } }
+};
+const mqOff = (mq, fn) => {
+  try { mq.removeEventListener('change', fn); } catch { try { mq.removeListener(fn); } catch { /* fixed query */ } }
+};
 
 export class Avatar {
   constructor(canvas, { name = 'IRIS' } = {}) {
@@ -73,21 +168,49 @@ export class Avatar {
     this.trackDur = 0;
     this.level = null;          // external RMS 0..1, when real audio drives it
 
-    this.cur = { ...VISEME.rest };
-    this.blink = 0;
-    this.nextBlink = 900;
+    this.amp = 0;               // the smoothed drive — every radius comes off this
     this.t0 = performance.now();
     this.raf = null;
-    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    this._mqMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    this.reduced = this._mqMotion.matches;
 
     this._resize = this._resize.bind(this);
     this._frame = this._frame.bind(this);
+    this._retheme = this._readTokens.bind(this);
+    this._remotion = () => { this.reduced = this._mqMotion.matches; };
+
+    this._readTokens();
+
+    /* A theme change is an EVENT, not a per-frame question. app.js sets
+       data-theme on the document element; the media query covers the viewer who
+       never touches the toggle. Both are cheap, and both are torn down in
+       destroy().
+
+       (No literal markup tag in a comment in this file, ever: build.js inlines
+       this source verbatim into dist/artifact.html, and the build suite asserts
+       that file carries no document scaffolding. A tag written in prose here is
+       indistinguishable from one written in anger — it cost a red gate once.) */
+    this._mqLight = matchMedia('(prefers-color-scheme: light)');
+    mqOn(this._mqLight, this._retheme);
+    mqOn(this._mqMotion, this._remotion);
+    try {
+      this._obs = new MutationObserver(this._retheme);
+      this._obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    } catch { this._obs = null; }
+
     addEventListener('resize', this._resize);
     this._resize();
     this.raf = requestAnimationFrame(this._frame);
   }
 
-  destroy() { cancelAnimationFrame(this.raf); removeEventListener('resize', this._resize); }
+  destroy() {
+    cancelAnimationFrame(this.raf);
+    removeEventListener('resize', this._resize);
+    if (this._obs) this._obs.disconnect();
+    mqOff(this._mqLight, this._retheme);
+    mqOff(this._mqMotion, this._remotion);
+  }
 
   setState(s) { this.state = s; }
 
@@ -101,8 +224,41 @@ export class Avatar {
 
   stopSpeaking() { this.track = ['rest']; this.trackDur = 0; this.level = null; if (this.state === 'speaking') this.state = 'idle'; }
 
-  /** Optional: drive the jaw from real audio RMS (0..1). */
+  /** Optional: drive the ring from real audio RMS (0..1). */
   setLevel(v) { this.level = v; }
+
+  /* ── the palette, resolved once ──────────────────────────────────────────
+     Four literal-hex tokens, read with literal names: guards.test.mjs parses
+     THESE CALL SITES out of the source to build the list it enforces, so a
+     lookup through a variable would derive an empty list and quietly disarm
+     the guard. Keep them spelled out. */
+  _readTokens() {
+    const css = getComputedStyle(document.documentElement);
+    this.SKY   = (css.getPropertyValue('--sky')   || '').trim() || '#A1E6FF';
+    this.GOLD  = (css.getPropertyValue('--gold')  || '').trim() || '#FFAE41';
+    this.ROYAL = (css.getPropertyValue('--royal') || '').trim() || '#004AAC';
+    this.INK3  = (css.getPropertyValue('--ink-3') || '').trim() || '#8B8B90';
+
+    /* Is the platform's voice LIGHTER than the surface it sits on? On Midnight
+       --sky is near-white; on Canvas it is Royal. One measurement, and it tells
+       every compositing decision below which way "brighter" points — no second
+       token, no user-agent sniffing, and it follows a rebrand automatically. */
+    this.onDark = this._lum(this.SKY) > .45;
+
+    /* Peach, derived — see the header on why it cannot be read as a token.
+
+       Two different amounts because the two themes have different problems.
+       On Midnight, Gold is #FFAE41 and a third of the way to white is a clear
+       peach. On Canvas, Gold is DXC Red (#D14600) and --peach resolves to Melon
+       (#FF7E51) — a visibly lighter, warmer thing — so too small a tint leaves
+       thinking and listening the same colour and the semantic stops being
+       expressed at all. .26 lands near Melon while keeping the mark solid
+       enough to read on paper, which the ring and the disc both have to do. */
+    this.PEACH = this._tint(this.GOLD, this.onDark ? .34 : .26);
+
+    // Unlit ticks need more weight on paper than on Midnight to read at all.
+    this.dimA = this.onDark ? .30 : .46;
+  }
 
   _resize() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -112,20 +268,41 @@ export class Avatar {
     this.dpr = dpr;
   }
 
-  _target() {
-    if (this.state !== 'speaking') return VISEME.rest;
-    if (this.level != null) {
-      // real audio: blend rest → open by amplitude
-      const a = Math.min(1, this.level * 2.2);
-      return { w: lerp(.42, .60, a), h: lerp(.04, .40, a), r: lerp(.30, .20, a), t: a * .5 };
+  /* ── THE ONE NUMBER ──────────────────────────────────────────────────────
+     Everything the aperture does is a function of this. Real RMS wins whenever
+     it is there; otherwise the viseme track supplies the timing. */
+  _drive(now) {
+    if (this.state === 'speaking') {
+      if (this.level != null) return clamp01(this.level * 2.4);
+      return this._synth(now);
     }
-    const el = performance.now() - this.trackStart;
-    if (el > this.trackDur) return VISEME.rest;
-    const i = Math.min(this.track.length - 1, Math.floor(el / this.trackDur * this.track.length));
-    const v = VISEME[this.track[i]] || VISEME.rest;
-    // a little life so it is never metronomic
-    const j = 1 + Math.sin(el / 47) * .10;
-    return { w: v.w, h: v.h * j, r: v.r, t: v.t };
+    if (this.state === 'listening') return this.reduced ? .46 : .46 + Math.sin(now / 900) * .10;
+    if (this.state === 'thinking')  return this.reduced ? .26 : .26 + Math.sin(now / 520) * .07;
+    return this.reduced ? .07 : .07 + Math.sin(now / 1500) * .025;
+  }
+
+  /**
+   * A plausible speech envelope with no audio to measure.
+   *
+   * The viseme track already carries the timing of the line — it is advanced on
+   * a clock matched to the measured duration of the utterance — so openness is
+   * interpolated BETWEEN consecutive visemes (a stepped read is what makes a
+   * fake meter look like a fake meter), then swelled at roughly syllable rate
+   * and grained so it is never metronomic.
+   */
+  _synth(now) {
+    const el = now - this.trackStart;
+    if (this.trackDur <= 0 || el > this.trackDur) return .10;
+    const n = this.track.length;
+    const x = el / this.trackDur * n;
+    const i = Math.min(n - 1, Math.max(0, Math.floor(x)));
+    const a = VISEME[this.track[i]] || VISEME.rest;
+    const b = VISEME[this.track[Math.min(n - 1, i + 1)]] || VISEME.rest;
+    const open = lerp(a.h, b.h, x - i) / MAX_OPEN;
+    if (this.reduced) return .55;                       // no time terms at all
+    const swell = .80 + Math.sin(el / 121) * .20;
+    const grain = 1 + Math.sin(el / 37) * .10;
+    return clamp01((.22 + open * .78) * swell * grain);
   }
 
   _frame(now) {
@@ -133,19 +310,16 @@ export class Avatar {
     const ctx = this.ctx, W = this.c.width, H = this.c.height;
     const t = (now - this.t0) / 1000;
 
-    // ease toward the target mouth
-    const tgt = this._target();
-    const k = this.reduced ? 1 : .34;
-    for (const key of ['w', 'h', 'r', 't']) this.cur[key] = lerp(this.cur[key], tgt[key], k);
+    /* Fast attack, slow release — a meter that snaps up and falls away reads as
+       measuring something. Reduced motion takes the target directly: no easing. */
+    const tgt = this._drive(now);
+    this.amp = this.reduced ? tgt : lerp(this.amp, tgt, tgt > this.amp ? .40 : .14);
+    const amp = this.amp;
 
-    // blink clock
-    if (!this.reduced) {
-      if (now - this.t0 > this.nextBlink) {
-        this.blink = 1;
-        this.nextBlink = now - this.t0 + 2200 + Math.random() * 3600;
-      }
-      this.blink = Math.max(0, this.blink - .16);
-    }
+    const listening = this.state === 'listening';
+    const thinking = this.state === 'thinking';
+    const hue = listening ? this.GOLD : thinking ? this.PEACH : this.SKY;
+    const dark = this.onDark;
 
     ctx.clearRect(0, 0, W, H);
     ctx.save();
@@ -154,280 +328,254 @@ export class Avatar {
     ctx.translate((W - S) / 2, (H - S) / 2);
     ctx.scale(S, S);
 
-    const speaking = this.state === 'speaking';
-    const listening = this.state === 'listening';
-    const thinking = this.state === 'thinking';
+    const cx = .5, cy = .5, R = .42;
+    /* The dial rocks a couple of degrees; it never spins. The lit run has to
+       start at twelve o'clock in every state or it stops being a reading. */
+    const rot = this.reduced ? 0 : Math.sin(t * .24) * .045;
+    /* Thinking is the one state a level alone cannot express — a 26% ring is a
+       quiet idle with a different hue. So it gets a scanner: one bright mark
+       travelling the housing, which the level run underneath is unaffected by.
+       -1 disables it, and reduced motion never lights it. */
+    const sweep = (thinking && !this.reduced) ? (t * .30) % 1 : -1;
 
-    const css = getComputedStyle(document.documentElement);
-    const SKY = css.getPropertyValue('--sky').trim() || '#a1e6ff';
-    const GOLD = css.getPropertyValue('--gold').trim() || '#ffae41';
-    const ROYAL = css.getPropertyValue('--royal').trim() || '#004aac';
-    const INK3 = css.getPropertyValue('--ink-3').trim() || '#7b82a6';
-    const hue = listening ? GOLD : SKY;
+    /* ── ground glow ─────────────────────────────────────────────────────
+       Focus deliberately off-centre: the one thing the old bust never had was
+       a light source anywhere but dead ahead.
 
-    // Frame it like a portrait, not a diagram: the head fills the panel and
-    // the shoulders run off the bottom corners. Everything below is authored
-    // in a comfortable 0..1 space and then cropped in by this one transform.
-    const ZOOM = 1.34;
-    ctx.translate(.5, .50); ctx.scale(ZOOM, ZOOM); ctx.translate(-.5, -.5);
-
-    // idle sway — small, so it reads as alive rather than animated
-    const sway = this.reduced ? 0 : Math.sin(t * .62) * .006 + (speaking ? Math.sin(t * 3.1) * .0022 : 0);
-    const bob = this.reduced ? 0 : Math.sin(t * .48) * .005;
-    ctx.translate(sway, bob);
-
-    /* ── volumetric ground glow ─────────────────────────────────────── */
-    const glow = ctx.createRadialGradient(.5, .46, .04, .5, .46, .48);
-    glow.addColorStop(0, this._alpha(hue, speaking ? .26 : .16));
-    glow.addColorStop(.55, this._alpha(ROYAL, .14));
+       Royal is the depth behind the accent on Midnight. On Canvas it has to be
+       almost nothing: --royal and --sky are the SAME value in the light theme,
+       so any weight here stops reading as depth and starts reading as a blue
+       stain spreading under a red aperture. */
+    const lit = .34 + amp * .66;
+    const a0 = (dark ? .30 : .13) * lit;
+    const glow = ctx.createRadialGradient(cx - .035, cy - .048, .02, cx, cy, R * 1.32);
+    glow.addColorStop(0,   this._alpha(hue, a0));
+    glow.addColorStop(.36, this._alpha(hue, a0 * .46));
+    glow.addColorStop(.70, this._alpha(this.ROYAL, dark ? .11 : .022));
     glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, 1, 1);
 
-    /* ── shoulders ──────────────────────────────────────────────────────
-       Deliberately wider than the frame and flat across the top: a dome
-       reads as a pedestal, shoulders read as a person. The trapezius line
-       leaves frame at the sides rather than curving back in.             */
-    ctx.beginPath();
-    ctx.moveTo(-.10, 1.05);
-    ctx.bezierCurveTo(-.02, .800, .19, .712, .375, .690);
-    ctx.lineTo(.625, .690);
-    ctx.bezierCurveTo(.81, .712, 1.02, .800, 1.10, 1.05);
-    ctx.closePath();
-    const sg = ctx.createLinearGradient(0, .68, 0, 1.05);
-    sg.addColorStop(0, this._alpha(hue, .30));
-    sg.addColorStop(.5, this._alpha(ROYAL, .22));
-    sg.addColorStop(1, this._alpha(ROYAL, .06));
-    ctx.fillStyle = sg; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .42); ctx.lineWidth = .0034; ctx.stroke();
-
-    // collar — one line, but it is what stops the bust reading as a blob
-    ctx.beginPath();
-    ctx.moveTo(.370, .692);
-    ctx.quadraticCurveTo(.5, .790, .630, .692);
-    ctx.strokeStyle = this._alpha(hue, .50); ctx.lineWidth = .0030; ctx.stroke();
-
-    /* ── neck ──────────────────────────────────────────────────────────
-       The junction is where a drawn bust usually falls apart: a flat slab
-       between two lit shapes reads as pasted on. So it is a gradient that
-       starts at the jaw and dissolves into the shoulder, with the sides
-       shaded rather than outlined.                                        */
-    const ng = ctx.createLinearGradient(0, .560, 0, .760);
-    ng.addColorStop(0, this._alpha('#05070f', .55));
-    ng.addColorStop(.45, this._alpha(hue, .18));
-    ng.addColorStop(1, this._alpha(hue, .015));
-    ctx.beginPath();
-    ctx.moveTo(.450, .560);
-    ctx.bezierCurveTo(.444, .660, .430, .700, .414, .760);
-    ctx.lineTo(.586, .760);
-    ctx.bezierCurveTo(.570, .700, .556, .660, .550, .560);
-    ctx.closePath();
-    ctx.fillStyle = ng; ctx.fill();
-
-    // sterno line — one asymmetric mark stops the neck reading as a tube
-    ctx.beginPath();
-    ctx.moveTo(.470, .600); ctx.quadraticCurveTo(.484, .672, .506, .722);
-    ctx.strokeStyle = this._alpha(hue, .20); ctx.lineWidth = .0022; ctx.stroke();
-
-    /* ── head ───────────────────────────────────────────────────────── */
-    const cx = .5, cy = .385, rx = .150, ry = .215;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - ry);
-    // temple → cheekbone → jaw → chin, and back. The jaw is narrow and the
-    // chin short; a wide jaw is what makes a drawn face read as a mask.
-    ctx.bezierCurveTo(cx + rx * .98, cy - ry * .92, cx + rx * 1.02, cy + ry * .22, cx + rx * .78, cy + ry * .58);
-    ctx.bezierCurveTo(cx + rx * .56, cy + ry * .93, cx + rx * .26, cy + ry * 1.04, cx, cy + ry * 1.04);
-    ctx.bezierCurveTo(cx - rx * .26, cy + ry * 1.04, cx - rx * .56, cy + ry * .93, cx - rx * .78, cy + ry * .58);
-    ctx.bezierCurveTo(cx - rx * 1.02, cy + ry * .22, cx - rx * .98, cy - ry * .92, cx, cy - ry);
-    ctx.closePath();
-    const hg = ctx.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry);
-    hg.addColorStop(0, this._alpha(hue, .30));
-    hg.addColorStop(.52, this._alpha(ROYAL, .20));
-    hg.addColorStop(1, this._alpha(hue, .10));
-    ctx.fillStyle = hg; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .62); ctx.lineWidth = .004; ctx.stroke();
-
-    // rim light, left — the light source is the console in front of her
-    ctx.save(); ctx.clip();
-    const rim = ctx.createLinearGradient(cx - rx, 0, cx - rx * .1, 0);
-    rim.addColorStop(0, this._alpha(hue, .50));
-    rim.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = rim; ctx.fillRect(0, 0, 1, 1);
-
-    // scanlines — the reason the stylisation reads as deliberate
-    if (!this.reduced) {
-      ctx.globalAlpha = .13;
-      ctx.strokeStyle = hue; ctx.lineWidth = .0016;
-      const off = (t * .012) % .012;
-      for (let y = cy - ry - off; y < cy + ry; y += .012) {
-        ctx.beginPath(); ctx.moveTo(cx - rx, y); ctx.lineTo(cx + rx, y); ctx.stroke();
+    /* ── the level ring ──────────────────────────────────────────────────
+       36 ticks. The housing tick is always drawn, so at rest it is still a
+       dial; the lit tick crossfades in over it and grows INWARD, which is what
+       makes a filling run read as gaining energy rather than just gaining
+       length. The run is spread over ~2.6 ticks at its leading edge so the
+       level has no cliff in it. */
+    const run = amp * TICKS;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < TICKS; i++) {
+      const f = clamp01((run - i) / 2.6);
+      // the scanner: signed circular distance from the travelling head, lighting
+      // a short tail BEHIND it only, so thinking reads as working rather than
+      // as a low idle in a different hue
+      let g = 0;
+      if (sweep >= 0) {
+        const d = ((i / TICKS) - sweep + 1.5) % 1 - .5;
+        g = d > 0 ? 0 : Math.max(0, 1 + d * 7);
       }
-      ctx.globalAlpha = 1;
-    }
-    ctx.restore();
+      const w = f > g ? f : g;
+      const a = -Math.PI / 2 + rot + (i / TICKS) * TAU;
+      const ca = Math.cos(a), sa = Math.sin(a);
 
-    /* ── hair ───────────────────────────────────────────────────────────
-       Swept, not a cap band. The asymmetry is the whole job: a symmetrical
-       arc across the crown reads as a bald cap however it is shaded.     */
-    ctx.beginPath();
-    ctx.moveTo(cx - rx * 1.06, cy + ry * .12);
-    ctx.bezierCurveTo(cx - rx * 1.10, cy - ry * .95, cx - rx * .30, cy - ry * 1.22, cx + rx * .42, cy - ry * 1.06);
-    ctx.bezierCurveTo(cx + rx * 1.02, cy - ry * .92, cx + rx * 1.10, cy - ry * .10, cx + rx * 1.02, cy + ry * .16);
-    // the hairline, swept across the brow from the right part
-    ctx.bezierCurveTo(cx + rx * .88, cy - ry * .48, cx + rx * .30, cy - ry * .60, cx - rx * .18, cy - ry * .50);
-    ctx.bezierCurveTo(cx - rx * .62, cy - ry * .42, cx - rx * .90, cy - ry * .20, cx - rx * 1.06, cy + ry * .12);
-    ctx.closePath();
-    const hair = ctx.createLinearGradient(cx - rx, cy - ry, cx + rx, cy);
-    hair.addColorStop(0, this._alpha(hue, .50));
-    hair.addColorStop(.55, this._alpha(ROYAL, .46));
-    hair.addColorStop(1, this._alpha(hue, .30));
-    ctx.fillStyle = hair; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .40); ctx.lineWidth = .0026; ctx.stroke();
-
-    /* ── brows ──────────────────────────────────────────────────────── */
-    const browLift = speaking ? Math.sin(t * 1.9) * .006 : (thinking ? .010 : 0);
-    ctx.strokeStyle = this._alpha(hue, .66); ctx.lineWidth = .0048; ctx.lineCap = 'round';
-    for (const s of [-1, 1]) {
-      const ex = cx + s * .058;
+      const hIn = R * .880, hOut = R * .975;
       ctx.beginPath();
-      ctx.moveTo(ex - s * .038, cy - .050 - browLift + (thinking && s < 0 ? -.007 : 0));
-      ctx.quadraticCurveTo(ex, cy - .062 - browLift, ex + s * .036, cy - .049 - browLift);
+      ctx.moveTo(cx + ca * hIn, cy + sa * hIn);
+      ctx.lineTo(cx + ca * hOut, cy + sa * hOut);
+      ctx.strokeStyle = this._alpha(this.INK3, this.dimA * (1 - w * .8));
+      ctx.lineWidth = .0070;
       ctx.stroke();
+
+      if (w <= .012) continue;
+      const rIn = R * (.880 - .130 * w), rOut = R * (.975 + .025 * w);
+      const x0 = cx + ca * rIn, y0 = cy + sa * rIn;
+      const x1 = cx + ca * rOut, y1 = cy + sa * rOut;
+      // bloom, then the mark. A wide low-alpha pass rather than shadowBlur,
+      // which is not reliably scaled by the transform across engines.
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+      ctx.strokeStyle = this._alpha(hue, (dark ? .17 : .12) * w);
+      ctx.lineWidth = .0200; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+      ctx.strokeStyle = this._alpha(hue, ((dark ? .42 : .50) + .52 * w) * (f > g ? 1 : .80));
+      ctx.lineWidth = .0086; ctx.stroke();
     }
 
-    /* ── eyes — the iris is the point of the whole design ───────────── */
-    const open = 1 - Math.min(1, this.blink);
-    for (const s of [-1, 1]) {
-      const ex = cx + s * .058, ey = cy - .008;
-      const ew = .040, eh = .0195 * open;
+    /* ── two concentric hairlines, breathing with the level ───────────────
+       The inner one is BROKEN at three and nine o'clock, where the datum below
+       crosses it. That is not decoration: an unbroken circle with a line drawn
+       over it is a circle with a scratch on it, and the line stays a foreign
+       object. Let the line pass through the wall and the two become one
+       apparatus — which is the whole argument for the centre not being an
+       organ. It also costs the inner hairline its closed-shape reading, and a
+       closed pale ring with something in the middle is half of what made the
+       first cut of this stare. */
+    const h1 = R * (.545 + amp * .055);
+    const h2 = R * (.330 + amp * .045);
+    const gap = .15;
+    ctx.lineWidth = .0030;
+    ctx.strokeStyle = this._alpha(hue, dark ? .38 : .34);
+    ctx.beginPath(); ctx.arc(cx, cy, h1, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = this._alpha(hue, dark ? .54 : .48);
+    ctx.beginPath(); ctx.arc(cx, cy, h2, gap, Math.PI - gap); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, h2, Math.PI + gap, TAU - gap); ctx.stroke();
 
-      // socket
-      ctx.beginPath(); ctx.ellipse(ex, ey, ew, .022, 0, 0, Math.PI * 2);
-      ctx.fillStyle = this._alpha(ROYAL, .34); ctx.fill();
+    // the sheen: one off-axis highlight on the outer hairline, upper-left, so
+    // the ring is lit from somewhere rather than uniformly self-illuminated
+    ctx.strokeStyle = this._alpha(hue, dark ? .72 : .62);
+    ctx.lineWidth = .0036;
+    ctx.beginPath(); ctx.arc(cx, cy, h1, Math.PI * 1.06, Math.PI * 1.44); ctx.stroke();
 
-      if (eh > .002) {
-        ctx.save();
-        ctx.beginPath(); ctx.ellipse(ex, ey, ew, eh, 0, 0, Math.PI * 2); ctx.clip();
-        ctx.fillStyle = this._alpha('#dff2ff', .07); ctx.fillRect(0, 0, 1, 1);
+    /* ── the centre light ────────────────────────────────────────────────
+       NOT A PUPIL. See the header: a filled disc with a darker middle is the
+       schematic of an eye no matter how it is styled, so there is no fill, no
+       boundary stroke and no hole here — only a bloom that falls away into the
+       ground colour and closes no shape at all.
 
-        // gaze — slightly toward the viewer, drifting when thinking
-        const gx = thinking ? Math.sin(t * .7) * .012 : Math.sin(t * .33) * .004;
-        const gy = thinking ? -.006 : Math.cos(t * .29) * .002;
+       Two things keep it subordinate to the ring, which is the subject:
 
-        // iris rings
-        const ir = listening ? .0182 : .0168;
-        const ig = ctx.createRadialGradient(ex + gx, ey + gy, .001, ex + gx, ey + gy, ir);
-        ig.addColorStop(0, this._alpha('#ffffff', .95));
-        ig.addColorStop(.30, hue);
-        ig.addColorStop(1, this._alpha(ROYAL, .95));
-        ctx.beginPath(); ctx.arc(ex + gx, ey + gy, ir, 0, Math.PI * 2);
-        ctx.fillStyle = ig; ctx.fill();
+       SIZE. It lives inside h2 with real air around it. Visible extent — the
+       .84 stop, not cr, since the last sixth of the gradient is under 3% alpha
+       — runs .33 to .38 of the inner hairline's radius at rest and .46 to .56
+       at full drive, the lower figure of each pair being Canvas. The disc this
+       replaced sat at .74 of it at rest and .85 at full, which is what "crowds
+       the hairline" looks like written as a number.
 
-        // the aperture — concentric, because that is what an iris is
-        ctx.strokeStyle = this._alpha('#0a0c18', .55); ctx.lineWidth = .0014;
-        for (let k = 1; k <= 3; k++) {
-          ctx.beginPath(); ctx.arc(ex + gx, ey + gy, ir * (k / 4.2), 0, Math.PI * 2); ctx.stroke();
-        }
-        // pupil
-        ctx.beginPath(); ctx.arc(ex + gx, ey + gy, ir * .40, 0, Math.PI * 2);
-        ctx.fillStyle = '#05070f'; ctx.fill();
-        // catchlight
-        ctx.beginPath(); ctx.arc(ex + gx - .005, ey + gy - .005, .0035, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
-        ctx.restore();
-      }
+       BRIGHTNESS. Its peak alpha is capped below a lit tick's at every drive:
+       .32–.62 against .42–.94 on Midnight, .42–.68 against .50–1 on Canvas. So
+       the brightest marks on the canvas are always out on the dial. That
+       ordering is the whole trick — the eye goes to the highest-contrast thing
+       first, and the highest-contrast thing must not be in the middle.
 
-      // lid line
-      ctx.beginPath(); ctx.ellipse(ex, ey, ew, Math.max(.002, eh), 0, Math.PI, Math.PI * 2);
-      ctx.strokeStyle = this._alpha(hue, .70); ctx.lineWidth = .0032; ctx.stroke();
-    }
+       The gradient's outer circle IS the filled circle and its last stop is
+       fully transparent, so there is no rim anywhere for the eye to close into
+       a shape.
 
-    /* ── nose ───────────────────────────────────────────────────────── */
+       And the peak is well off the geometric centre — LEFT, with the sheen and
+       the ground glow, so it reads as something lit rather than self-
+       illuminated, and only slightly up, so the datum below runs through the
+       lit part rather than under it. Light on the left, reading to the right,
+       and nothing at all sitting at dead centre except the crossing of the two.
+       A luminance peak concentric with a ring is a pupil however faint it is
+       made; one that is plainly off-axis cannot be.
+
+       Tighter and firmer on Canvas. On Midnight this is LIGHT, and a wide soft
+       falloff reads as light; on paper the same gradient is INK, and a wide
+       soft falloff reads as a stain that has bled — especially over the ground
+       glow, which the disc used to cover and no longer does. */
+    const cr = R * (dark ? .145 + amp * .105 : .125 + amp * .078);
+    const ca = (dark ? .32 + amp * .30 : .42 + amp * .26);
+    const core = ctx.createRadialGradient(cx - cr * .36, cy - cr * .10, 0, cx, cy, cr);
+    core.addColorStop(0,   this._alpha(hue, ca));
+    core.addColorStop(.34, this._alpha(hue, ca * .55));
+    core.addColorStop(.62, this._alpha(hue, ca * .16));
+    core.addColorStop(.84, this._alpha(hue, ca * .03));
+    core.addColorStop(1,   this._alpha(hue, 0));
+    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, TAU);
+    ctx.fillStyle = core; ctx.fill();
+
+    /* ── the datum, drawn straight THROUGH the light ─────────────────────
+       The strongest anti-face move available, and it costs two strokes. Faces
+       and eyes are bilaterally symmetric about a vertical axis; a horizontal
+       rule across the middle carrying an UNEQUAL reading cannot be either. It
+       also replaces the constricting hole as the second channel for the level:
+       the bar fills RIGHTWARD from the centre, and a thing that grows in one
+       direction is a gauge where a thing that grows in all of them is a pupil.
+
+       Drawn AFTER the bloom rather than under it, deliberately — the instrument
+       crossing the light is what makes the centre read as an apparatus. Under
+       it, the light would sit on top and be a blob again.
+
+       The bar is graded ALONG its length, dim at the centre and brightest at
+       the moving end, for a reason worth keeping: a bar that is brightest where
+       it starts puts a bright point back at the exact centre, which is the one
+       place nothing bright may sit. Graded outward, the energy is always out at
+       the reading. Full scale lands just inside h2, so "how far along" is
+       legible against the hairline without a scale printed on it.
+
+       The rule itself runs slightly PAST h2, out through the gaps left for it,
+       so it visibly crosses the wall rather than stopping politely inside. Full
+       scale stays short of the wall, so there is somewhere left to go. */
+    const dEnd = h2 * .90;
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = this._alpha(hue, dark ? .28 : .32);
+    ctx.lineWidth = .0028;
     ctx.beginPath();
-    ctx.moveTo(cx - .004, cy + .010);
-    ctx.quadraticCurveTo(cx - .018, cy + .062, cx + .002, cy + .072);
-    ctx.strokeStyle = this._alpha(hue, .42); ctx.lineWidth = .0032; ctx.stroke();
-
-    /* ── mouth ──────────────────────────────────────────────────────── */
-    const m = this.cur;
-    const mx = cx, my = cy + .134;
-    const mw = m.w * .115, mh = Math.max(.002, m.h * .075);
-
-    // upper lip — drawn even when the mouth is shut, so the face still has a
-    // mouth at rest rather than a gap where one should be
-    ctx.beginPath();
-    ctx.moveTo(mx - mw * 1.10, my - .001);
-    ctx.quadraticCurveTo(mx - mw * .45, my - .010, mx, my - .004);
-    ctx.quadraticCurveTo(mx + mw * .45, my - .010, mx + mw * 1.10, my - .001);
-    ctx.strokeStyle = this._alpha(hue, .62); ctx.lineWidth = .0030; ctx.lineCap = 'round';
+    ctx.moveTo(cx - h2 * 1.10, cy); ctx.lineTo(cx + h2 * 1.10, cy);
     ctx.stroke();
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(mx - mw, my);
-    ctx.quadraticCurveTo(mx, my - mh * (1 - m.r * .55), mx + mw, my);
-    ctx.quadraticCurveTo(mx, my + mh * (1 + m.r * .35), mx - mw, my);
-    ctx.closePath();
-    const mg = ctx.createLinearGradient(0, my - mh, 0, my + mh);
-    mg.addColorStop(0, this._alpha('#1b0d12', .95));
-    mg.addColorStop(1, this._alpha('#3a1420', .85));
-    ctx.fillStyle = mg; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .78); ctx.lineWidth = .0032; ctx.stroke();
+    const bar = dEnd * clamp01(.16 + amp * .84);
+    const read = ctx.createLinearGradient(cx, cy, cx + bar, cy);
+    read.addColorStop(0, this._alpha(hue, dark ? .30 : .34));
+    read.addColorStop(1, this._alpha(hue, dark ? .90 : .84));
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = read;
+    ctx.lineWidth = .0058;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + bar, cy); ctx.stroke();
 
-    // teeth, when the shape calls for them
-    if (m.t > .18 && mh > .008) {
-      ctx.clip();
-      ctx.fillStyle = this._alpha('#e8f6ff', .60 * m.t);
-      ctx.fillRect(mx - mw, my - mh * .95, mw * 2, mh * .55);
-    }
-    ctx.restore();
-
-    // lower lip catch-light — reads the jaw opening at a glance
-    ctx.beginPath();
-    ctx.moveTo(mx - mw * .82, my + mh * (1 + m.r * .35) * .62);
-    ctx.quadraticCurveTo(mx, my + mh * (1 + m.r * .35) + .010, mx + mw * .82, my + mh * (1 + m.r * .35) * .62);
-    ctx.strokeStyle = this._alpha(hue, .34); ctx.lineWidth = .0024; ctx.stroke();
-
-    /* ── listening ring ─────────────────────────────────────────────── */
+    /* ── listening: one outward ping, because "your turn" is an invitation ── */
     if (listening && !this.reduced) {
-      const p = (t * .8) % 1;
-      ctx.beginPath(); ctx.arc(cx, cy, .30 + p * .16, 0, Math.PI * 2);
-      ctx.strokeStyle = this._alpha(GOLD, (1 - p) * .40);
-      ctx.lineWidth = .0035; ctx.stroke();
-    }
-
-    /* ── thinking: a slow arc, not three bouncing dots ──────────────── */
-    if (thinking && !this.reduced) {
-      const a0 = t * 1.6;
-      ctx.beginPath(); ctx.arc(cx, cy, .285, a0, a0 + 1.05);
-      ctx.strokeStyle = this._alpha(hue, .70); ctx.lineWidth = .0045; ctx.lineCap = 'round'; ctx.stroke();
-    }
-
-    /* ── speaking: waveform under the bust ──────────────────────────── */
-    if (speaking && !this.reduced) {
-      ctx.beginPath();
-      const n = 44, y0 = .905;
-      for (let i = 0; i <= n; i++) {
-        const x = .20 + (i / n) * .60;
-        const env = Math.sin((i / n) * Math.PI);
-        const amp = (this.level != null ? this.level : (.35 + this.cur.h * 1.5));
-        const y = y0 + Math.sin(i * .62 + t * 11) * .020 * env * amp;
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      }
-      ctx.strokeStyle = this._alpha(hue, .55); ctx.lineWidth = .0028; ctx.stroke();
+      const p = (t * .62) % 1;
+      ctx.beginPath(); ctx.arc(cx, cy, h1 + p * (R - h1) * 1.05, 0, TAU);
+      ctx.strokeStyle = this._alpha(hue, (1 - p) * .34);
+      ctx.lineWidth = .0030; ctx.stroke();
     }
 
     ctx.restore();
   }
 
+  /* ── colour helpers ──────────────────────────────────────────────────────
+     _alpha() is the one the build leans on: hand it anything it cannot take
+     apart and it returns the string unchanged, so the alpha is silently
+     dropped and a translucent layer renders opaque. It now also reads #rgba,
+     #rrggbbaa and rgb()/rgba() — but the guard's hex requirement on the four
+     tokens is still what makes that safe, because a color-mix() or an oklch()
+     would fall straight through here. */
   _alpha(color, a) {
     const c = (color || '').trim();
-    if (c.startsWith('#')) {
-      const h = c.length === 4
-        ? c.slice(1).split('').map(x => parseInt(x + x, 16))
-        : [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
-      return `rgba(${h[0]},${h[1]},${h[2]},${a})`;
+    if (c[0] === '#') {
+      const n = c.length - 1;
+      let r, g, b, e = 1;
+      if (n === 3 || n === 4) {
+        r = parseInt(c[1] + c[1], 16); g = parseInt(c[2] + c[2], 16); b = parseInt(c[3] + c[3], 16);
+        if (n === 4) e = parseInt(c[4] + c[4], 16) / 255;
+      } else if (n === 6 || n === 8) {
+        r = parseInt(c.slice(1, 3), 16); g = parseInt(c.slice(3, 5), 16); b = parseInt(c.slice(5, 7), 16);
+        if (n === 8) e = parseInt(c.slice(7, 9), 16) / 255;
+      } else return c;
+      if (!(r >= 0 && g >= 0 && b >= 0)) return c;      // NaN — not hex after all
+      return `rgba(${r},${g},${b},${a * e})`;
+    }
+    const m = /^rgba?\(([^)]+)\)$/i.exec(c);
+    if (m) {
+      const p = m[1].split(/[\s,/]+/).filter(Boolean).map(parseFloat);
+      if (p.length >= 3 && p.slice(0, 3).every(v => v >= 0)) {
+        const e = p.length > 3 && p[3] >= 0 ? p[3] : 1;
+        return `rgba(${Math.round(p[0])},${Math.round(p[1])},${Math.round(p[2])},${a * e})`;
+      }
     }
     return c;
+  }
+
+  /** Mix a hex colour toward white by t — how the thinking peach is made. */
+  _tint(hex, t) {
+    const c = (hex || '').trim();
+    if (c[0] !== '#') return c;
+    const n = c.length - 1;
+    let r, g, b;
+    if (n === 3 || n === 4) {
+      r = parseInt(c[1] + c[1], 16); g = parseInt(c[2] + c[2], 16); b = parseInt(c[3] + c[3], 16);
+    } else if (n === 6 || n === 8) {
+      r = parseInt(c.slice(1, 3), 16); g = parseInt(c.slice(3, 5), 16); b = parseInt(c.slice(5, 7), 16);
+    } else return c;
+    if (!(r >= 0 && g >= 0 && b >= 0)) return c;
+    const up = v => Math.round(v + (255 - v) * t).toString(16).padStart(2, '0');
+    return `#${up(r)}${up(g)}${up(b)}`;
+  }
+
+  /** Perceptual-ish luminance 0..1, reusing _alpha() as the parser. */
+  _lum(hex) {
+    const p = /rgba?\(([\d.]+),([\d.]+),([\d.]+)/.exec(this._alpha(hex, 1));
+    if (!p) return 1;
+    return (+p[1] * .299 + +p[2] * .587 + +p[3] * .114) / 255;
   }
 }
