@@ -1,81 +1,253 @@
 /* ============================================================================
-   AIB Presenter — DXC 2025 brand (exact values from DXC Brand Colors-RGB.ase)
-   One rule, held everywhere:
-     SKY is the platform's voice.  GOLD is the human's.
-   Nothing on this page breaks it.
+   Intelligent Airport — the DXC token system
+   ----------------------------------------------------------------------------
+   THE RULE: there are ten DXC colours and no grey. Every neutral in this sheet
+   is a color-mix() of two NAMED palette colours, so the provenance of every
+   value is in the code and there is no invented hex anywhere in it.
+
+     Midnight Blue #0E1020   White #FFFFFF   Canvas    #F6F3F0   Peach #FFC982
+     Sky           #A1E6FF   Gold  #FFAE41   True Blue #4995FF   Melon #FF7E51
+     Royal         #004AAC   Red   #D14600
+
+   ── the voice rule, which never changes ───────────────────────────────────
+   --sky is the PLATFORM's voice. --gold is the HUMAN's. Those are dark-theme
+   NAMES but the tokens are semantic SLOTS, and the slot outranks the name.
+
+   Measured contrast, which is what decides the light theme (WCAG 2.1):
+
+                     on White      on Canvas
+       Sky             1.37:1        1.24:1     unreadable
+       Gold            1.84:1        1.67:1     unreadable
+       Melon           2.51:1        2.27:1     unreadable
+       Royal           8.15:1        7.38:1     passes
+       Red             4.58:1        4.14:1     passes on White, AA-large
+                                                on Canvas
+
+   So the light theme re-keys the two slots to Royal and Red. The palette
+   answers itself and no third-party brown is needed. Red on Canvas is the one
+   marginal pair (4.14:1) and it is deliberate: Red is the ONLY warm in the ten
+   that reads at all on paper, and the alternative was inventing an eleventh
+   colour. Every SMALL red label in the light theme sits on a White surface
+   (cards, buttons, strip items, the answer sheet) where it measures 4.58:1;
+   the only two red-on-Canvas runs are .gate at 15px and .q-line at 22px, both
+   short and both by design. Re-key the hex per theme, never the meaning.
+
+   The same applies to --melon (the before / the cost), --peach (the human's
+   soft edge) and --ok (a workflow lamp). They are slots too, and in light they
+   hold Red, Melon and Royal.
+
+   ── the one exception, and it is load-bearing ─────────────────────────────
+   src/avatar.js reads --sky, --gold, --royal and --ink-3 off the live computed
+   style every frame and hands them to Avatar._alpha(), which takes apart
+   `#rgb`/`#rrggbb` and NOTHING else. Given a color-mix() it returns the string
+   UNCHANGED, so the alpha it was asked for silently becomes 1.0 at roughly
+   forty call sites and the bust renders as flat opaque slabs — no error, no
+   warning, and no browser check can see it because the bust is pixels on a
+   canvas. Those tokens therefore stay LITERAL HEX in all three theme blocks.
+   Three of the four are palette colours already; the fourth (--ink-3) is a
+   neutral, so its hex is the RESOLVED value of a stated mix and the mix is
+   written beside it. tests/guards.test.mjs derives that list from avatar.js's
+   own source and asserts it — never type the list anywhere.
+
+   color-mix() is free everywhere else in this sheet.
+
+   ── the type scale ────────────────────────────────────────────────────────
+   Every font-size below is a step. GT Standard L Extended ships EXACTLY two
+   weights, Medium 500 and Bold 700 — any other number makes the browser
+   synthesise and the extended forms smear. Inter is a real variable face
+   (declared 100 900 in assets/fonts.css), so any Inter weight is genuine.
+
+   There is no monospace: the DXC pack licenses none. The instrumentation voice
+   is carried by CASE + TRACKING + SIZE on Inter, and the one real reason to
+   want mono — digits that line up in a column — is covered by Inter's tabular
+   figures. Both live in the single rule headed "the instrumentation voice",
+   below the reset; every micro-label on the page is a selector in it.
    ========================================================================== */
 
 :root {
-  /* ground */
-  --midnight:  #0e1020;
-  --abyss:     #0a0c18;
-  --slab:      #151830;
-  --slab-2:    #1f2345;
-  --rule:      #2b3059;
+  /* ── the ten, by their DXC names. Nothing else is a colour source. ──────
+     The roster is declared WHOLE even where a member has no var() consumer:
+     --dxc-gold's only consumer would be the --gold slot, and that slot has to
+     be literal hex for the avatar. A palette that listed nine of ten would
+     stop being the rule it is here to state. */
+  --dxc-midnight-blue: #0E1020;
+  --dxc-white:         #FFFFFF;
+  --dxc-canvas:        #F6F3F0;
+  --dxc-peach:         #FFC982;
+  --dxc-sky:           #A1E6FF;
+  --dxc-gold:          #FFAE41;
+  --dxc-true-blue:     #4995FF;
+  --dxc-melon:         #FF7E51;
+  --dxc-royal:         #004AAC;
+  --dxc-red:           #D14600;
 
-  /* ink */
-  --canvas:    #f6f3f0;
-  --ink:       #f6f3f0;
-  --ink-2:     #b9bed6;
-  --ink-3:     #7b82a6;
+  /* ── type ─────────────────────────────────────────────────────────────── */
+  --font-display: "GT Standard", "Helvetica Neue", Arial, sans-serif;
+  --font-body:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-meta:    var(--font-body);
+  /* Kept as a compatibility alias, NOT as a face: src/scenes.js sets
+     font-family with it inline on the FEED STALE badge and that file is
+     another task's scope. It now resolves to the meta face like everything
+     else, so nothing on the page is monospace. */
+  --mono: var(--font-meta);
 
-  /* voices */
-  --sky:       #a1e6ff;   /* the platform */
-  --gold:      #ffae41;   /* the human */
-  --peach:     #ffc982;
-  --true-blue: #4995ff;
-  --royal:     #004aac;
-  --melon:     #ff7e51;   /* the before / the cost */
-  --red:       #d14600;
+  --num: tabular-nums;   /* Inter's real tabular figures, for columnar digits */
 
-  --ok:        #7fd6a2;
+  /* The ladder, declared whole — every font-size in this sheet is one of these
+     and there is no orphan literal left. Each rung carries its own leading;
+     --lh-3 has no direct consumer today because --step-3 currently serves as
+     --step-fig's floor, and a ladder with a missing rung is not a scale. */
+  --step--2: 10px;                      --lh--2: 1.3;   /* eyebrows, labels, chips */
+  --step--1: 12.5px;                    --lh--1: 1.45;  /* captions, card body, fine print */
+  --step-0:  15px;                      --lh-0:  1.55;  /* body */
+  --step-1:  18px;                      --lh-1:  1.55;  /* lede, card + rail headings */
+  --step-2:  22px;                      --lh-2:  1.3;   /* section head */
+  --step-3:  28px;                      --lh-3:  1.2;   /* scene sub-head */
+  --step-4:  clamp(30px, 3.6vw, 46px);  --lh-4:  1.05;  /* scene h1 */
+  --step-5:  clamp(38px, 5.6vw, 66px);  --lh-5:  1.0;   /* cold open */
+  /* The display-NUMERAL tier. It is part of the ladder, not an exception: it
+     starts at --step-3 and runs to 36px, which continues the same ~1.25 ratio
+     up to --step-4. It exists because this deck has a register a prose scale
+     does not — a number read from the back of a room. */
+  --step-fig: clamp(var(--step-3), 2.6vw, 36px);
+  --lh-read: 1.62;  /* reading columns: the caption, the answer sheet */
 
-  --display: "GT Standard", "Helvetica Neue", Arial, sans-serif;
-  --body:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --mono:    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --track-meta:    .16em;   /* uppercase micro-labels */
+  --track-caps:    .05em;   /* display-size capitals */
+  --track-display: -.015em; /* GT Standard at headline size */
+  --track-tight:   -.005em; /* GT Standard at sub-head size */
 
+  /* ── radii: the same argument as the type scale, applied to corners ──────
+     This sheet used to hold eight different radii — 3, 4, 5, 6, 7, 8, 10 and
+     999 — which is not a scale, it is eight separate decisions nobody made
+     twice. Five rungs, and every corner on the page is one of them.
+
+     --r-pill is the honest name for a radius that only ever has to exceed half
+     the box: the 8px progress tracks read as capsules at 4px and at 999px
+     alike, and writing 4px there stated a number when what was meant was
+     "fully round". The circles stay 50% — a dot is not a rounded rectangle. */
+  --r-xs:   3px;    /* chips, tags, cites, the scene numeral, the focus ring */
+  --r-sm:   5px;    /* buttons, strip items, run steps */
+  --r-md:   8px;    /* cards, screens, inputs, the gate */
+  --r-lg:  12px;    /* the answer sheet */
+  --r-pill: 999px;  /* capsules: jump pills, bar tracks, scrollbar thumbs */
+
+  /* ── layout ───────────────────────────────────────────────────────────────
+     SPACING IS DELIBERATELY NOT TOKENISED, and this is the note that says so
+     rather than leaving it looking like an omission. The stage is 702px wide
+     at 1440 — 1440 − 340 rail − 310 strip − 88 of padding and scrollbar — and
+     that number is what the .g2/.g3/.g4 minimum tracks are cut against. Snap
+     #stage's 38px side padding to a 4px-base rung and the stage changes width,
+     so the grids have to be re-cut with it. A padding ladder is a layout
+     redesign wearing a token's clothes; it is not this task. */
   --rail: 340px;
   --strip: 310px;
   --ask: 76px;
+  --head: 58px;
 
   --e: cubic-bezier(.22,.61,.36,1);
+
+  /* ── DARK: the default. A presentation surface, lights down. ──────────────
+     Midnight is the brand ground and nothing in the palette is darker than it,
+     so the RECESS is pure Midnight and the lit stage is raised off it by a few
+     per cent of Sky. Mixing the surfaces with Sky rather than White is what
+     keeps the chrome in the brand's blue family instead of drifting to grey. */
+  color-scheme: dark;
+
+  --recess:    var(--dxc-midnight-blue);
+  --ground:    color-mix(in srgb, var(--dxc-sky)  4%, var(--dxc-midnight-blue));
+  --surface-1: color-mix(in srgb, var(--dxc-sky)  8%, var(--dxc-midnight-blue));
+
+  --rule:      color-mix(in srgb, var(--dxc-sky) 18%, var(--dxc-midnight-blue));
+  --rule-loud: color-mix(in srgb, var(--dxc-sky) 34%, var(--dxc-midnight-blue));
+
+  --ink:   var(--dxc-canvas);
+  --ink-2: color-mix(in srgb, var(--dxc-canvas) 74%, var(--dxc-midnight-blue));
+  /* avatar-read + a neutral, so it is the resolved value of
+     color-mix(in srgb, Canvas 54%, Midnight Blue) = 139,139,144. 5.6:1 on the
+     recess, 4.7:1 on a card. */
+  --ink-3: #8B8B90;
+
+  --sky:   #A1E6FF;   /* Sky   — the platform's voice */
+  --gold:  #FFAE41;   /* Gold  — the human's voice */
+  --royal: #004AAC;   /* Royal — the platform's gradient partner */
+
+  --peach: var(--dxc-peach);      /* the human's soft edge */
+  --melon: var(--dxc-melon);      /* the before / the cost */
+  --ok:    var(--dxc-true-blue);  /* the third workflow lamp */
+
+  --on-platform: var(--dxc-midnight-blue);  /* text ON a --sky fill  */
+  --on-human:    var(--dxc-midnight-blue);  /* text ON a --gold fill */
+
+  --lift: 0 -18px 50px color-mix(in srgb, var(--dxc-midnight-blue) 55%, transparent);
 }
 
-/* Light theme. Not an inversion — Sky is too pale on paper, so the platform
-   speaks in Royal here and Gold darkens to hold its contrast. */
+/* ── LIGHT: fully designed, not an inversion ──────────────────────────────
+   Canvas is the ground and White is the raised surface, so the depth order is
+   the opposite way up from dark. The two voices re-key to Royal and Red, which
+   are the only two of the ten that are readable on Canvas. */
 :root[data-theme="light"] {
-  --midnight: #f6f3f0;
-  --abyss:    #ece8e3;
-  --slab:     #ffffff;
-  --slab-2:   #f2eee9;
-  --rule:     #d6cec4;
-  --canvas:   #0e1020;
-  --ink:      #0e1020;
-  --ink-2:    #4a5070;
-  --ink-3:    #7b82a6;
-  --sky:      #004aac;
-  --gold:     #a85e00;
-  --peach:    #a85e00;
-  --true-blue:#0b3f9e;
-  /* --royal and --red carry over from the dark theme unchanged: Royal reads
-     8.15:1 on Canvas here and Red 4.58:1, so both already hold. They are
-     declared rather than inherited because src/avatar.js reads --royal every
-     frame and getPropertyValue() answers '' — not an error — for a token this
-     block does not define. Leaving it out is what made the bust paint light
-     mode in the DARK theme's Royal, silently, on every light-theme panel.
-     tests/guards.test.mjs asserts all three blocks now. */
-  --royal:    #004aac;
-  --red:      #d14600;
-  --melon:    #c0410f;
-  --ok:       #1d7a4a;
+  color-scheme: light;
+
+  --recess:    color-mix(in srgb, var(--dxc-midnight-blue)  5%, var(--dxc-canvas));
+  --ground:    var(--dxc-canvas);
+  --surface-1: var(--dxc-white);
+
+  --rule:      color-mix(in srgb, var(--dxc-midnight-blue) 14%, var(--dxc-canvas));
+  --rule-loud: color-mix(in srgb, var(--dxc-midnight-blue) 30%, var(--dxc-canvas));
+
+  --ink:   var(--dxc-midnight-blue);
+  --ink-2: color-mix(in srgb, var(--dxc-midnight-blue) 76%, var(--dxc-canvas));
+  /* resolved color-mix(in srgb, Midnight Blue 60%, Canvas) = 107,107,115.
+     4.8:1 on Canvas — the invented, off-palette blue-grey it replaces
+     measured 3.4:1 and failed AA. */
+  --ink-3: #6B6B73;
+
+  --sky:   #004AAC;   /* Royal — the platform's voice on paper (8.15:1) */
+  --gold:  #D14600;   /* Red   — the human's voice on paper  (4.58:1)   */
+  --royal: #004AAC;
+
+  --peach: var(--dxc-melon);
+  --melon: var(--dxc-red);
+  --ok:    var(--dxc-royal);
+
+  --on-platform: var(--dxc-white);
+  --on-human:    var(--dxc-white);
+
+  --lift: 0 -18px 50px color-mix(in srgb, var(--dxc-midnight-blue) 16%, transparent);
 }
+
+/* The same block again for the OS preference, deliberately duplicated rather
+   than shared: the four avatar-read tokens have to be literally present here
+   too or the bust paints the dark brand in a light-mode page, and that is what
+   tests/guards.test.mjs checks in all three places. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --midnight: #f6f3f0; --abyss: #ece8e3; --slab: #ffffff; --slab-2: #f2eee9;
-    --rule: #d6cec4; --canvas: #0e1020; --ink: #0e1020; --ink-2: #4a5070;
-    --ink-3: #7b82a6; --sky: #004aac; --gold: #a85e00; --peach: #a85e00;
-    --true-blue: #0b3f9e; --royal: #004aac; --red: #d14600;
-    --melon: #c0410f; --ok: #1d7a4a;
+    color-scheme: light;
+
+    --recess:    color-mix(in srgb, var(--dxc-midnight-blue)  5%, var(--dxc-canvas));
+    --ground:    var(--dxc-canvas);
+    --surface-1: var(--dxc-white);
+
+    --rule:      color-mix(in srgb, var(--dxc-midnight-blue) 14%, var(--dxc-canvas));
+    --rule-loud: color-mix(in srgb, var(--dxc-midnight-blue) 30%, var(--dxc-canvas));
+
+    --ink:   var(--dxc-midnight-blue);
+    --ink-2: color-mix(in srgb, var(--dxc-midnight-blue) 76%, var(--dxc-canvas));
+    --ink-3: #6B6B73;
+
+    --sky:   #004AAC;
+    --gold:  #D14600;
+    --royal: #004AAC;
+
+    --peach: var(--dxc-melon);
+    --melon: var(--dxc-red);
+    --ok:    var(--dxc-royal);
+
+    --on-platform: var(--dxc-white);
+    --on-human:    var(--dxc-white);
+
+    --lift: 0 -18px 50px color-mix(in srgb, var(--dxc-midnight-blue) 16%, transparent);
   }
 }
 
@@ -83,22 +255,67 @@
 html, body { height: 100%; }
 body {
   margin: 0;
-  background: var(--midnight);
+  background: var(--ground);
   color: var(--ink);
-  font-family: var(--body);
-  font-size: 15px;
-  line-height: 1.55;
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: var(--lh-0);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
-:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 3px; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: var(--r-xs); }
+
+/* ── the instrumentation voice ────────────────────────────────────────────
+   One rule, declared once, for every micro-label on the page — and the whole
+   of what replaced --mono. Uppercase + .16em + 10px on Inter reads as
+   instrumentation without a monospace face, and Inter's x-height at 10px is
+   larger than the 9.5px system mono it replaces, so these labels came out
+   BIGGER, not smaller. Each selector below then sets only its colour, which is
+   what stops eighteen near-identical six-line declarations drifting apart. */
+.wordmark .by,
+#avatarState,
+.presenter .role,
+.eyebrow,
+.card .roi b,
+.chip,
+.metric .l,
+.ba b,
+.screen-bar,
+.strip-head,
+.strip-item .flag,
+.ans-head .q,
+.ans-src .lbl,
+.cites .lbl,
+.opencard .kicker,
+.stage-step .sn,
+.a-tag,
+.steps .sk {
+  font-family: var(--font-meta);
+  font-size: var(--step--2);
+  line-height: var(--lh--2);
+  font-weight: 500;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+}
+
+/* The other half of the mono argument: digits that have to line up in a
+   column. Inter's tabular figures are real, so `scene 4 / 12`, the metric row
+   and the navigator numbers stay columnar without a monospace face. */
+.strip-head,
+.strip-item .n,
+.metric .n,
+.stage-step .sv,
+.bar,
+.bar .v {
+  font-variant-numeric: var(--num);
+}
 
 /* ── shell ────────────────────────────────────────────────────────────── */
 
 #shell {
   display: grid;
   grid-template-columns: var(--rail) minmax(0,1fr) var(--strip);
-  grid-template-rows: 58px 3px minmax(0,1fr) var(--ask);
+  grid-template-rows: var(--head) 3px minmax(0,1fr) var(--ask);
   grid-template-areas:
     "head head head"
     "prog prog prog"
@@ -115,22 +332,20 @@ header {
   display: flex; align-items: center; gap: 16px;
   padding: 0 20px;
   border-bottom: 1px solid var(--rule);
-  background: var(--abyss);
+  background: var(--recess);
 }
 .wordmark {
-  font-family: var(--display); font-weight: 700;
-  font-size: 15px; letter-spacing: .02em;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-0); letter-spacing: var(--track-caps);
   display: flex; align-items: baseline; gap: 9px;
   white-space: nowrap;
 }
 .wordmark .box { color: var(--sky); }
-.wordmark .by {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .13em;
-  text-transform: uppercase; color: var(--ink-3);
-}
+.wordmark .by { color: var(--ink-3); }
 #sceneTitle {
-  font-family: var(--display); font-weight: 500;
-  font-size: 19px; letter-spacing: -.005em;
+  font-family: var(--font-display); font-weight: 500;
+  font-size: var(--step-1); line-height: var(--lh-1);
+  letter-spacing: var(--track-tight);
   margin-left: 6px; padding-left: 16px;
   border-left: 1px solid var(--rule);
   color: var(--ink);
@@ -140,19 +355,19 @@ header {
 .head-actions { display: flex; gap: 8px; align-items: center; }
 
 .btn {
-  font: inherit; font-size: 12px; font-weight: 500;
-  color: var(--ink-2); background: var(--slab);
-  border: 1px solid var(--rule); border-radius: 5px;
+  font: inherit; font-size: var(--step--1); font-weight: 500;
+  color: var(--ink-2); background: var(--surface-1);
+  border: 1px solid var(--rule); border-radius: var(--r-sm);
   padding: 7px 12px; cursor: pointer;
   transition: border-color .16s var(--e), color .16s var(--e), background .16s var(--e);
   white-space: nowrap;
 }
-.btn:hover { color: var(--ink); border-color: var(--ink-3); }
-.btn[aria-pressed="true"], .btn.on { color: var(--sky); border-color: var(--sky); }
+.btn:hover { color: var(--ink); border-color: var(--rule-loud); }
+.btn[aria-pressed="true"] { color: var(--sky); border-color: var(--sky); }
 .btn.primary {
-  background: var(--gold); color: #17110a; border-color: var(--gold); font-weight: 600;
+  background: var(--gold); color: var(--on-human); border-color: var(--gold); font-weight: 600;
 }
-.btn.primary:hover { filter: brightness(1.08); color: #17110a; }
+.btn.primary:hover { filter: brightness(1.08); color: var(--on-human); }
 .btn.ghost { background: transparent; }
 
 /* ── progress hairline ────────────────────────────────────────────────── */
@@ -169,7 +384,7 @@ header {
 #rail {
   grid-area: rail;
   border-right: 1px solid var(--rule);
-  background: var(--abyss);
+  background: var(--recess);
   display: flex; flex-direction: column;
   min-height: 0;
 }
@@ -180,7 +395,7 @@ header {
   flex: 0 0 auto;
   background:
     radial-gradient(120% 90% at 50% 18%, color-mix(in srgb, var(--royal) 26%, transparent), transparent 62%),
-    var(--abyss);
+    var(--recess);
   border-bottom: 1px solid var(--rule);
 }
 #avatar { width: 100%; height: 100%; display: block; }
@@ -214,8 +429,7 @@ header {
 
 #avatarState {
   position: absolute; left: 14px; bottom: 12px;
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--ink-3);
+  color: var(--ink-3);
   display: flex; align-items: center; gap: 7px;
 }
 #avatarState .dot {
@@ -224,14 +438,14 @@ header {
 }
 /* The badge sits over whichever backend won. The canvas bust is a dark ground
    and ink-3 reads fine on it; the 3D one puts a lit, mid-blue shirt right
-   behind these letters and the same grey all but disappears. So give it a scrim
-   in the rail's own surface colour — but ONLY when the 3D mount is showing, so
-   the fallback path looks exactly as it always has. left/bottom shift by the
-   padding so the text itself does not move between the two. */
+   behind these letters and the same neutral all but disappears. So give it a
+   scrim in the rail's own surface colour — but ONLY when the 3D mount is
+   showing, so the fallback path looks exactly as it always has. left/bottom
+   shift by the padding so the text itself does not move between the two. */
 #avatar3d:not([hidden]) ~ #avatarState {
   left: 5px; bottom: 9px;
-  padding: 3px 9px; border-radius: 999px;
-  background: color-mix(in srgb, var(--abyss) 82%, transparent);
+  padding: 3px 9px; border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--recess) 82%, transparent);
 }
 #avatarState[data-state="speaking"] .dot { background: var(--sky); box-shadow: 0 0 9px var(--sky); }
 #avatarState[data-state="listening"] .dot { background: var(--gold); box-shadow: 0 0 9px var(--gold); }
@@ -243,13 +457,11 @@ header {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
 }
 .presenter h2 {
-  margin: 0; font-family: var(--display); font-weight: 700;
-  font-size: 17px; letter-spacing: .04em;
+  margin: 0; font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-1); line-height: var(--lh-1);
+  letter-spacing: var(--track-caps);
 }
-.presenter .role {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--ink-3); text-align: right;
-}
+.presenter .role { color: var(--ink-3); text-align: right; }
 
 /* live caption — the avatar and its words are one unit */
 #caption {
@@ -258,13 +470,13 @@ header {
   display: flex; flex-direction: column; gap: 10px;
 }
 #captionText {
-  font-size: 15.5px; line-height: 1.62; color: var(--ink-2);
+  font-size: var(--step-0); line-height: var(--lh-read); color: var(--ink-2);
   text-wrap: pretty;
 }
 #captionText .said { color: var(--ink); }
 #captionText.idle { color: var(--ink-3); font-style: italic; }
 #caption::-webkit-scrollbar { width: 5px; }
-#caption::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+#caption::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--r-pill); }
 
 .rail-foot {
   flex: 0 0 auto; padding: 12px 18px;
@@ -281,10 +493,10 @@ header {
   padding: 30px 38px 40px;
   background:
     radial-gradient(130% 80% at 50% 0%, color-mix(in srgb, var(--royal) 12%, transparent), transparent 58%),
-    var(--midnight);
+    var(--ground);
 }
 #stage::-webkit-scrollbar { width: 7px; }
-#stage::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
+#stage::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--r-pill); }
 
 .scene { max-width: 980px; margin: 0 auto; animation: settle .5s var(--e) both; }
 @keyframes settle { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -293,60 +505,62 @@ header {
   * { transition-duration: .01ms !important; }
 }
 
-.eyebrow {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .18em;
-  text-transform: uppercase; color: var(--sky);
-  margin: 0 0 14px;
-}
+.eyebrow { color: var(--sky); margin: 0 0 14px; }
+/* No scene emits `class="eyebrow human"` today. Kept anyway, and on purpose:
+   this one line IS the voice rule at the eyebrow — the only thing that lets a
+   human-voiced scene open in --gold rather than --sky — and the markup pass
+   that restructures scenes.js is its natural consumer. Everything else in the
+   sweep went because it was a dead COMPONENT; this is a live SEMANTIC. */
 .eyebrow.human { color: var(--gold); }
 
 .scene h1 {
-  font-family: var(--display); font-weight: 700;
-  font-size: clamp(30px, 3.6vw, 46px); line-height: 1.05;
-  letter-spacing: -.015em; margin: 0 0 16px; text-wrap: balance;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-4); line-height: var(--lh-4);
+  letter-spacing: var(--track-display); margin: 0 0 16px; text-wrap: balance;
 }
 .scene h2 {
-  font-family: var(--display); font-weight: 500;
-  font-size: 22px; letter-spacing: -.005em; margin: 34px 0 14px;
+  font-family: var(--font-display); font-weight: 500;
+  font-size: var(--step-2); line-height: var(--lh-2);
+  letter-spacing: var(--track-tight); margin: 34px 0 14px;
   text-wrap: balance;
 }
 .lede {
-  font-size: 18px; line-height: 1.58; color: var(--ink-2);
+  font-size: var(--step-1); line-height: var(--lh-1); color: var(--ink-2);
   max-width: 62ch; margin: 0 0 26px; text-wrap: pretty;
 }
 .lede strong { color: var(--ink); font-weight: 600; }
 
 /* cards */
 .grid { display: grid; gap: 14px; }
+/* The stage is 702px wide at 1440 (1440 − 340 rail − 310 strip − 88 padding
+   and scrollbar), so a 3-up track has to stay under 216px or the row silently
+   folds to two columns with a dead third. */
 .g2 { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
 .g3 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .g4 { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
 
 .card {
-  background: var(--slab); border: 1px solid var(--rule);
-  border-radius: 8px; padding: 16px 18px;
+  background: var(--surface-1); border: 1px solid var(--rule);
+  border-radius: var(--r-md); padding: 16px 18px;
 }
 .card h3 {
-  margin: 0 0 7px; font-family: var(--display); font-weight: 500;
-  font-size: 16px; letter-spacing: -.003em;
+  margin: 0 0 7px; font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-1); line-height: var(--lh-1);
+  letter-spacing: var(--track-tight);
 }
-.card p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.card p { margin: 0; font-size: var(--step--1); line-height: var(--lh--1); color: var(--ink-2); }
 .card .roi {
   margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--rule);
-  font-size: 12.5px; line-height: 1.5; color: var(--gold);
+  font-size: var(--step--1); line-height: var(--lh--1); color: var(--gold);
 }
-.card .roi b { font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
-  text-transform: uppercase; display: block; margin-bottom: 4px; opacity: .8; font-weight: 500; }
+.card .roi b { display: block; margin-bottom: 4px; opacity: .8; }
 
-/* status chips — HAVE / PARTIAL / TO BUILD */
+/* status chips — PARTIAL / LIVE */
 .chip {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em;
-  text-transform: uppercase; padding: 3px 7px; border-radius: 3px;
+  padding: 3px 7px; border-radius: var(--r-xs);
   border: 1px solid currentColor; white-space: nowrap;
 }
-.chip.have    { color: var(--ok); }
 .chip.partial { color: var(--gold); }
-.chip.build   { color: var(--ink-3); }
 .chip.live    { color: var(--sky); }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
 .card-head h3 { margin: 0; }
@@ -354,47 +568,43 @@ header {
 /* metric row */
 .metrics { display: flex; flex-wrap: wrap; gap: 30px; margin: 22px 0 8px; }
 .metric .n {
-  font-family: var(--display); font-weight: 700;
-  font-size: clamp(26px, 3vw, 38px); line-height: 1;
-  color: var(--sky); font-variant-numeric: tabular-nums;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-fig); line-height: var(--lh-4);
+  color: var(--sky);
 }
 .metric .n.human { color: var(--gold); }
-.metric .l {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .13em;
-  text-transform: uppercase; color: var(--ink-3); margin-top: 7px;
-}
+.metric .l { color: var(--ink-3); margin-top: 7px; }
 
 /* the gate — the one rule that makes it safe */
 .gate {
-  margin: 22px 0 0; padding: 12px 16px; border-radius: 7px;
+  margin: 22px 0 0; padding: 12px 16px; border-radius: var(--r-md);
   border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
   background: color-mix(in srgb, var(--gold) 9%, transparent);
-  color: var(--gold); font-size: 13.5px; text-align: center;
+  color: var(--gold); font-size: var(--step-0); line-height: var(--lh-0);
+  text-align: center;
 }
 
 .note {
-  margin-top: 20px; font-size: 12.5px; color: var(--ink-3);
+  margin-top: 20px; font-size: var(--step--1); line-height: var(--lh--1);
+  color: var(--ink-3);
   border-left: 2px solid var(--rule); padding-left: 12px; max-width: 70ch;
 }
 
 /* before / after */
-.ba { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
-.ba > div { padding: 15px 18px; font-size: 13.5px; line-height: 1.55; }
-.ba .before { background: color-mix(in srgb, var(--melon) 7%, var(--slab)); color: var(--ink-2); border-right: 1px solid var(--rule); }
-.ba .after   { background: color-mix(in srgb, var(--sky) 6%, var(--slab)); color: var(--ink-2); }
-.ba b {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em;
-  text-transform: uppercase; display: block; margin-bottom: 7px; font-weight: 500;
-}
+.ba { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--rule); border-radius: var(--r-md); overflow: hidden; }
+.ba > div { padding: 15px 18px; font-size: var(--step--1); line-height: var(--lh--1); }
+.ba .before { background: color-mix(in srgb, var(--melon) 7%, var(--surface-1)); color: var(--ink-2); border-right: 1px solid var(--rule); }
+.ba .after   { background: color-mix(in srgb, var(--sky) 6%, var(--surface-1)); color: var(--ink-2); }
+.ba b { display: block; margin-bottom: 7px; }
 .ba .before b { color: var(--melon); }
 .ba .after b  { color: var(--sky); }
 
 /* system estate pills */
 .estate { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
 .estate span {
-  font-family: var(--mono); font-size: 11px; letter-spacing: .04em;
-  padding: 6px 10px; border-radius: 4px;
-  border: 1px solid var(--rule); background: var(--slab); color: var(--ink-2);
+  font-family: var(--font-meta); font-size: var(--step--1); line-height: var(--lh--1);
+  padding: 6px 10px; border-radius: var(--r-xs);
+  border: 1px solid var(--rule); background: var(--surface-1); color: var(--ink-2);
 }
 
 /* chooser (scene 2) */
@@ -402,133 +612,79 @@ header {
 .chooser button {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
   width: 100%; text-align: left; cursor: pointer;
-  font: inherit; font-size: 15px;
-  background: var(--slab); color: var(--ink);
-  border: 1px solid var(--rule); border-radius: 7px; padding: 14px 18px;
+  font: inherit; font-size: var(--step-0);
+  background: var(--surface-1); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: var(--r-md); padding: 14px 18px;
   transition: border-color .16s var(--e), transform .16s var(--e), background .16s var(--e);
 }
 .chooser button:hover { border-color: var(--sky); transform: translateX(3px); }
-.chooser button .arrow { color: var(--sky); font-size: 17px; }
+.chooser button .arrow { color: var(--sky); font-size: var(--step-1); }
 .chooser button.full { border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
 .chooser button.full .arrow { color: var(--gold); }
-
-/* ── the AIRIS live scene ─────────────────────────────────────────────── */
-
-.airis { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 18px; align-items: start; }
-@media (max-width: 1150px) { .airis { grid-template-columns: 1fr; } }
-
-.clock {
-  font-family: var(--display); font-weight: 700;
-  font-size: 54px; line-height: 1; color: var(--sky);
-  font-variant-numeric: tabular-nums;
-}
-.clock small { font-size: 16px; color: var(--ink-3); margin-left: 8px; font-family: var(--mono); letter-spacing: .1em; }
-
-.syslist { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px,1fr)); gap: 6px; margin-top: 16px; }
-.sys {
-  font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
-  padding: 7px 9px; border-radius: 4px;
-  border: 1px solid var(--rule); background: var(--abyss); color: var(--ink-3);
-  display: flex; align-items: center; gap: 7px;
-  transition: color .3s var(--e), border-color .3s var(--e), background .3s var(--e);
-}
-.sys::before {
-  content: ""; width: 5px; height: 5px; border-radius: 50%;
-  background: var(--rule); flex: 0 0 auto; transition: inherit;
-}
-.sys.lit { color: var(--sky); border-color: color-mix(in srgb, var(--sky) 45%, transparent); background: color-mix(in srgb, var(--sky) 8%, var(--abyss)); }
-.sys.lit::before { background: var(--sky); box-shadow: 0 0 7px var(--sky); }
-
-.personas { display: grid; gap: 8px; }
-.persona {
-  border: 1px solid var(--rule); border-radius: 7px; background: var(--slab);
-  padding: 12px 15px; opacity: .32;
-  transition: opacity .4s var(--e), border-color .4s var(--e), transform .4s var(--e);
-}
-.persona.lit { opacity: 1; border-color: color-mix(in srgb, var(--sky) 40%, transparent); transform: translateX(3px); }
-.persona .who {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--sky); margin-bottom: 5px;
-}
-.persona .what { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
-.persona .lands { font-size: 12.5px; color: var(--gold); margin-top: 6px; }
-
-/* ── your-turn scene ──────────────────────────────────────────────────── */
-
-.turn textarea {
-  width: 100%; min-height: 92px; resize: vertical;
-  font: inherit; font-size: 15px; line-height: 1.55;
-  background: var(--abyss); color: var(--ink);
-  border: 1px solid var(--rule); border-radius: 7px; padding: 13px 15px;
-}
-.turn textarea::placeholder { color: var(--ink-3); }
-.examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 18px; }
-.examples button {
-  font: inherit; font-size: 13px; cursor: pointer;
-  background: transparent; color: var(--ink-2);
-  border: 1px solid var(--rule); border-radius: 999px; padding: 7px 14px;
-  transition: border-color .16s var(--e), color .16s var(--e);
-}
-.examples button:hover { border-color: var(--sky); color: var(--sky); }
 
 /* ── the console scene (screen carousel) ──────────────────────────────── */
 
 .screen {
-  border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
-  background: var(--abyss);
+  border: 1px solid var(--rule); border-radius: var(--r-md); overflow: hidden;
+  background: var(--recess);
 }
 .screen-bar {
   display: flex; align-items: center; gap: 9px;
   padding: 9px 13px; border-bottom: 1px solid var(--rule);
-  font-family: var(--mono); font-size: 10.5px; color: var(--ink-3);
-  background: var(--slab);
+  color: var(--ink-3);
+  background: var(--surface-1);
 }
-.screen-bar .lamps { display: flex; gap: 5px; }
+/* The chrome bar carries lamps, a title and a status. The status is the one
+   that must survive at every width — it is the only thing on the bar that
+   CHANGES while the workflow runs — so the lamps and the status are pinned and
+   the title takes the ellipsis. Before this the bar simply clipped mid-word
+   against .screen's overflow:hidden. */
+.screen-bar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.screen-bar > span:last-child { flex: 0 0 auto; }
+.screen-bar .lamps { display: flex; gap: 5px; flex: 0 0 auto; overflow: visible; }
 .screen-bar .lamps i { width: 9px; height: 9px; border-radius: 50%; display: block; }
 .screen-body { padding: 18px; min-height: 260px; }
 
-.tiles { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 10px; }
-.tile { border: 1px solid var(--rule); border-radius: 6px; padding: 12px 13px; background: var(--slab); }
-.tile .tn { font-family: var(--display); font-weight: 700; font-size: 22px; color: var(--sky); font-variant-numeric: tabular-nums; }
-.tile .tl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-top: 6px; }
-.tile.human .tn { color: var(--gold); }
-
 .bars { display: grid; gap: 7px; margin-top: 14px; }
-.bar { display: grid; grid-template-columns: 130px 1fr 54px; gap: 11px; align-items: center; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
-.bar .track { height: 8px; border-radius: 4px; background: var(--rule); overflow: hidden; }
-.bar .fill { height: 100%; background: linear-gradient(90deg, var(--royal), var(--sky)); border-radius: 4px; }
-.bar .v { text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.bar {
+  display: grid; grid-template-columns: 130px 1fr 54px; gap: 11px; align-items: center;
+  font-family: var(--font-meta); font-size: var(--step--1); line-height: var(--lh--1);
+  color: var(--ink-2);
+}
+.bar .track { height: 8px; border-radius: var(--r-pill); background: var(--rule); overflow: hidden; }
+.bar .fill { height: 100%; background: linear-gradient(90deg, var(--royal), var(--sky)); border-radius: var(--r-pill); }
+.bar .v { text-align: right; color: var(--ink-3); }
 
 /* ── filmstrip ────────────────────────────────────────────────────────── */
 
 #strip {
   grid-area: strip;
   border-left: 1px solid var(--rule);
-  background: var(--abyss);
+  background: var(--recess);
   display: flex; flex-direction: column; min-height: 0;
   padding: 14px 14px 14px;
   gap: 10px;
 }
 .strip-head {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
-  text-transform: uppercase; color: var(--ink-3);
+  color: var(--ink-3);
   display: flex; justify-content: space-between; align-items: center;
 }
 #sceneList { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; min-height: 0; padding-right: 3px; }
 #sceneList::-webkit-scrollbar { width: 5px; }
-#sceneList::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+#sceneList::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--r-pill); }
 
 .strip-item {
   display: flex; align-items: center; gap: 10px;
-  font: inherit; font-size: 13px; text-align: left; cursor: pointer;
-  background: var(--slab); color: var(--ink-2);
-  border: 1px solid var(--rule); border-radius: 6px; padding: 9px 11px;
+  font: inherit; font-size: var(--step--1); line-height: var(--lh--1);
+  text-align: left; cursor: pointer;
+  background: var(--surface-1); color: var(--ink-2);
+  border: 1px solid var(--rule); border-radius: var(--r-sm); padding: 9px 11px;
   transition: border-color .16s var(--e), color .16s var(--e);
 }
-.strip-item:hover { color: var(--ink); border-color: var(--ink-3); }
+.strip-item:hover { color: var(--ink); border-color: var(--rule-loud); }
 .strip-item .n {
-  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
-  background: var(--abyss); border-radius: 3px;
+  font-size: var(--step--2); color: var(--ink-3);
+  background: var(--recess); border-radius: var(--r-xs);
   width: 19px; height: 19px; display: grid; place-items: center; flex: 0 0 auto;
 }
 .strip-item .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -537,11 +693,8 @@ header {
   color: var(--ink); border-color: var(--sky);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sky) 30%, transparent);
 }
-.strip-item.current .n { background: var(--sky); color: var(--abyss); }
-.strip-item .flag {
-  font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
-  color: var(--sky); text-transform: uppercase;
-}
+.strip-item.current .n { background: var(--sky); color: var(--on-platform); }
+.strip-item .flag { color: var(--sky); }
 
 .transport { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .transport .btn { text-align: center; }
@@ -551,16 +704,16 @@ header {
 
 #askbar {
   grid-area: ask;
-  border-top: 1px solid var(--rule); background: var(--abyss);
+  border-top: 1px solid var(--rule); background: var(--recess);
   display: flex; align-items: center; gap: 10px;
   padding: 0 20px;
 }
 #askForm { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 #askInput {
   flex: 1; min-width: 0;
-  font: inherit; font-size: 15px;
-  background: var(--slab); color: var(--ink);
-  border: 1px solid var(--rule); border-radius: 7px;
+  font: inherit; font-size: var(--step-0);
+  background: var(--surface-1); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: var(--r-md);
   padding: 12px 16px;
   transition: border-color .16s var(--e);
 }
@@ -573,9 +726,9 @@ header {
 #answer {
   position: fixed; left: var(--rail); right: var(--strip);
   bottom: var(--ask); max-height: 62vh;
-  background: var(--slab); border: 1px solid var(--sky);
-  border-bottom: none; border-radius: 10px 10px 0 0;
-  box-shadow: 0 -18px 50px rgba(0,0,0,.5);
+  background: var(--surface-1); border: 1px solid var(--sky);
+  border-bottom: none; border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--lift);
   display: none; flex-direction: column; z-index: 30;
 }
 #answer.open { display: flex; animation: rise .32s var(--e) both; }
@@ -584,27 +737,24 @@ header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 20px; border-bottom: 1px solid var(--rule);
 }
-.ans-head .q {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--gold);
-}
+.ans-head .q { color: var(--gold); }
 .ans-body { padding: 18px 20px 22px; overflow-y: auto; }
 .ans-body::-webkit-scrollbar { width: 6px; }
-.ans-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
-.ans-body p { margin: 0 0 12px; font-size: 15px; line-height: 1.62; max-width: 72ch; text-wrap: pretty; }
+.ans-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: var(--r-pill); }
+.ans-body p { margin: 0 0 12px; font-size: var(--step-0); line-height: var(--lh-read); max-width: 72ch; text-wrap: pretty; }
 .ans-body p:last-child { margin-bottom: 0; }
 .ans-body ul { margin: 0 0 12px; padding-left: 20px; }
-.ans-body li { font-size: 14.5px; line-height: 1.6; margin-bottom: 5px; color: var(--ink-2); }
+.ans-body li { font-size: var(--step-0); line-height: var(--lh-read); margin-bottom: 5px; color: var(--ink-2); }
 .ans-src {
   margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--rule);
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
 }
-.ans-src .lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.ans-src .lbl { color: var(--ink-3); }
 .jump {
-  font: inherit; font-size: 12.5px; cursor: pointer;
+  font: inherit; font-size: var(--step--1); cursor: pointer;
   background: transparent; color: var(--sky);
   border: 1px solid color-mix(in srgb, var(--sky) 40%, transparent);
-  border-radius: 999px; padding: 5px 12px;
+  border-radius: var(--r-pill); padding: 5px 12px;
 }
 .jump:hover { border-color: var(--sky); }
 
@@ -612,25 +762,23 @@ header {
 
 #overlay {
   position: fixed; inset: 0; z-index: 60;
-  background: color-mix(in srgb, var(--abyss) 94%, transparent);
+  background: color-mix(in srgb, var(--recess) 94%, transparent);
   display: grid; place-items: center; padding: 30px;
   backdrop-filter: blur(3px);
 }
 #overlay[hidden] { display: none; }
 .opencard { max-width: 620px; text-align: center; }
-.opencard .kicker {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .22em;
-  text-transform: uppercase; color: var(--sky); margin-bottom: 20px;
-}
+.opencard .kicker { color: var(--sky); margin-bottom: 20px; }
 .opencard h1 {
-  font-family: var(--display); font-weight: 700;
-  font-size: clamp(38px, 5.6vw, 66px); line-height: 1; letter-spacing: -.02em;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-5); line-height: var(--lh-5);
+  letter-spacing: var(--track-display);
   margin: 0 0 18px; text-wrap: balance;
 }
 .opencard h1 em { font-style: normal; color: var(--sky); }
-.opencard p { font-size: 17px; line-height: 1.55; color: var(--ink-2); margin: 0 0 30px; text-wrap: pretty; }
-.opencard .btn { font-size: 15px; padding: 13px 26px; }
-.opencard .fine { margin-top: 20px; font-size: 12px; color: var(--ink-3); }
+.opencard p { font-size: var(--step-1); line-height: var(--lh-1); color: var(--ink-2); margin: 0 0 30px; text-wrap: pretty; }
+.opencard .btn { font-size: var(--step-0); padding: 13px 26px; }
+.opencard .fine { margin-top: 20px; font-size: var(--step--1); color: var(--ink-3); }
 
 /* ── responsive ───────────────────────────────────────────────────────── */
 
@@ -663,66 +811,62 @@ header {
   .pipeline .arrow-r { transform: rotate(90deg); justify-self: center; }
 }
 .stage-step {
-  background: var(--slab); border: 1px solid var(--rule);
-  border-radius: 8px; padding: 16px 18px;
+  background: var(--surface-1); border: 1px solid var(--rule);
+  border-radius: var(--r-md); padding: 16px 18px;
 }
-.stage-step .sn {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--ink-3);
-}
+.stage-step .sn { color: var(--ink-3); }
 .stage-step .sv {
-  font-family: var(--display); font-weight: 700; font-size: 38px; line-height: 1.05;
-  color: var(--sky); margin: 8px 0 8px; font-variant-numeric: tabular-nums;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--step-fig); line-height: var(--lh-4);
+  color: var(--sky); margin: 8px 0 8px;
 }
-.stage-step .sd { font-size: 13px; line-height: 1.5; color: var(--ink-2); }
-.arrow-r { align-self: center; color: var(--rule); font-size: 20px; }
+.stage-step .sd { font-size: var(--step--1); line-height: var(--lh--1); color: var(--ink-2); }
+.arrow-r { align-self: center; color: var(--rule-loud); font-size: var(--step-2); }
 
 /* ── assistant Q&A (scene: ask it anything) ───────────────────────────── */
 
 .qa { display: flex; flex-direction: column; gap: 14px; }
 .q-line {
-  font-family: var(--display); font-weight: 500; font-size: 20px; line-height: 1.35;
+  font-family: var(--font-display); font-weight: 500;
+  font-size: var(--step-2); line-height: var(--lh-2);
+  letter-spacing: var(--track-tight);
   color: var(--gold); text-wrap: balance;
 }
-.a-line { font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
+.a-line { font-size: var(--step-0); line-height: var(--lh-read); color: var(--ink-2); }
 .a-line b { color: var(--ink); font-weight: 600; }
 .a-tag {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--sky);
+  color: var(--sky);
   border: 1px solid color-mix(in srgb, var(--sky) 40%, transparent);
-  border-radius: 3px; padding: 2px 6px; margin-right: 9px;
+  border-radius: var(--r-xs); padding: 2px 6px; margin-right: 9px;
 }
 .cites { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding-top: 12px; border-top: 1px solid var(--rule); }
-.cites .lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.cites .lbl { color: var(--ink-3); }
 .cite {
-  font-family: var(--mono); font-size: 10.5px;
-  border: 1px solid var(--rule); border-radius: 3px;
-  padding: 3px 8px; color: var(--ink-2); background: var(--slab);
+  font-family: var(--font-meta); font-size: var(--step--1); line-height: var(--lh--1);
+  border: 1px solid var(--rule); border-radius: var(--r-xs);
+  padding: 3px 8px; color: var(--ink-2); background: var(--surface-1);
 }
 
 /* ── the live run (scene: watch it work) ──────────────────────────────── */
 
 .run { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap: 18px; align-items: start; }
 @media (max-width: 1150px) { .run { grid-template-columns: 1fr; } }
-.run-screen { border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--abyss); }
+.run-screen { border: 1px solid var(--rule); border-radius: var(--r-md); overflow: hidden; background: var(--recess); }
 
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .steps li {
   display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: baseline;
-  padding: 11px 13px; border-radius: 6px;
-  border: 1px solid var(--rule); background: var(--slab);
+  padding: 11px 13px; border-radius: var(--r-sm);
+  border: 1px solid var(--rule); background: var(--surface-1);
   opacity: .34; transition: opacity .35s var(--e), border-color .35s var(--e), transform .35s var(--e);
 }
 .steps li.lit { opacity: 1; border-color: color-mix(in srgb, var(--sky) 42%, transparent); transform: translateX(3px); }
 .steps li.human { border-style: dashed; }
-.steps li.human.lit { border-color: color-mix(in srgb, var(--gold) 55%, transparent); background: color-mix(in srgb, var(--gold) 7%, var(--slab)); }
+.steps li.human.lit { border-color: color-mix(in srgb, var(--gold) 55%, transparent); background: color-mix(in srgb, var(--gold) 7%, var(--surface-1)); }
 .steps li.waiting { animation: pulse 1.7s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 34%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
 @media (prefers-reduced-motion: reduce) { .steps li.waiting { animation: none; } }
-.steps .sk {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .13em;
-  text-transform: uppercase; color: var(--sky); text-align: right;
-}
+.steps .sk { color: var(--sky); text-align: right; }
 .steps li.human .sk { color: var(--gold); }
-.steps .sb { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.steps .sb { font-size: var(--step--1); line-height: var(--lh--1); color: var(--ink-2); }
 .steps li.lit .sb { color: var(--ink); }
