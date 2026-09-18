@@ -88,8 +88,8 @@ untouched.
 that estimate at all — it is done, licence-clean and committed. See below.
 
 **The one real trade-off:** it needs WebGL and a GLB, so the single-file offline build
-gets bigger and needs a GPU. Concretely: 6.56 MiB of avatar, about 9.6 MB once base64'd
-into `dist/index.html`. The canvas presenter in this repo stays as the fallback for a
+gets bigger and needs a GPU. Concretely: 7.04 MiB of avatar, about 9.39 MiB once base64'd
+into `dist/index-3d.html`. The canvas presenter in this repo stays as the fallback for a
 locked-down venue machine — keep both.
 
 ### The avatar licensing problem — **resolved**
@@ -110,10 +110,14 @@ prospects, and the single-file build hands the asset to the client outright:
 record** rather than the shipped avatar: a generic MakeHuman figure in a logo t-shirt and
 jeans at 35 MiB is not what presents an airport platform to a CFO.
 
-**What ships instead: a VALID avatar** — `Black_F_1_Busi`, **MIT, Copyright (c) 2022
-Tiffany Do**, 6.56 MiB, business dress, and joint-highest validated agreement in the
-library (0.98 ethnicity / 0.98 gender, n=132 across 33 countries, from VALID's own
-published data). Commercial use is unambiguously permitted; the citation VALID asks for
+**What ships instead: a VALID avatar** — `Hispanic_F_3_Busi`, **MIT, Copyright (c) 2022
+Tiffany Do**, 7.04 MiB, business dress, and **0.93 gender agreement** (n=132 across 33
+countries, from VALID's own published data) — the only agreement figure this project
+makes a claim about. She is 11th of 16 on *ethnic* agreement (0.59), which is ethnic
+ambiguity rather than illegibility and costs us nothing we were using, since the
+presenter asserts nothing about her ethnicity; the full argument, and why the previous
+pick's joint-1st ranking turned out to rest on a TalkingHead lighting bug, is in
+`docs/AVATAR.md` §2. Commercial use is unambiguously permitted; the citation VALID asks for
 is honoured in `docs/AVATAR.md` alongside the verbatim licence, the source hashes and the
 dated provenance record.
 
@@ -180,7 +184,7 @@ is a key in the browser, and anyone can read it. `llm.endpoint` exists for exact
    purpose-built, ~half a day, one file changes. The library is vendored offline
    (`docs/TALKINGHEAD.md`) and the avatar is done: ~~+ a Ready Player Me avatar~~ —
    **that route is gone**, RPM shut down 2026-01-31 — replaced by a **VALID** avatar,
-   MIT, licence-clean, business-dressed, 6.56 MiB, with its mouth proven to move
+   MIT, licence-clean, business-dressed, 7.04 MiB, with its mouth proven to move
    (`docs/AVATAR.md`). No longer the critical path. The one decision still open is
    *which* of the 210 VALID avatars presents as Iris; that is a client call and it is one
    constant in `tools/convert-valid-avatar.mjs`.

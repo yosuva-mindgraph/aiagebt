@@ -2,7 +2,7 @@
 
 ## What this is
 
-The AIB Presenter deck currently narrates through a drawn 2D bust on a `<canvas>`. This
+The **Intelligent Airport** deck currently narrates through a drawn aperture on a `<canvas>`. This
 adds a second, photoreal presenter — a rigged GLB driven by
 [met4citizen/TalkingHead](https://github.com/met4citizen/TalkingHead) 1.7.0 in WebGL,
 lip-synced to the ElevenLabs audio — as an **opt-in third build target**. The shipping
@@ -108,7 +108,7 @@ any route to clear those rights from anyone. It cannot ship and the question is 
 This matters because essentially every TalkingHead tutorial and sample reaches for an RPM
 avatar, so the obvious path is a dead end and will stay one.
 
-We ship **`Black_F_1_Busi`** from the **VALID** library (Validated Avatar Library for
+We ship **`Hispanic_F_3_Busi`** from the **VALID** library (Validated Avatar Library for
 Inclusion and Diversity, UCF + Google) — 210 perceptually validated, fully-rigged
 avatars. VALID ships FBX only, so we consume the glTF conversion at
 [`c-frame/valid-avatars-glb`](https://github.com/c-frame/valid-avatars-glb) (commit
@@ -125,9 +125,9 @@ carries it. VALID asks that the paper be cited — MIT does not require it, we d
 
 | | |
 |---|---|
-| Source | `.../valid-avatars-glb/c4719df.../avatars/Black/Black_F_1_Busi.glb` |
-| Source bytes / sha256 | 1,718,008 · `e8158244…` |
-| Shipped bytes / sha256 | **6,877,280 (6.56 MiB)** · **`410f9933…`** |
+| Source | `.../valid-avatars-glb/c4719df.../avatars/Hispanic/Hispanic_F_3_Busi.glb` |
+| Source bytes / sha256 | 2,064,884 · `82840256…` |
+| Shipped bytes / sha256 | **7,381,268 (7.04 MiB)** · **`70fbdc0e…`** |
 
 `tools/convert-valid-avatar.mjs` re-verifies the source sha256 on every run and refuses
 to proceed on a mismatch, so an upstream change cannot slip through quietly. This
@@ -202,7 +202,7 @@ here so they are at least visible from the PR.
    orderings, `quantize → sparse` produces the smallest file (4,350,992 B) and a **perfect
    mannequin**: gltf-transform's sparse writer zeroes the values of a normalized-integer
    accessor, so every morph delta comes back all-zero. Nothing but a zero-delta geometry
-   check distinguishes it from a working avatar. We ship `sparse` alone (6,877,280 B).
+   check distinguishes it from a working avatar. We ship `sparse` alone (7,381,268 B).
 
 ## Evidence
 

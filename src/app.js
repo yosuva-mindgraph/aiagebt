@@ -7,7 +7,7 @@
    pauses the walkthrough, answers, and offers to resume.
 
    It does NOT know which avatar is on screen. There are two — a rigged GLB in
-   WebGL and the drawn canvas bust — and they disagree about who plays the
+   WebGL and the drawn aperture — and they disagree about who plays the
    audio, so the Presenter owns that argument (src/presenter.js, seam S4) and
    this file speaks one line at a time through it:
 
@@ -180,10 +180,30 @@ class App {
     this.seen.add(this.i);
     const scene = SCENES[this.i];
 
-    this.el.title.textContent = scene.title;
-    /* Scene 1's title IS the product name, so the naive `title — PRODUCT` gives
-       "Intelligent Airport — Intelligent Airport" in the tab and in anything
-       that scrapes it. Fall back to the same wording index.html ships. */
+    /* Scene 1's title IS the product name, and it collides on TWO surfaces.
+
+       The header is the one that matters. The lockup already prints the product
+       a few pixels to the left, so assigning the title here spelled the name
+       twice across the top of the FIRST frame a client sees, separated only by
+       the hairline rule — and the tab, which nobody in the room is looking at,
+       was the only surface guarded. One guard, both surfaces, applied to the
+       header first.
+
+       It falls back to the walkthrough wording rather than to nothing. Empty is
+       tempting — the lockup does name the product — but the rule between the two
+       is drawn by this element's OWN border-left, with 16px of padding behind
+       it, so an empty string leaves a hairline and 22px of dead air hanging off
+       the lockup. And this slot is the viewer's "where am I" readout on the
+       other eleven scenes; blanking it on scene 1 alone reads as a scene that
+       failed to load rather than as a deliberate space. So: the lockup says what
+       the product is, and this says what you are watching. It is also the exact
+       wording the tab has always used, which is the point — the two halves of
+       the header now agree instead of disagreeing five lines apart.
+
+       Fixed HERE, at the render site, and deliberately not in src/scenes.js: the
+       scene's title is also its filmstrip label and the slug shoot.js builds its
+       screenshot filenames from, and neither of those wants to be "Walkthrough". */
+    this.el.title.textContent = scene.title === PRODUCT ? 'Walkthrough' : scene.title;
     document.title = scene.title === PRODUCT
       ? `${PRODUCT} — walkthrough`
       : `${scene.title} — ${PRODUCT}`;

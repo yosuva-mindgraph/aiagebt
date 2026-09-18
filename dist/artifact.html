@@ -2746,11 +2746,35 @@ const sceneIndex = id => SCENES.findIndex(s => s.id === id);
    define.) The reason for the hex rule is that
    _alpha() parses #rgb/#rrggbb and returns anything else unchanged, which
    silently turns every translucent layer opaque. Only four tokens satisfy that
-   in all three blocks: --sky, --gold, --royal and --ink-3. --peach is
-   `var(--dxc-peach)` / `var(--dxc-melon)`, an indirection rather than a
-   literal, so the thinking hue is TINTED FROM --gold here instead. That
-   tracks the semantic in both themes (Midnight: #FFAE41 → a peach; Canvas:
-   #D14600 → a melon, which is what --peach resolves to there anyway).
+   in all three blocks: --sky, --gold, --royal and --ink-3.
+
+   --peach is not among them, and the reason written here for years was WRONG.
+   It claimed --peach is an indirection — var() onto the palette rather than a
+   literal — and that the indirection is what fails the hex contract. Measured
+   in Chrome 153 against the built file, that is simply not true: a computed
+   custom property comes back SUBSTITUTED, one hop or two, so --peach reads as
+   #FFC982 on Midnight and #FF7E51 on Canvas and _alpha() takes either apart
+   perfectly well. color-mix() is the thing that really does come back
+   unsubstituted, and that is the case the hex rule genuinely catches.
+
+   The guard still says no, for a reason that lives in the TEST rather than in
+   the browser. tests/guards.test.mjs derives its token list by parsing this
+   file's own lookups out of the source, then requires each token to be literal
+   hex where the STYLESHEET DECLARES it, in all three theme blocks. --peach is
+   declared as an indirection in all three, so adding a lookup for it here fails
+   three checks — measured, not assumed. Making it pass means changing
+   src/styles.css, which is a palette decision and not this file's to take.
+
+   So the thinking hue stays TINTED FROM --gold, and the cost is now written
+   down honestly. Two amounts, because the themes have different problems. On
+   Midnight, Gold is #FFAE41 and .34 of the way to white lands on #FFCA82 — one
+   step of green off the real peach, so that theme loses nothing at all. On
+   Canvas, Gold is DXC Red (#D14600) and .26 lands on #DD7642 against a true
+   Melon of #FF7E51: duller by 34 red, 8 green and 15 blue. That is the whole
+   price of the workaround, it is paid only on paper, and it buys a green guard
+   rather than the colour it looks like it buys. Too small a tint there would
+   leave thinking and listening the same colour and stop expressing the semantic
+   at all, which is why .26 and not less.
 
    PERFORMANCE. The old file called getComputedStyle() inside the frame loop at
    60fps, and read a token it never used. Tokens are resolved on construction
@@ -2919,15 +2943,19 @@ class Avatar {
        token, no user-agent sniffing, and it follows a rebrand automatically. */
     this.onDark = this._lum(this.SKY) > .45;
 
-    /* Peach, derived — see the header on why it cannot be read as a token.
+    /* Peach, derived. The header carries the real reason this is derived rather
+       than read — it is the GUARD's source-level hex rule, not any failure of
+       the browser to resolve the token, and the note there was wrong about that
+       for a long time.
 
-       Two different amounts because the two themes have different problems.
-       On Midnight, Gold is #FFAE41 and a third of the way to white is a clear
-       peach. On Canvas, Gold is DXC Red (#D14600) and --peach resolves to Melon
-       (#FF7E51) — a visibly lighter, warmer thing — so too small a tint leaves
-       thinking and listening the same colour and the semantic stops being
-       expressed at all. .26 lands near Melon while keeping the mark solid
-       enough to read on paper, which the ring and the disc both have to do. */
+       Two different amounts because the two themes have different problems. On
+       Midnight, Gold is #FFAE41 and .34 of the way to white gives #FFCA82 — one
+       step of green off the real peach, so nothing is lost. On Canvas, Gold is
+       DXC Red (#D14600) and the token would resolve to Melon (#FF7E51); .26
+       gives #DD7642, which is duller by 34 red, 8 green and 15 blue and is the
+       one place the workaround actually costs a colour. Less tint than that
+       leaves thinking and listening the same colour and stops expressing the
+       semantic at all, so .26 is the floor, not a preference. */
     this.PEACH = this._tint(this.GOLD, this.onDark ? .34 : .26);
 
     // Unlit ticks need more weight on paper than on Midnight to read at all.
@@ -4805,7 +4833,7 @@ function spokenForm(html) {
    pauses the walkthrough, answers, and offers to resume.
 
    It does NOT know which avatar is on screen. There are two — a rigged GLB in
-   WebGL and the drawn canvas bust — and they disagree about who plays the
+   WebGL and the drawn aperture — and they disagree about who plays the
    audio, so the Presenter owns that argument (src/presenter.js, seam S4) and
    this file speaks one line at a time through it:
 
@@ -4976,10 +5004,30 @@ class App {
     this.seen.add(this.i);
     const scene = SCENES[this.i];
 
-    this.el.title.textContent = scene.title;
-    /* Scene 1's title IS the product name, so the naive `title — PRODUCT` gives
-       "Intelligent Airport — Intelligent Airport" in the tab and in anything
-       that scrapes it. Fall back to the same wording index.html ships. */
+    /* Scene 1's title IS the product name, and it collides on TWO surfaces.
+
+       The header is the one that matters. The lockup already prints the product
+       a few pixels to the left, so assigning the title here spelled the name
+       twice across the top of the FIRST frame a client sees, separated only by
+       the hairline rule — and the tab, which nobody in the room is looking at,
+       was the only surface guarded. One guard, both surfaces, applied to the
+       header first.
+
+       It falls back to the walkthrough wording rather than to nothing. Empty is
+       tempting — the lockup does name the product — but the rule between the two
+       is drawn by this element's OWN border-left, with 16px of padding behind
+       it, so an empty string leaves a hairline and 22px of dead air hanging off
+       the lockup. And this slot is the viewer's "where am I" readout on the
+       other eleven scenes; blanking it on scene 1 alone reads as a scene that
+       failed to load rather than as a deliberate space. So: the lockup says what
+       the product is, and this says what you are watching. It is also the exact
+       wording the tab has always used, which is the point — the two halves of
+       the header now agree instead of disagreeing five lines apart.
+
+       Fixed HERE, at the render site, and deliberately not in src/scenes.js: the
+       scene's title is also its filmstrip label and the slug shoot.js builds its
+       screenshot filenames from, and neither of those wants to be "Walkthrough". */
+    this.el.title.textContent = scene.title === PRODUCT ? 'Walkthrough' : scene.title;
     document.title = scene.title === PRODUCT
       ? `${PRODUCT} — walkthrough`
       : `${scene.title} — ${PRODUCT}`;

@@ -81,13 +81,13 @@ Two backends behind one interface, and the page picks at runtime:
 
 | | |
 |---|---|
-| **canvas** | Iris drawn in 2D — `src/avatar.js`. Visemes, blink, four states. No GPU, no download, no dependency. This is what ships. |
+| **canvas** | Iris as an aperture — `src/avatar.js`. A level ring reading out the speech envelope, four states. No face, so no visemes drawn and nothing to blink. No GPU, no download, no dependency. This is what ships. |
 | **talkinghead** | A rigged GLB in WebGL via [met4citizen/TalkingHead](https://github.com/met4citizen/TalkingHead) (MIT), vendored offline in `vendor/`. Drives its own audio clock, so it does the playing as well as the mouthing. |
 
 `Avatar3D.create()` **answers `null` rather than throwing** when it cannot have a 3D
 presenter — no `window.TalkingHead`, a blocklisted GPU, `prefers-reduced-motion`, or a
 rail that is `display:none` on a phone. None of those are errors; they are "no 3D
-today", logged once, and the walkthrough carries on with the canvas bust. That is why
+today", logged once, and the walkthrough carries on with the canvas aperture. That is why
 the shipped file can simply leave the 3D bytes out.
 
 ## Building the single file
@@ -168,7 +168,7 @@ src/
   styles.css        tokens, both themes. One rule: SKY is the platform's, GOLD is the human's
   scenes.js         the twelve scenes — narration + stage + optional interaction
   knowledge.js      38 traceable facts + the retrieval function + the confidence floor
-  avatar.js         Iris — canvas bust, visemes, blink, four states
+  avatar.js         Iris — the canvas aperture, speech envelope, four states
   voice.js          ElevenLabs → Web Speech fallback; plus speech input
   avatar3d.js       the two backends behind one interface; 3D falls back by answering null
   presenter.js      picks a backend, owns say/cancel, hides the seam from app.js
@@ -199,10 +199,27 @@ you. Nothing breaks it.
 and Midnight is the brand ground. Light is fully designed — not an inversion; Sky is
 too pale on paper, so the platform speaks in Royal there — and the toggle persists.
 
-**The canvas Iris is drawn, not filmed.** A half-convincing photoreal head reads as a
-failure; a confident stylised one reads as a choice. Her name is from the source material
-— *"like an iris, AIRIS enables an Airport to see and understand its operations"* — which
-is why the eye is the most detailed thing on *that* face and everything else is quieter.
+**The canvas Iris is an aperture, not a face.** The drawn bust that stood here used to
+argue that a half-convincing photoreal head reads as a failure while a confident stylised
+one reads as a choice. That argument lost its own ground: the 3D backend now loads a
+genuinely photoreal GLB, so a drawing is no longer the confident alternative to a bad
+render — it is a drawing competing with a real head, on the real head's terms, in the
+DEFAULT build that most clients are shown. An aperture never enters that contest. It
+cannot fall into the uncanny valley, because it is not attempting a face.
+
+What it does instead is state the product's own metaphor. Her name is from the source
+material — *"like an iris, AIRIS enables an Airport to see and understand its
+operations"* — so what is drawn is the instrument that does the seeing: a level ring, two
+hairlines, a datum across the middle and a small light on it. A single number — real RMS
+when ElevenLabs is present, synthesised from the viseme track when it is not — drives the
+lit ticks, the hairline radii, the centre light and the bar on the datum, so the ring
+reads out speech rather than miming a mouth. There is deliberately no eye: a pale disc
+with a dark middle inside a ring is an eyeball whatever the comments call it, and the
+first cut of this held the room's gaze for the length of a walkthrough before it was cut
+back. The ring is the subject; the centre is a reading. The argument in full, including
+the two shapes that were tried and rejected, is the header of
+[`src/avatar.js`](src/avatar.js).
+
 What the 3D backend loads instead is [`docs/AVATAR.md`](docs/AVATAR.md)'s business, not
 this note's.
 

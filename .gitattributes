@@ -1,0 +1,34 @@
+# The two committed build artifacts must CONFLICT, never auto-merge.
+#
+# dist/index.html and dist/artifact.html are tracked on purpose — they are the
+# thing you double-click, and the booth machine has no npm and no network. But
+# they are GENERATED: build.js inlines every src/ module verbatim into a script
+# inside one document, so a single line of source lands in both files, far from
+# where it was written and with no import graph left to make the relationship
+# visible.
+#
+# Git cannot see any of that. It sees two ~1 MB text files with long common
+# runs, and its default line merge is only too happy to interleave hunks from
+# two branches that each rebuilt from a different tree. During the eight-branch
+# rebrand integration it did exactly that, twice, with no conflict raised. The
+# result happened to be correct — and that is the problem, because nothing about
+# the process made it correct and the next integrator gets no warning at all.
+# A generated file merged line-by-line is a build nobody ran.
+#
+# merge=binary is git's built-in "take ours and declare a conflict" driver. It
+# turns a silent, plausible, unbuilt artifact into a loud stop. There is exactly
+# one correct resolution and it is never to hand-edit the conflict:
+#
+#     git checkout --ours dist/index.html dist/artifact.html
+#     node build.js --3d --artifact        # rebuild from the merged source
+#     git add dist/index.html dist/artifact.html
+#
+# diff is deliberately left ON. Reading the diff of a rebuilt artifact is how
+# you catch a source change that did not survive inlining — the "correct in
+# source, broken in the artifact" failure this repo keeps producing.
+dist/*.html merge=binary
+
+# assets/avatar.glb and the vendor bundle are genuinely binary / generated too;
+# marking them keeps a merge from ever trying to be clever with them either.
+assets/*.glb          binary
+vendor/*.bundle.js    merge=binary
