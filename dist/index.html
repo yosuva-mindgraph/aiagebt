@@ -2208,7 +2208,30 @@ const sceneIndex = id => SCENES.findIndex(s => s.id === id);
    The source briefing is where the name comes from: "like an iris, AIRIS
    enables an Airport to SEE and understand its operations." So this draws the
    metaphor the product is named after, and nothing else — a level ring, two
-   hairlines, and a pupil that opens and closes.
+   hairlines, a datum across the middle and a small light at the centre of it.
+
+   ── and the centre is NOT an eye ─────────────────────────────────────────
+   The first cut of this aperture put a large, near-opaque disc inside the
+   hairlines with a hard hole cut dead centre. Its own author flagged that it
+   "does read as a stylised eye"; at rail width, beside a live caption and a
+   name badge, it read as something blunter than that. A pale disc with a dark
+   middle inside a ring is an EYEBALL — sclera, pupil, orbit — whatever it is
+   called in the comments, and it held eye contact with the room for the length
+   of a walkthrough. That is a worse failure than the flat bust it replaced: the
+   bust was merely lifeless, and this stared.
+
+   Three things made it one, and all three are gone.
+     · SIZE — the disc very nearly touched the inner hairline, so the centre was
+       the visual mass and the ring was a frame around it. The light is now
+       about a fifth of that area with clear air all round it.
+     · A CLOSED, HIGH-CONTRAST SHAPE WITH A DARKER MIDDLE — the whole schematic
+       of an eye, in two elements. There is now no fill, no boundary stroke and
+       no hole: a bloom that falls off into the ground and closes nothing.
+     · BILATERAL SYMMETRY ABOUT THE VERTICAL — what makes any round thing read
+       as a face. A datum now runs straight through the middle with an UNEQUAL
+       reading on it, filling rightward. A gauge cannot be a pupil.
+   The test is to look at it small: if the eye reaches the centre before the
+   ring, it is still an eye. The ring is the subject; the centre is a reading.
 
    ── why the bust went ────────────────────────────────────────────────────
    The file that was here said, correctly, that "a half-convincing photoreal
@@ -2224,15 +2247,18 @@ const sceneIndex = id => SCENES.findIndex(s => s.id === id);
    not attempting a face. That is the whole argument.
 
    Literal aperture BLADES were tried first and cut: overlapping polygons read
-   as a sci-fi rune, not an instrument. What is left is a dial.
+   as a sci-fi rune, not an instrument. A literal PUPIL was tried second and cut
+   for the reason above. What is left is a dial, which is what it should have
+   been from the start — the metaphor is what the product SEES WITH, not an
+   organ drawn at the viewer.
 
    ── one number drives all of it ──────────────────────────────────────────
    setLevel() carries real RMS when ElevenLabs is present. When it is null —
    Web Speech, or no key at all, which is the common case — the envelope is
    synthesised from the viseme track, so the ring never sits dead through a
-   line. Count of lit ticks, the two hairline radii, the iris radius and the
-   pupil (which CONSTRICTS as the light rises, because that is what an iris
-   does) are all functions of that single value.
+   line. Count of lit ticks, the two hairline radii, the size and brightness of
+   the centre light, and the length of the bar on the datum are all functions of
+   that single value — four channels reading out one number.
 
    ── the rules this file does not get to reinterpret ──────────────────────
    COLOUR. Sky when the platform speaks, Gold when it is the human's turn,
@@ -2575,14 +2601,24 @@ class Avatar {
       ctx.lineWidth = .0086; ctx.stroke();
     }
 
-    /* ── two concentric hairlines, breathing with the level ─────────────── */
+    /* ── two concentric hairlines, breathing with the level ───────────────
+       The inner one is BROKEN at three and nine o'clock, where the datum below
+       crosses it. That is not decoration: an unbroken circle with a line drawn
+       over it is a circle with a scratch on it, and the line stays a foreign
+       object. Let the line pass through the wall and the two become one
+       apparatus — which is the whole argument for the centre not being an
+       organ. It also costs the inner hairline its closed-shape reading, and a
+       closed pale ring with something in the middle is half of what made the
+       first cut of this stare. */
     const h1 = R * (.545 + amp * .055);
     const h2 = R * (.330 + amp * .045);
+    const gap = .15;
     ctx.lineWidth = .0030;
     ctx.strokeStyle = this._alpha(hue, dark ? .38 : .34);
     ctx.beginPath(); ctx.arc(cx, cy, h1, 0, TAU); ctx.stroke();
     ctx.strokeStyle = this._alpha(hue, dark ? .54 : .48);
-    ctx.beginPath(); ctx.arc(cx, cy, h2, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, h2, gap, Math.PI - gap); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, h2, Math.PI + gap, TAU - gap); ctx.stroke();
 
     // the sheen: one off-axis highlight on the outer hairline, upper-left, so
     // the ring is lit from somewhere rather than uniformly self-illuminated
@@ -2590,42 +2626,92 @@ class Avatar {
     ctx.lineWidth = .0036;
     ctx.beginPath(); ctx.arc(cx, cy, h1, Math.PI * 1.06, Math.PI * 1.44); ctx.stroke();
 
-    /* ── the iris ────────────────────────────────────────────────────────
-       Nearly FLAT. An off-centre gradient with any range in it turns this into
-       a shaded sphere, and a shaded sphere with a bright pupil-hole in it reads
-       as a marble with a catchlight — which is a worse thing to be than a face.
-       The off-axis light lives in the ring sheen and the glow instead; this
-       keeps only enough falloff to seat the disc against them. */
-    const ir = R * (.245 + amp * .075);
-    const disc = ctx.createRadialGradient(cx - ir * .22, cy - ir * .24, ir * .10, cx, cy, ir);
-    disc.addColorStop(0,   this._alpha(hue, 1));
-    disc.addColorStop(.74, this._alpha(hue, .97));
-    disc.addColorStop(1,   this._alpha(hue, .88));
-    ctx.beginPath(); ctx.arc(cx, cy, ir, 0, TAU);
-    ctx.fillStyle = disc; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .95); ctx.lineWidth = .0026; ctx.stroke();
+    /* ── the centre light ────────────────────────────────────────────────
+       NOT A PUPIL. See the header: a filled disc with a darker middle is the
+       schematic of an eye no matter how it is styled, so there is no fill, no
+       boundary stroke and no hole here — only a bloom that falls away into the
+       ground colour and closes no shape at all.
 
-    /* ── the pupil, which is an actual hole ──────────────────────────────
-       destination-out rather than a dark fill: the page shows through, so it is
-       right on Midnight AND on Canvas with no colour decision to get wrong, and
-       it is what an aperture literally is. It CONSTRICTS as the light rises —
-       the second channel for the same one number.
+       Two things keep it subordinate to the ring, which is the subject:
 
-       Cut HARD, with only a hairline of feather. A soft hole is a smudge; a
-       hard one is an opening. */
-    const pr = ir * (.38 - amp * .11);
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    const hole = ctx.createRadialGradient(cx, cy, pr * .88, cx, cy, pr);
-    hole.addColorStop(0, 'rgba(0,0,0,1)');
-    hole.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = hole;
-    ctx.beginPath(); ctx.arc(cx, cy, pr, 0, TAU); ctx.fill();
-    ctx.restore();
+       SIZE. It lives inside h2 with real air around it. Visible extent — the
+       .84 stop, not cr, since the last sixth of the gradient is under 3% alpha
+       — runs .33 to .38 of the inner hairline's radius at rest and .46 to .56
+       at full drive, the lower figure of each pair being Canvas. The disc this
+       replaced sat at .74 of it at rest and .85 at full, which is what "crowds
+       the hairline" looks like written as a number.
 
-    // the aperture's inner edge, so the hole reads as cut rather than smudged
-    ctx.strokeStyle = this._alpha(hue, dark ? .55 : .70); ctx.lineWidth = .0022;
-    ctx.beginPath(); ctx.arc(cx, cy, pr, 0, TAU); ctx.stroke();
+       BRIGHTNESS. Its peak alpha is capped below a lit tick's at every drive:
+       .32–.62 against .42–.94 on Midnight, .42–.68 against .50–1 on Canvas. So
+       the brightest marks on the canvas are always out on the dial. That
+       ordering is the whole trick — the eye goes to the highest-contrast thing
+       first, and the highest-contrast thing must not be in the middle.
+
+       The gradient's outer circle IS the filled circle and its last stop is
+       fully transparent, so there is no rim anywhere for the eye to close into
+       a shape.
+
+       And the peak is well off the geometric centre — LEFT, with the sheen and
+       the ground glow, so it reads as something lit rather than self-
+       illuminated, and only slightly up, so the datum below runs through the
+       lit part rather than under it. Light on the left, reading to the right,
+       and nothing at all sitting at dead centre except the crossing of the two.
+       A luminance peak concentric with a ring is a pupil however faint it is
+       made; one that is plainly off-axis cannot be.
+
+       Tighter and firmer on Canvas. On Midnight this is LIGHT, and a wide soft
+       falloff reads as light; on paper the same gradient is INK, and a wide
+       soft falloff reads as a stain that has bled — especially over the ground
+       glow, which the disc used to cover and no longer does. */
+    const cr = R * (dark ? .145 + amp * .105 : .125 + amp * .078);
+    const ca = (dark ? .32 + amp * .30 : .42 + amp * .26);
+    const core = ctx.createRadialGradient(cx - cr * .36, cy - cr * .10, 0, cx, cy, cr);
+    core.addColorStop(0,   this._alpha(hue, ca));
+    core.addColorStop(.34, this._alpha(hue, ca * .55));
+    core.addColorStop(.62, this._alpha(hue, ca * .16));
+    core.addColorStop(.84, this._alpha(hue, ca * .03));
+    core.addColorStop(1,   this._alpha(hue, 0));
+    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, TAU);
+    ctx.fillStyle = core; ctx.fill();
+
+    /* ── the datum, drawn straight THROUGH the light ─────────────────────
+       The strongest anti-face move available, and it costs two strokes. Faces
+       and eyes are bilaterally symmetric about a vertical axis; a horizontal
+       rule across the middle carrying an UNEQUAL reading cannot be either. It
+       also replaces the constricting hole as the second channel for the level:
+       the bar fills RIGHTWARD from the centre, and a thing that grows in one
+       direction is a gauge where a thing that grows in all of them is a pupil.
+
+       Drawn AFTER the bloom rather than under it, deliberately — the instrument
+       crossing the light is what makes the centre read as an apparatus. Under
+       it, the light would sit on top and be a blob again.
+
+       The bar is graded ALONG its length, dim at the centre and brightest at
+       the moving end, for a reason worth keeping: a bar that is brightest where
+       it starts puts a bright point back at the exact centre, which is the one
+       place nothing bright may sit. Graded outward, the energy is always out at
+       the reading. Full scale lands just inside h2, so "how far along" is
+       legible against the hairline without a scale printed on it.
+
+       The rule itself runs slightly PAST h2, out through the gaps left for it,
+       so it visibly crosses the wall rather than stopping politely inside. Full
+       scale stays short of the wall, so there is somewhere left to go. */
+    const dEnd = h2 * .90;
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = this._alpha(hue, dark ? .28 : .32);
+    ctx.lineWidth = .0028;
+    ctx.beginPath();
+    ctx.moveTo(cx - h2 * 1.10, cy); ctx.lineTo(cx + h2 * 1.10, cy);
+    ctx.stroke();
+
+    const bar = dEnd * clamp01(.16 + amp * .84);
+    const read = ctx.createLinearGradient(cx, cy, cx + bar, cy);
+    read.addColorStop(0, this._alpha(hue, dark ? .30 : .34));
+    read.addColorStop(1, this._alpha(hue, dark ? .90 : .84));
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = read;
+    ctx.lineWidth = .0058;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + bar, cy); ctx.stroke();
 
     /* ── listening: one outward ping, because "your turn" is an invitation ── */
     if (listening && !this.reduced) {
