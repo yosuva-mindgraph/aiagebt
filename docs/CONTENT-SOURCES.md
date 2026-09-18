@@ -11,6 +11,15 @@ Two locations:
   Where the product and a slide disagree, **the product wins** — a metadata file is
   a fact and a deck is a claim.
 
+> **The product is called Intelligent Airport.** The share folder above, and the
+> blueprint PDF cited under *Delivery*, were filed under the product's earlier name
+> and their filenames still carry it. **Those are citations and they stay exactly as
+> they are** — a source is identified by the name it was filed under, and a brand
+> pass that edits the filenames makes every claim in this table untraceable. Two rows
+> near the end of *Delivery* name the engine and the vision this product demonstrates;
+> **neither of those is the product's name either**, and those rows exist precisely to
+> keep the three apart. Leave all of it alone.
+
 ---
 
 ## Platform structure
@@ -89,7 +98,7 @@ Two locations:
 ## Deliberately not used
 
 - **Named clients, airports and airlines.** The Malaysian references were sanitised out
-  of the AIB codebase on purpose (`sanitize: replace real Malaysian airport/airline
+  of the product codebase on purpose (`sanitize: replace real Malaysian airport/airline
   references with approved fictional set`), and the AIRIS briefing states the Perth
   engagement is named "for internal alignment only — confirm clearance before
   referencing that client in any external-facing collateral." Iris says "a live hub

@@ -12,10 +12,14 @@
    explicitly framed as where airports START, not where the platform stops.
 
    Every figure is traceable to the product's own metadata or to a document in
-   "Airports in a Box" on the share — see docs/CONTENT-SOURCES.md.
+   the "Airports in a Box" folder on the share (the folder name predates the
+   product being called Intelligent Airport) — see docs/CONTENT-SOURCES.md.
 
    Shape of a scene:
-     id        stable key; the knowledge base deep-links answers to it
+     id        stable key; the knowledge base deep-links answers to it. These
+               twelve ids are an API — src/knowledge.js deep-links to them and
+               scene 2's chooser jumps by them. Renaming one is a breaking
+               change, not a copy edit.
      title     header + filmstrip label
      flag      optional filmstrip badge ("live")
      lines     narration, one caption at a time
@@ -34,15 +38,22 @@ const card = (title, body, foot, chip) => `
 const metric = (n, l, human) => `
   <div class="metric"><div class="n${human ? ' human' : ''}">${n}</div><div class="l">${l}</div></div>`;
 
+/* The product's name, in one place, because it is spoken aloud and it has been
+   renamed once already. NOT the same thing as AIRIS (the engine named in the
+   source briefing, and where Iris gets her own name) or as DXC's "Thinking
+   Airport" vision — docs/CONTENT-SOURCES.md keeps all three distinct on
+   purpose, and the knowledge base has an entry that explains the difference. */
+export const PRODUCT = 'Intelligent Airport';
+
 export const SCENES = [
 
 /* 1 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'open',
-  title: 'Airport in a Box',
+  title: PRODUCT,
   eyebrow: 'Airport vertical · MindGraph × DXC',
   lines: [
-    "I'm Iris. I speak for Airport in a Box — the intelligence platform MindGraph and DXC put on top of an airport.",
+    "I'm Iris, and I speak for Intelligent Airport — the platform MindGraph and DXC put on top of an airport you already run.",
     "Let me be clear about what this is before anything else. It is not an application. It is not a fixed list of modules you pick from a menu.",
     "It is a platform. Every system in your airport, read into one governed model of your data — and then anything you want built on top of it.",
     "A dashboard. An application. An automated workflow. An AI agent. Asked for in plain language, built without an engineering ticket, and governed the same way whether it took you five minutes or five months.",
@@ -52,7 +63,7 @@ export const SCENES = [
     <p class="eyebrow">Airport vertical · MindGraph × DXC · Confidential</p>
     <h1>All of the airport's data.<br>Then build anything on it.</h1>
     <p class="lede">Airports already own the plumbing — AODB, FIDS, ERP, baggage, A-CDM, CCTV,
-      building management, the sensor estate. Airport in a Box replaces none of it. It reads every
+      building management, the sensor estate. Intelligent Airport replaces none of it. It reads every
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
     <div class="metrics">
@@ -102,7 +113,7 @@ export const SCENES = [
   eyebrow: '01 · the proposition',
   lines: [
     "Here is the proposition in one sentence. We do not replace a single system you own.",
-    "Airport in a Box is a non-invasive overlay. It connects to every source system, unifies the data into one canonical model, and puts AI, prediction, automation and a single command picture on top.",
+    "What we add is a non-invasive overlay. It connects to every source system, unifies the data into one canonical model, and puts AI, prediction, automation and a single command picture on top.",
     "Everything it reads is ingest-only by default. It does not write back into an operational system unless you have explicitly opened that door — which is what makes it safe to point at an ops room rather than a lab.",
     "And the reason airports say yes is not the architecture. It's that every lever it pulls lands on a number a CFO recognises: cost out, capex deferred, revenue up, risk removed."
   ],

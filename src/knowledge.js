@@ -22,9 +22,9 @@ export const KB = [
 /* ── what it is ─────────────────────────────────────────────────────────── */
 {
   id: 'what-is-it',
-  k: 'what is airport in a box aib what does it do overview explain product platform summary tell me about',
+  k: 'what is the intelligent airport platform what does it do overview explain product summary tell me about',
   scene: 'open',
-  a: `<p>Airport in a Box is an intelligence <b>platform</b> that sits on top of the systems an airport
+  a: `<p>Intelligent Airport is a <b>platform</b> that sits on top of the systems an airport
      already runs — it replaces none of them.</p>
      <p>It reads every source system into <b>one governed model of the airport</b>: 58 canonical entities
      and 201 KPIs defined once. On top of that model you get a governed assistant you can ask anything,
@@ -57,6 +57,8 @@ export const KB = [
      <p><b>Thinking Airport</b> is the wider DXC vision it demonstrates — predictive operations,
      hyper-personalised journeys, adaptive infrastructure and a dynamic commercial ecosystem. Keep the
      two distinct: Thinking Airport is the framework, AIRIS is the proof point.</p>
+     <p><b>Intelligent Airport</b> is the third name in that family: the product itself — the one
+     you'd actually be buying, and what I'm walking you through today.</p>
      <p>And I'm Iris — I just do the talking.</p>`
 },
 

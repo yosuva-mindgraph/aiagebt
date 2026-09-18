@@ -20,7 +20,7 @@
    to the walkthrough it was told to let go of.
    ========================================================================== */
 
-import { SCENES, sceneIndex } from './scenes.js';
+import { SCENES, sceneIndex, PRODUCT } from './scenes.js';
 import { Voice, createRecogniser, estimate } from './voice.js';
 import { Presenter } from './presenter.js';
 import { Ask, spokenForm } from './ask.js';
@@ -167,7 +167,12 @@ class App {
     const scene = SCENES[this.i];
 
     this.el.title.textContent = scene.title;
-    document.title = `${scene.title} — Airport in a Box`;
+    /* Scene 1's title IS the product name, so the naive `title — PRODUCT` gives
+       "Intelligent Airport — Intelligent Airport" in the tab and in anything
+       that scrapes it. Fall back to the same wording index.html ships. */
+    document.title = scene.title === PRODUCT
+      ? `${PRODUCT} — walkthrough`
+      : `${scene.title} — ${PRODUCT}`;
     this.el.stage.scrollTop = 0;
     this.el.stage.innerHTML = `<div class="scene">${scene.html()}</div>`;
 
@@ -332,8 +337,23 @@ class App {
     const { html, scene, via } = await this.ask.answer(q);
     if (my !== this.token) return;
 
-    const jump = scene && scene !== SCENES[this.i].id
-      ? `<button class="jump" data-jump="${scene}">Take me to “${SCENES[sceneIndex(scene)].title}” →</button>`
+    /* An answer names a scene to offer as a jump, and knowledge.js holds 38 of
+       those ids by hand against scenes.js's twelve. sceneIndex() answers -1 for
+       one that no longer exists, SCENES[-1] is undefined, and reading .title off
+       it threw a TypeError — inside an async handler nobody awaits, so it was
+       unhandled, the two lines below never ran, and the answer sheet sat on
+       "Looking that up…" for the rest of the meeting with the real answer
+       already in hand. Resolve the scene to an OBJECT and let an unknown id
+       simply yield no jump button: a missing button loses nothing, and the
+       answer — which is the thing the viewer asked for — still lands.
+       data-jump comes off the resolved scene, so it can only ever be real. */
+    const target = scene && scene !== SCENES[this.i].id ? SCENES[sceneIndex(scene)] : null;
+    if (scene && !target && scene !== SCENES[this.i].id) {
+      console.warn(`[app] answer pointed at unknown scene id "${scene}" — no jump offered.` +
+        ' src/knowledge.js has a scene id that src/scenes.js does not.');
+    }
+    const jump = target
+      ? `<button class="jump" data-jump="${target.id}">Take me to “${target.title}” →</button>`
       : '';
     const resume = wasPlaying
       ? `<button class="jump" data-resume="1">↩ Resume the walkthrough</button>` : '';

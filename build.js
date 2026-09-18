@@ -318,8 +318,13 @@ function build({ withConfig = true, want3d = false, wantArtifact = false } = {})
       .trim();
     const head = canvas.slice(at(canvas, STYLE, 'artifact <style>'),
       at(canvas, STYLE_END, 'artifact </style>') + STYLE_END.length);
+    /* This <title> is typed here rather than sliced out of index.html, because
+       the <head> cut below starts at <style> and leaves index.html's own title
+       behind. So it is a SECOND copy of the product name: rename the product and
+       both this line and index.html have to move, or the hosted artifact keeps
+       the old name while the deliverable has the new one. */
     const artifactBytes = write('artifact.html',
-      `<title>Airport in a Box — walkthrough</title>\n${head}\n` +
+      `<title>Intelligent Airport — walkthrough</title>\n${head}\n` +
       `<script>document.documentElement.dataset.theme = ` +
       `localStorage.getItem('aib-theme') || 'dark';</script>\n${body}\n`);
     console.log(`dist/artifact.html  ${mb(artifactBytes)}  head/body scaffolding stripped for hosting`);

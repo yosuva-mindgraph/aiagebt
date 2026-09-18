@@ -6,8 +6,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Airport in a Box — walkthrough</title>
-<meta name="description" content="Iris walks you through Airport in a Box: the airport intelligence platform from MindGraph and DXC.">
+<title>Intelligent Airport — walkthrough</title>
+<meta name="description" content="Iris walks you through Intelligent Airport: the airport platform from MindGraph and DXC.">
 <style>
 /* DXC brand faces — GT Standard L Extended (display) + Inter (body).
    Source: "Airports in a Box/Inputs/Brand Guidelines/{GT_Standard_font,Inter_font}".
@@ -754,8 +754,13 @@ header {
 <div id="shell">
 
   <header>
-    <div class="wordmark">Airport in a <span class="box">Box</span> <span class="by">MindGraph × DXC</span></div>
-    <div id="sceneTitle">Airport in a Box</div>
+    <!-- .box is the sky-accent hook in src/styles.css. The class name is a
+         leftover from the old product name and that file belongs to another
+         task, so the hook is reused rather than renamed: the accent falls on
+         "Intelligent" because sky is the platform's colour and the airport is
+         the customer's. -->
+    <div class="wordmark"><span class="box">Intelligent</span> Airport <span class="by">MindGraph × DXC</span></div>
+    <div id="sceneTitle">Intelligent Airport</div>
     <div class="head-actions">
       <button class="btn" id="muteBtn" aria-pressed="true">🔊 Sound on</button>
       <button class="btn ghost" id="themeBtn" title="Switch light / dark">◐</button>
@@ -779,7 +784,7 @@ header {
     </div>
     <div class="presenter">
       <h2>IRIS</h2>
-      <div class="role">Airport in a Box<br>your guide</div>
+      <div class="role">Intelligent Airport<br>your guide</div>
     </div>
     <div id="caption" aria-live="polite">
       <div id="captionText" class="idle"></div>
@@ -823,7 +828,7 @@ header {
 <div id="overlay">
   <div class="opencard">
     <p class="kicker">MindGraph × DXC · Airport vertical</p>
-    <h1>Airport in a <em>Box</em></h1>
+    <h1><em>Intelligent</em> Airport</h1>
     <p>I’m Iris. In about ten minutes I’ll show you the whole platform — the data foundation, what
       gets built on it, and how it stays governed. Stop me with a question at any point.</p>
     <button class="btn primary" id="startBtn">▸ Start the walkthrough</button>
@@ -865,9 +870,9 @@ const KB = [
 /* ── what it is ─────────────────────────────────────────────────────────── */
 {
   id: 'what-is-it',
-  k: 'what is airport in a box aib what does it do overview explain product platform summary tell me about',
+  k: 'what is the intelligent airport platform what does it do overview explain product summary tell me about',
   scene: 'open',
-  a: `<p>Airport in a Box is an intelligence <b>platform</b> that sits on top of the systems an airport
+  a: `<p>Intelligent Airport is a <b>platform</b> that sits on top of the systems an airport
      already runs — it replaces none of them.</p>
      <p>It reads every source system into <b>one governed model of the airport</b>: 58 canonical entities
      and 201 KPIs defined once. On top of that model you get a governed assistant you can ask anything,
@@ -900,6 +905,8 @@ const KB = [
      <p><b>Thinking Airport</b> is the wider DXC vision it demonstrates — predictive operations,
      hyper-personalised journeys, adaptive infrastructure and a dynamic commercial ecosystem. Keep the
      two distinct: Thinking Airport is the framework, AIRIS is the proof point.</p>
+     <p><b>Intelligent Airport</b> is the third name in that family: the product itself — the one
+     you'd actually be buying, and what I'm walking you through today.</p>
      <p>And I'm Iris — I just do the talking.</p>`
 },
 
@@ -1435,10 +1442,14 @@ const DONT_KNOW = `<p>I don't have that in what I've been given, and I'd rather 
    explicitly framed as where airports START, not where the platform stops.
 
    Every figure is traceable to the product's own metadata or to a document in
-   "Airports in a Box" on the share — see docs/CONTENT-SOURCES.md.
+   the "Airports in a Box" folder on the share (the folder name predates the
+   product being called Intelligent Airport) — see docs/CONTENT-SOURCES.md.
 
    Shape of a scene:
-     id        stable key; the knowledge base deep-links answers to it
+     id        stable key; the knowledge base deep-links answers to it. These
+               twelve ids are an API — src/knowledge.js deep-links to them and
+               scene 2's chooser jumps by them. Renaming one is a breaking
+               change, not a copy edit.
      title     header + filmstrip label
      flag      optional filmstrip badge ("live")
      lines     narration, one caption at a time
@@ -1456,15 +1467,22 @@ const card = (title, body, foot, chip) => `
 
 const metric = (n, l, human) => `
   <div class="metric"><div class="n${human ? ' human' : ''}">${n}</div><div class="l">${l}</div></div>`;
+
+/* The product's name, in one place, because it is spoken aloud and it has been
+   renamed once already. NOT the same thing as AIRIS (the engine named in the
+   source briefing, and where Iris gets her own name) or as DXC's "Thinking
+   Airport" vision — docs/CONTENT-SOURCES.md keeps all three distinct on
+   purpose, and the knowledge base has an entry that explains the difference. */
+const PRODUCT = 'Intelligent Airport';
 const SCENES = [
 
 /* 1 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'open',
-  title: 'Airport in a Box',
+  title: PRODUCT,
   eyebrow: 'Airport vertical · MindGraph × DXC',
   lines: [
-    "I'm Iris. I speak for Airport in a Box — the intelligence platform MindGraph and DXC put on top of an airport.",
+    "I'm Iris, and I speak for Intelligent Airport — the platform MindGraph and DXC put on top of an airport you already run.",
     "Let me be clear about what this is before anything else. It is not an application. It is not a fixed list of modules you pick from a menu.",
     "It is a platform. Every system in your airport, read into one governed model of your data — and then anything you want built on top of it.",
     "A dashboard. An application. An automated workflow. An AI agent. Asked for in plain language, built without an engineering ticket, and governed the same way whether it took you five minutes or five months.",
@@ -1474,7 +1492,7 @@ const SCENES = [
     <p class="eyebrow">Airport vertical · MindGraph × DXC · Confidential</p>
     <h1>All of the airport's data.<br>Then build anything on it.</h1>
     <p class="lede">Airports already own the plumbing — AODB, FIDS, ERP, baggage, A-CDM, CCTV,
-      building management, the sensor estate. Airport in a Box replaces none of it. It reads every
+      building management, the sensor estate. Intelligent Airport replaces none of it. It reads every
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
     <div class="metrics">
@@ -1524,7 +1542,7 @@ const SCENES = [
   eyebrow: '01 · the proposition',
   lines: [
     "Here is the proposition in one sentence. We do not replace a single system you own.",
-    "Airport in a Box is a non-invasive overlay. It connects to every source system, unifies the data into one canonical model, and puts AI, prediction, automation and a single command picture on top.",
+    "What we add is a non-invasive overlay. It connects to every source system, unifies the data into one canonical model, and puts AI, prediction, automation and a single command picture on top.",
     "Everything it reads is ingest-only by default. It does not write back into an operational system unless you have explicitly opened that door — which is what makes it safe to point at an ops room rather than a lab.",
     "And the reason airports say yes is not the architecture. It's that every lever it pulls lands on a number a CFO recognises: cost out, capex deferred, revenue up, risk removed."
   ],
@@ -3700,8 +3718,26 @@ class Presenter {
    for anything customer-facing, you would.
    ========================================================================== */
 
-const SYSTEM = `You are Iris, the presenter for "Airport in a Box" — an airport intelligence PLATFORM
-built by MindGraph with DXC. You are speaking aloud to an airport executive during a live walkthrough.
+const SYSTEM = `You are Iris, the presenter for Intelligent Airport — an airport PLATFORM built by
+MindGraph with DXC. You are speaking aloud to an airport executive during a live walkthrough.
+
+THE NAME
+- The product is "Intelligent Airport". Two words, both capitalised, and no article in front of it:
+  "Intelligent Airport reads every source system", never "the intelligent airport" or "an intelligent
+  airport". Lowercase it, or put "the" or "an" in front, and it stops being a name — it reads as a
+  vague compliment about airports in general, which is the opposite of naming a product.
+- Name it once, then say "it" or "the platform". A name repeated in every sentence sounds like a
+  brochure being read out.
+- It has exactly one name and you have it. If some older name for this product surfaces in your own
+  memory, it is retired — using it dates the whole conversation. The GROUNDING is current; you are not.
+- Three names in this material sound alike and are NOT interchangeable:
+    Intelligent Airport — the product. What is being bought and delivered. This is what you speak for.
+    Thinking Airport    — DXC's wider vision, which the product demonstrates. A framework, not a
+                          purchasable thing.
+    AIRIS               — the AI Real-Time Integrated System named in the source briefing, and where
+                          Iris's own name comes from. An engine, not the product.
+  Never merge two of them into one phrase. If a question is ambiguous between them, answer about the
+  product and say that is the one you are describing.
 
 HARD RULES
 - Answer ONLY from the GROUNDING provided. It is the complete set of facts you have.
@@ -4004,7 +4040,12 @@ class App {
     const scene = SCENES[this.i];
 
     this.el.title.textContent = scene.title;
-    document.title = `${scene.title} — Airport in a Box`;
+    /* Scene 1's title IS the product name, so the naive `title — PRODUCT` gives
+       "Intelligent Airport — Intelligent Airport" in the tab and in anything
+       that scrapes it. Fall back to the same wording index.html ships. */
+    document.title = scene.title === PRODUCT
+      ? `${PRODUCT} — walkthrough`
+      : `${scene.title} — ${PRODUCT}`;
     this.el.stage.scrollTop = 0;
     this.el.stage.innerHTML = `<div class="scene">${scene.html()}</div>`;
 
@@ -4169,8 +4210,23 @@ class App {
     const { html, scene, via } = await this.ask.answer(q);
     if (my !== this.token) return;
 
-    const jump = scene && scene !== SCENES[this.i].id
-      ? `<button class="jump" data-jump="${scene}">Take me to “${SCENES[sceneIndex(scene)].title}” →</button>`
+    /* An answer names a scene to offer as a jump, and knowledge.js holds 38 of
+       those ids by hand against scenes.js's twelve. sceneIndex() answers -1 for
+       one that no longer exists, SCENES[-1] is undefined, and reading .title off
+       it threw a TypeError — inside an async handler nobody awaits, so it was
+       unhandled, the two lines below never ran, and the answer sheet sat on
+       "Looking that up…" for the rest of the meeting with the real answer
+       already in hand. Resolve the scene to an OBJECT and let an unknown id
+       simply yield no jump button: a missing button loses nothing, and the
+       answer — which is the thing the viewer asked for — still lands.
+       data-jump comes off the resolved scene, so it can only ever be real. */
+    const target = scene && scene !== SCENES[this.i].id ? SCENES[sceneIndex(scene)] : null;
+    if (scene && !target && scene !== SCENES[this.i].id) {
+      console.warn(`[app] answer pointed at unknown scene id "${scene}" — no jump offered.` +
+        ' src/knowledge.js has a scene id that src/scenes.js does not.');
+    }
+    const jump = target
+      ? `<button class="jump" data-jump="${target.id}">Take me to “${target.title}” →</button>`
       : '';
     const resume = wasPlaying
       ? `<button class="jump" data-resume="1">↩ Resume the walkthrough</button>` : '';

@@ -1,6 +1,6 @@
-# AIB Presenter
+# Intelligent Airport — the presenter
 
-An avatar-led walkthrough of **Airport in a Box**. Iris presents the platform across
+An avatar-led walkthrough of **Intelligent Airport**. Iris presents the platform across
 twelve scenes, and answers any question about it at any point — out loud, with the
 walkthrough pausing and resuming around the interruption.
 
@@ -20,7 +20,7 @@ Twelve scenes, in this order:
 
 | # | Scene | What it lands |
 |---|---|---|
-| 1 | Airport in a Box | All the airport's data — then build anything on it |
+| 1 | Intelligent Airport | All the airport's data — then build anything on it |
 | 2 | Where should I start? | The chooser; jump anywhere |
 | 3 | The proposition | Sits on top of everything, replaces none of it |
 | 4 | All the data | 21 sources → 58 entities → 201 governed KPIs |
@@ -104,21 +104,24 @@ it, so the deliverable is never accidentally a 3D build.
 
 | Target | Contains | Size |
 |---|---|---|
-| `dist/index.html` | CSS, fonts, all eight modules, config. **Canvas presenter only.** | **0.90 MB** |
-| `dist/index-3d.html` | the same, **plus** the TalkingHead bundle (0.79 MB) and the avatar GLB as base64 | 48.5 MB today — see below |
-| `dist/artifact.html` | `dist/index.html` with `<head>`/`<body>` stripped and the theme stamped by script | 0.90 MB |
+| `dist/index.html` | CSS, fonts, all eight modules, config. **Canvas presenter only.** | **~0.9 MB** |
+| `dist/index-3d.html` | the same, **plus** the TalkingHead bundle (0.79 MB) and the avatar GLB as base64 | avatar-dependent — `build.js` prints it and holds a ceiling |
+| `dist/artifact.html` | `dist/index.html` with `<head>`/`<body>` stripped and the theme stamped by script | ~0.9 MB |
 
 **`dist/index.html` is the one with the promise**: copy it to a booth machine, unplug
 the network, double-click, press F11. Nothing it needs is outside the file. That
 promise is the whole reason for the constraints here — data-URI fonts, no bundler,
 and no TalkingHead bytes.
 
-`dist/index-3d.html` is **built on demand and not committed** — at the moment it is
-48.5 MB, because `assets/avatar.glb` is the 35 MiB CC0 placeholder and base64 adds a
-third again. The build says so loudly rather than quietly emitting it, and points at
-`tools/convert-valid-avatar.mjs`. Compressed to the 2–3 MB that avatar should be, this
-target lands around 4 MB. The fix is compressing *that* asset, never swapping to a
-smaller non-commercial one — see below.
+`dist/index-3d.html` is **built on demand and not committed**. Base64 adds a third again
+to whatever `assets/avatar.glb` weighs, so this target's size is the avatar's size and
+almost nothing else's. `build.js` declares a `SIZE_LIMIT_MB` and goes loud rather than
+quietly emitting a file too big to hand anybody, naming `tools/convert-valid-avatar.mjs`
+as the fix; `tests/build.test.mjs` builds an oversized GLB in a scratch tree to watch
+that guard actually fire. The fix for an over-ceiling build is always **compressing that
+asset**, never swapping in a smaller one whose licence forbids commercial use. The
+committed avatar's provenance, licence and measured size live in
+[`docs/AVATAR.md`](docs/AVATAR.md).
 
 `dist/artifact.html` is canvas-only and not negotiable about it: a published Artifact's
 CSP blocks external hosts, and a payload of tens of megabytes would not survive the
@@ -160,7 +163,7 @@ mouth being invisible at rest.
 ```
 index.html          the shell — header · presenter rail · stage · film strip · ask bar
 assets/fonts.css    GT Standard + Inter, inlined from the DXC brand pack
-assets/avatar.glb   the rigged avatar — CC0 placeholder, 35 MiB (see below)
+assets/avatar.glb   the rigged avatar — provenance, licence and size in docs/AVATAR.md
 src/
   styles.css        tokens, both themes. One rule: SKY is the platform's, GOLD is the human's
   scenes.js         the twelve scenes — narration + stage + optional interaction
@@ -174,7 +177,7 @@ src/
 vendor/             TalkingHead + three.js bundled offline, and the smoke test that pins it
 tools/              avatar validation and compression
 build.js  shoot.js  build the single file · look at it
-docs/               where every claim came from · the open-source evaluation · the TalkingHead traps
+docs/               where every claim came from · the avatar · the open-source evaluation · the TalkingHead traps
 ```
 
 The eight files under `src/` are inlined **in dependency order** — `build.js` holds the
@@ -196,42 +199,41 @@ you. Nothing breaks it.
 and Midnight is the brand ground. Light is fully designed — not an inversion; Sky is
 too pale on paper, so the platform speaks in Royal there — and the toggle persists.
 
-**Iris is drawn, not filmed.** A half-convincing photoreal head reads as a failure; a
-confident stylised one reads as a choice. The name is from the source material —
-*"like an iris, AIRIS enables an Airport to see and understand its operations"* — which
-is why the eye is the most detailed thing on the face and everything else is quieter.
+**The canvas Iris is drawn, not filmed.** A half-convincing photoreal head reads as a
+failure; a confident stylised one reads as a choice. Her name is from the source material
+— *"like an iris, AIRIS enables an Airport to see and understand its operations"* — which
+is why the eye is the most detailed thing on *that* face and everything else is quieter.
+What the 3D backend loads instead is [`docs/AVATAR.md`](docs/AVATAR.md)'s business, not
+this note's.
 
-## The avatar, and its licence
+## The avatar
 
 TalkingHead is **in**, vendored offline in `vendor/` and pinned by `vendor/smoke.cjs`.
-What is still open is *who Iris is*.
 
-`assets/avatar.glb` is **`mpfb.glb`, CC0 (public domain)**, 35.11 MiB. It was chosen for
-its licence, not its looks or its size: of the six avatars TalkingHead ships as examples,
-it is **the only one that is not non-commercial**. This is a MindGraph × DXC walkthrough
-shown to prospects — that is commercial use, unambiguously — and the deck is delivered as
-one HTML file, which is to say downloadable. CC BY-NC does not survive that.
+**Which file Iris is, where it came from, what its licence permits and what it measures
+are all recorded in [`docs/AVATAR.md`](docs/AVATAR.md). That document is the source of
+truth and this one deliberately does not restate it.** An earlier README kept its own
+copy of those facts, the copy went stale, and it ended up describing an asset — and a
+licence — that was no longer the one committed. A wrong licence claim in a README is
+worse than no claim, so there is now exactly one place for them and it is not here.
 
-> **The Ready Player Me route no longer exists.** An earlier version of this README
-> recommended it, and `docs/OSS-EVALUATION.md` costed it as a ten-minute job. **RPM shut
-> down on 2026-01-31**, following its acquisition by Netflix — its domains no longer
-> resolve, and the sentence in TalkingHead's README about signing up as an RPM developer
-> to use an avatar commercially has quietly gone with it. There is no route to license an
-> RPM avatar at all now, so the smaller `brunette.glb` is not an option however the size
-> pressure reads. Both documents are corrected.
+What this file does own:
 
-So: **35 MiB is the price of a clean licence, paid knowingly.** Do not trade it back.
-The legitimate way down is compressing *this* asset — `gltf-transform` with webp
-textures, which is what `tools/convert-valid-avatar.mjs` is for; texture data, not
-geometry, is the bulk of a humanoid GLB.
-
-`mpfb.glb` is a generic MakeHuman figure: it proves the pipeline, not the brand. A
-brand-correct Iris now means **authoring a rig to the contract** (Blender + MPFB, or a
-commissioned model) — full body, `Armature` root, 52 named bones, `LeftEye`/`RightEye`,
-52 ARKit shapes + 15 visemes, no Draco. That contract, and every trap behind it, is in
-[`docs/TALKINGHEAD.md`](docs/TALKINGHEAD.md); the alternatives and the cost are in
-[`docs/OSS-EVALUATION.md`](docs/OSS-EVALUATION.md). Swapping the model itself is a
-one-file change: drop the GLB at `assets/avatar.glb` and re-run `vendor/smoke.cjs`.
-
-The canvas presenter stays regardless — it is the fallback for a venue machine with no
-GPU, and it is what `dist/index.html` ships.
+- **Commercial use is the binding constraint**, and it is what rules out most free
+  avatars. This is a MindGraph × DXC walkthrough shown to prospects, delivered as one
+  downloadable HTML file. A CC BY-NC asset does not survive that, however neatly it
+  would solve the size problem — so size pressure is never a reason to trade the licence
+  back. The legitimate way down is compressing the asset we are entitled to use:
+  `gltf-transform` with webp textures, which is what `tools/convert-valid-avatar.mjs` is
+  for, because texture data rather than geometry is the bulk of a humanoid GLB.
+- **The rig contract is not negotiable** — full body, an `Armature` root, named bones and
+  eyes, ARKit shapes plus visemes, no Draco. The exact contract and every trap behind it
+  are in [`docs/TALKINGHEAD.md`](docs/TALKINGHEAD.md); the alternatives that were
+  considered and why they lost are in
+  [`docs/OSS-EVALUATION.md`](docs/OSS-EVALUATION.md).
+- **Swapping the model is a one-file change** — drop the GLB at `assets/avatar.glb`, then
+  re-run `node tools/check-avatar-glb.mjs assets/avatar.glb` and `vendor/smoke.cjs`. The
+  checker exists because a GLB that loads cleanly is not the same as a GLB whose mouth
+  moves.
+- **The canvas presenter stays regardless.** It is the fallback for a venue machine with
+  no GPU, and it is what `dist/index.html` ships.
