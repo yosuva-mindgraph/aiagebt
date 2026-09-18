@@ -48,6 +48,67 @@
    All six are documented in docs/AVATAR.md §5. They are present-by-name because
    talkinghead.mjs reads 20 of the ARKit shapes UNGUARDED every frame (:2619),
    so absent is a TypeError per frame and inert is one idle knob out of twenty.
+
+   ── why check 2 is sampled IN SLOW MOTION ─────────────────────────────────
+   Check 2 reads morphTargetInfluences once per requestAnimationFrame. Under
+   SwiftShader this box renders the 3D target at ONE TO THREE FRAMES PER SECOND,
+   and TalkingHead advances its own animClock by the REAL elapsed time (:2353),
+   so a 3-second line was being sampled three to nine times — with whole visemes
+   opening and closing between two consecutive samples. The negative control's
+   `movers.length >= 2` was therefore a coin toss: reported as 1, 2, 5 and 6
+   across four runs of identical source, and a clean run of this gate failed it
+   at 1. Nothing about the AVATAR varied. The sampler did.
+
+   Instrumented on the mannequin build, same source, same box: 3, 5, 9, 9, 16,
+   16 and 16 frames, giving 2, 3, 8, 7, 8, 9 and 9 visemes over the threshold —
+   the count tracks the FRAME RATE, which tracks whatever else the machine is
+   doing. Peak amplitude is not immune either: the same runs peaked at 0.55,
+   0.57, 0.79, 0.82, 0.77, 0.90 and 0.77, and the failing one at 0.33.
+
+   That matters more than an ordinary flake. Four tasks are making broad visual
+   changes against this gate, and a gate that reddens at random destroys the
+   signal exactly when it is needed: a red run that means nothing teaches people
+   to ignore red runs.
+
+   The fix is not a looser threshold — it is a sampler that is not aliasing.
+   watchWhileSpeaking() drives the line through TalkingHead's own documented
+   setSlowdownRate() (:4199), which divides every animation delta by k AND sets
+   the audio playbackRate to 1/k, so schedule and sound stretch together. At 6x
+   the same 3-second line takes 18 seconds of wall clock to speak, so the same
+   ~1.5 fps renderer photographs it ~20 times instead of ~5 and every frame
+   lands mid-viseme instead of skipping one. Same GLB, same backend, same
+   speakAudio() path, same audio-driven schedule — played slowly enough for the
+   camera that is actually available.
+
+   The loop then stops on a FRAME COUNT rather than a wall-clock deadline: 30
+   frames, or the end of the line, whichever comes first. On this box the line
+   ends first (17-22 frames); the budget is what stops a fast machine spending
+   18 seconds collecting hundreds of samples it does not need.
+
+   Measured after the change, over sixteen consecutive runs on this box: the
+   shipped avatar sampled 17-30 frames and moved 8-11 of the 15 visemes, the
+   mannequin 14-30 frames and 7-10, with peaks of 0.60-0.90 — against thresholds
+   of 3 and 2. The lowest count seen is more than three times the bar; the old
+   sampler's lowest was below it.
+
+   Three consequences worth knowing:
+     • NOT ONE THRESHOLD MOVED (>= 3 movers here, >= 2 on the mannequin, peak
+       > 0.3, residual < 0.05) and no existing check was dropped. Nothing was
+       relaxed to make a run green — the measurement was made to stop lying.
+     • three checks were ADDED, none of them about the avatar. Two here, about
+       the measurement itself: that the slow motion is actually in effect, and
+       that the sampler got its frames — so a vendor bump that drops
+       setSlowdownRate(), or a box too loaded to render, says so in its own
+       words instead of reappearing as a mysterious viseme count. One on the
+       mannequin, at the same peak > 0.3 the good file is held to, which makes
+       the negative control's claim exact: the dead rig does not merely twitch,
+       it PASSES the influence test.
+     • the suite got FASTER, not slower — 239 s to 48 s. The settle wait after
+       the line used to burn a fixed 180 frames — 70 to 160 SECONDS at this
+       frame rate — to prove a residual that is already 0.0000 within 3 to 20 of
+       them. It now stops once the face has been at rest three frames running,
+       and still spends the full 180 if it never settles, which is the only case
+       the assertion is about.
    ========================================================================== */
 
 import fs from 'node:fs';
@@ -143,14 +204,34 @@ window.__qaAvatar = {
 
   /**
    * Speak a real line through the real backend and watch the visemes.
+   *
    * Returns the peak influence reached per viseme while speaking, and the
    * residual once it has been stopped and given time to settle.
+   *
+   * SAMPLED IN SLOW MOTION AND BY FRAME COUNT — see the header. seconds is the
+   * length of the LINE; the sampler stops after opts.frames rendered frames or
+   * at the end of the (slowed) line, whichever comes first, so the number of
+   * samples is a constant rather than whatever the box managed today.
+   * (No backticks in here: one ends the template literal this probe lives in.)
    */
-  async watchWhileSpeaking(seconds) {
+  async watchWhileSpeaking(seconds, opts) {
+    const o = opts || {};
+    const frameBudget = o.frames || 30;
     const b = window.app.presenter.backend;
+    const th = b.th;
     const v = window.app.presenter.voice;
     const ctx = v.audioCtx || b.audioContext;
     await ctx.resume().catch(() => {});
+
+    /* TalkingHead's own API (talkinghead.mjs :4199). It divides every animation
+       delta by this AND sets audioSpeechSource.playbackRate to its reciprocal,
+       so the schedule and the sound stretch together — the lipsync relationship
+       under test is untouched, it just runs slowly enough to be photographed.
+       If a vendor bump ever drops the method, fall back to real time and SAY
+       SO: the caller asserts on this, because silently losing the slow motion
+       is silently going back to a 5-sample measurement. */
+    const slowdown = typeof th.setSlowdownRate === 'function' ? (o.slowdown || 6) : 1;
+    if (slowdown > 1) th.setSlowdownRate(slowdown);
 
     // A synthetic clip in TalkingHead's OWN context (seam S3) — the ElevenLabs
     // shape, which is the path that actually drives visemes off an audio clock.
@@ -171,8 +252,9 @@ window.__qaAvatar = {
     const samples = [];
 
     const flight = b.speak(words.join(' '), clip.durationMs, clip);
-    const until = performance.now() + seconds * 1000;
-    while (performance.now() < until) {
+    const t0 = performance.now();
+    const until = t0 + seconds * 1000 * slowdown;
+    while (samples.length < frameBudget && performance.now() < until) {
       await new Promise(r => requestAnimationFrame(r));
       let frameMax = 0, frameName = null;
       for (const n of names) {
@@ -180,21 +262,42 @@ window.__qaAvatar = {
         if (v2 > peak[n]) peak[n] = v2;
         if (v2 > frameMax) { frameMax = v2; frameName = n; }
       }
-      samples.push([Math.round(performance.now() - (until - seconds * 1000)), Number(frameMax.toFixed(3)), frameName]);
+      // Reported in LINE time, not wall time: at 6x these are ~170 ms apart on
+      // the wall and ~28 ms apart in the line the avatar thinks it is speaking.
+      samples.push([Math.round((performance.now() - t0) / slowdown), Number(frameMax.toFixed(3)), frameName]);
     }
+    const coveredMs = Math.round((performance.now() - t0) / slowdown);
 
     b.stopSpeaking();
     await flight;
-    // TalkingHead eases morphs back rather than snapping; give it real frames.
-    for (let i = 0; i < 180; i++) await new Promise(r => requestAnimationFrame(r));
+    if (slowdown > 1) th.setSlowdownRate(1);      // settle at real speed
+
+    /* TalkingHead eases morphs back rather than snapping, so this has to be
+       real frames rather than a timeout. It used to be a flat 180 of them,
+       which at 1-3 fps is 70-160 SECONDS to prove a residual that is already
+       0.0000 within 3 to 20 frames. Stop once the face has been at rest three
+       frames running — and keep the full 180 for the case that never settles,
+       which is the only case the assertion is about. */
+    let settleFrames = 0, atRest = 0;
+    while (settleFrames < 180 && atRest < 3) {
+      await new Promise(r => requestAnimationFrame(r));
+      settleFrames++;
+      let mx = 0;
+      for (const n of names) mx = Math.max(mx, window.__qaAvatar.influence(n) || 0);
+      atRest = mx < 0.001 ? atRest + 1 : 0;
+    }
+
     const residual = {};
     let residualMax = 0;
     for (const n of names) { residual[n] = window.__qaAvatar.influence(n) || 0; residualMax = Math.max(residualMax, residual[n]); }
 
+    const peaks = Object.values(peak);
     return {
       peak, residual, residualMax,
       movers: Object.entries(peak).filter(([, v]) => v > 0.05).map(([n, v]) => n + '=' + v.toFixed(2)),
+      peakMax: Math.max.apply(null, peaks),
       samplesTaken: samples.length,
+      slowdown, coveredMs, settleFrames,
       busiestFrames: samples.filter(s => s[1] > 0.05).slice(0, 6),
     };
   },
@@ -262,17 +365,23 @@ export async function run(t) {
       `${moving} of ${Object.keys(deltas).length} morph targets have non-zero geometry`);
 
     /* ── 2. INFLUENCES: something is actually driving them ──────────── */
-    const live = await page.evaluate(() => window.__qaAvatar.watchWhileSpeaking(4));
+    const live = await page.evaluate(() => window.__qaAvatar.watchWhileSpeaking(3));
+    t.ok(live.slowdown > 1,
+      'the sampler ran in slow motion — without it a 1-3 fps box samples a 3-second line five times and the counts below are luck',
+      `TalkingHead.setSlowdownRate(${live.slowdown})`);
+    t.ok(live.samplesTaken >= 10,
+      'and it actually got its frames — a short count here means the BOX is too slow to measure, not that the avatar is still',
+      `${live.samplesTaken} rendered frames covering ${live.coveredMs} ms of the line, then ${live.settleFrames} frames to settle`);
     t.ok(live.movers.length >= 3,
       'viseme influences MOVE mid-line — the mouth is being driven, not just modelled',
       `${live.movers.length} visemes peaked over 0.05: ${live.movers.slice(0, 6).join(' ')}`);
-    t.ok(Math.max(...Object.values(live.peak)) > 0.3,
+    t.ok(live.peakMax > 0.3,
       'and they are driven to a real amplitude, not a twitch',
-      `peak influence ${Math.max(...Object.values(live.peak)).toFixed(3)} over ${live.samplesTaken} frames`);
+      `peak influence ${live.peakMax.toFixed(3)} over ${live.samplesTaken} frames`);
     t.ok(live.residualMax < 0.05,
       'and they return to rest once the line is stopped',
-      `largest residual influence ${live.residualMax.toFixed(4)}`);
-    t.note(`busiest frames [ms, influence, viseme]: ${JSON.stringify(live.busiestFrames)}`);
+      `largest residual influence ${live.residualMax.toFixed(4)} after ${live.settleFrames} frames at normal speed`);
+    t.note(`busiest frames [line ms, influence, viseme]: ${JSON.stringify(live.busiestFrames)}`);
 
     /* ── 3. the head is on screen and rendering ─────────────────────── */
     const onScreen = await page.evaluate(() => {
@@ -382,11 +491,19 @@ async function mannequinControl(t, browser) {
       /* And the proof that influences alone are NOT enough: on this very file,
          with every delta zeroed, TalkingHead still animates the influences
          beautifully. A gate built only on morphTargetInfluences would be green
-         on a mannequin. */
+         on a mannequin.
+
+         Both legs of the good file's influence check are repeated here, on the
+         same sampler and the same thresholds, so the claim is exact: the
+         mannequin PASSES the influence test. Not "shows some movement" — passes
+         it, count and amplitude, while its face cannot move at all. */
       const live = await page.evaluate(() => window.__qaAvatar.watchWhileSpeaking(3));
       t.ok(live.movers.length >= 2,
         'NEGATIVE CONTROL: …and influences still animate on the mannequin — which is exactly why the GEOMETRY check has to exist',
-        `${live.movers.length} visemes peaked over 0.05 on a face that cannot move: ${live.movers.slice(0, 4).join(' ')}`);
+        `${live.movers.length} visemes peaked over 0.05 on a face that cannot move, across ${live.samplesTaken} frames at ${live.slowdown}x: ${live.movers.slice(0, 4).join(' ')}`);
+      t.ok(live.peakMax > 0.3,
+        'NEGATIVE CONTROL: …and to the SAME amplitude the good file is asserted to reach — an influence-only gate would call this avatar healthy',
+        `peak influence ${live.peakMax.toFixed(3)} on a rig with every morph delta zeroed`);
     }
     await ctx.close();
   } finally {
