@@ -2080,10 +2080,10 @@ const SCENES = [
   title: PRODUCT,
   icon: 'airline',
   lines: [
-    "I'm Iris, and I speak for Intelligent Airport — the platform MindGraph and DXC put on top of an airport you already run.",
+    "I'm Iris, and I speak for Intelligent Airport. It's the platform MindGraph and DXC put on top of an airport you already run.",
     "Let me be clear about what this is before anything else. It is not an application. It is not a fixed list of modules you pick from a menu.",
-    "It is a platform. Every system in your airport, read into one governed model of your data — and then anything you want built on top of it.",
-    "A dashboard. An application. An automated workflow. An AI agent. Asked for in plain language, built without an engineering ticket, and governed the same way whether it took you five minutes or five months.",
+    "It is a platform. Every system in your airport, read into one governed model of your data. And then anything you want built on top of it.",
+    "A dashboard. An application. An automated workflow. An AI agent. Asked for in plain language, and built without an engineering ticket. Governed the same way whether it took you five minutes or five months.",
     "Your airport already owns the plumbing. This is the brain that sits on top of it. Let me show you."
   ],
   html: () => `
@@ -2112,7 +2112,7 @@ const SCENES = [
   lines: [
     "Before I dive in — where would you like me to start?",
     "Pick whatever you're most curious about and I'll take you straight there. Or choose the full walkthrough and I'll give you the whole tour.",
-    "You can scrub back with the film strip on the right at any point, and you can stop me with a question whenever you like."
+    "You can scrub back with the film strip on the right at any point. And you can stop me with a question whenever you like."
   ],
   /* THE EMOJI FIX. Every row here used to open with an emoji and two &nbsp; —
      a compass, a file box, a brick wall, a stopwatch, a shield, a departing
@@ -2157,9 +2157,9 @@ const SCENES = [
   icon: 'idea',
   lines: [
     "Here is the proposition in one sentence. We do not replace a single system you own.",
-    "What we add is a non-invasive overlay. It connects to every source system, unifies the data into one canonical model, and puts AI, prediction, automation and a single command picture on top.",
-    "Everything it reads is ingest-only by default. It does not write back into an operational system unless you have explicitly opened that door — which is what makes it safe to point at an ops room rather than a lab.",
-    "And the reason airports say yes is not the architecture. It's that every lever it pulls lands on a number a CFO recognises: cost out, capex deferred, revenue up, risk removed."
+    "What we add is a non-invasive overlay. It connects to every source system and unifies the data into one canonical model. Then it puts AI, prediction, automation and a single command picture on top.",
+    "Everything it reads is ingest-only by default. It does not write back into an operational system unless you have explicitly opened that door. That is what makes it safe to point at an ops room rather than a lab.",
+    "And the reason airports say yes is not the architecture. It's that every lever it pulls lands on a number a CFO recognises. Cost out. Capex deferred. Revenue up. Risk removed."
   ],
   html: () => `
     <p class="eyebrow">01 · the proposition</p>
@@ -2202,10 +2202,11 @@ const SCENES = [
   icon: 'database',
   lines: [
     "Everything else I'm going to show you rests on this scene, so let me spend a moment here.",
-    "Source systems land in the lakehouse and are mapped into one canonical model of the airport. Fifty-eight entities — flight, bag, passenger, cargo, retail transaction, energy, roster, revenue, sensor, emergency event, IT system, and so on. Two hundred and one KPIs defined once, on top of them.",
-    "Defined once is the important part. On-time performance means the same thing in the operations dashboard, in a workflow's threshold, in an agent's answer and in the board that goes to your regulator. There is no second definition hiding in someone's spreadsheet.",
-    "Around it sits the catalog: every table and document, their lineage back to source, and a business glossary so the word a director uses resolves to the field an engineer built.",
-    "And there's a governed SQL explorer for the people who'd rather write the query themselves — same masking, same row policies, same audit trail. We do not make the analysts leave."
+    "Source systems land in the lakehouse and are mapped into one canonical model of the airport.",
+    "Fifty-eight entities — flight, bag, passenger, cargo, retail transaction, energy, roster, revenue, sensor, emergency event, I-T system, and so on. On top of them sit two hundred and one key performance indicators, defined once.",
+    "Defined once is the important part. On-time performance means the same thing in the operations dashboard and in a workflow's threshold. The same thing in an agent's answer, and in the board that goes to your regulator. There is no second definition hiding in someone's spreadsheet.",
+    "Around it sits the catalog — every table and document, with their lineage back to source. And a business glossary, so the word a director uses resolves to the field an engineer built.",
+    "And there's a governed SQL explorer, for the people who'd rather write the query themselves. Same masking, same row policies, same audit trail. We do not make the analysts leave."
   ],
   html: () => `
     <p class="eyebrow">02 · the data fabric · one governed model</p>
@@ -2240,9 +2241,10 @@ const SCENES = [
   icon: 'graph-nodes',
   lines: [
     "On top of the data sits the airport itself — modelled the way you actually run it.",
-    "Five control centres. The AOCC for day-to-day flight, baggage, passenger and resource operations. The tower. The emergency operations centre, structured to your airport emergency plan. The network and IT operations centre. And the security operations centre, physical and cyber together.",
-    "Alongside them, the business domains — energy, ESG, facility management, safety training, aviation security, OT security. And the applications: passenger flow, revenue management, disaster operations, connected health, rostering.",
-    "Now here is the sentence I want you to remember, because it's the whole difference between a product and a platform.",
+    "Five control centres. The airport operations control centre — the A-O-C-C — for day-to-day flight, baggage, passenger and resource operations. The tower.",
+    "The emergency operations centre, structured to your airport emergency plan. The network and I-T operations centre. And the security operations centre, physical and cyber together.",
+    "Alongside them, the business domains — energy, ESG, facility management, safety training, aviation security, operational technology security. And the applications: passenger flow, revenue management, disaster operations, connected health, rostering.",
+    "Now here is the sentence I want you to remember. It's the whole difference between a product and a platform.",
     "Adding a domain is metadata, not code. You name it, you point it at an entity, and it arrives with a working dashboard. No release. No engineering ticket. No waiting for our roadmap.",
     "That's why I won't give you a fixed list of use cases. The list is however many your airport has."
   ],
@@ -2292,9 +2294,9 @@ const SCENES = [
   icon: 'chat-ai',
   lines: [
     "With the model in place, the first thing it buys you is the end of the report queue.",
-    "Anyone in the building asks an operational question in plain language and gets an answer, with a chart, in seconds. Across every connected source at once. No SQL. No ticket to the analytics team. No two-day wait for a report that was stale when it arrived.",
-    "The word governed matters here. The assistant answers through the same pipeline as everything else — so it can only see what your role is allowed to see. Masking applies. Row policies apply. The answer is logged.",
-    "It cites where the number came from, so a sceptical director can follow it back to the source table. And when it doesn't know, it says so rather than inventing a figure — which is the single most important behaviour in a room full of operators.",
+    "Anyone in the building asks an operational question in plain language. They get an answer, with a chart, in seconds — across every connected source at once. No SQL. No ticket to the analytics team. No two-day wait for a report that was stale when it arrived.",
+    "The word governed matters here. The assistant answers through the same pipeline as everything else. So it can only see what your role is allowed to see. Masking applies. Row policies apply. The answer is logged.",
+    "It cites where the number came from, so a sceptical director can follow it back to the source table. And when it doesn't know, it says so, rather than inventing a figure. That is the single most important behaviour in a room full of operators.",
     "In practice this is where roughly eighty percent of analyst time gets handed back."
   ],
   html: () => `
@@ -2344,10 +2346,10 @@ const SCENES = [
   icon: 'cubes',
   lines: [
     "Now the part that makes this a platform rather than a product.",
-    "Four things get built on that data model, and all four are built by the people who need them rather than by an engineering backlog.",
-    "Dashboards. Not a fixed set — a canvas of tiles over any governed measure, saved, shared, and published to whoever should see it.",
-    "Applications. Describe what you want on your data and it is generated against the canonical model — hero, KPI row, charts, tables, flight boards, maps, forms — then refined by hand where you want it exact.",
-    "Workflows. A canvas of triggers and actions: schedules, thresholds, webhooks, live events, and the one people forget — fire when an expected event doesn't arrive. A silent feed is a fault.",
+    "Four things get built on that data model. And all four are built by the people who need them, rather than by an engineering backlog.",
+    "Dashboards. Not a fixed set. A canvas of tiles over any governed measure — saved, shared, and published to whoever should see it.",
+    "Applications. Describe what you want on your data, and it is generated against the canonical model. Hero, KPI row, charts, tables, flight boards, maps, forms. Then refined by hand where you want it exact.",
+    "Workflows. A canvas of triggers and actions — schedules, thresholds, webhooks, live events. And the one people forget: fire when an expected event doesn't arrive. A silent feed is a fault.",
     "And agents. Registered, scoped, evaluated, guardrailed. I'll come to them next.",
     "The point is that the twentieth dashboard costs what the second one did. That is what unbounded actually means."
   ],
@@ -2382,11 +2384,17 @@ const SCENES = [
   icon: 'monitor',
   flag: 'live',
   lines: [
+    /* LINE INDEX 2 IS LOAD-BEARING. enter() below fires the workflow animation
+       on `ctx.onLine(2, run)` — the line that opens "The live event fires."
+       Lines may be reworded in place and split from index 3 onwards, but
+       inserting or removing anything ABOVE index 2 desynchronises the demo
+       from the voice. */
     "Let me stop describing it and run one.",
     "This is a shipped playbook: a security queue has been over the airport's wait-time target for two minutes. Watch every stage, because every stage is a node you can swap.",
-    "The live event fires. The workflow queries the canonical model — governed, so it sees exactly what its scope allows. It asks a registered agent to explain what it's looking at. It opens an alert in the operations register, deduped so the same queue doesn't raise forty of them. It notifies the channels that matter.",
+    "The live event fires. The workflow queries the canonical model — governed, so it sees exactly what its scope allows. It asks a registered agent to explain what it's looking at. It opens an alert in the operations register. Once only, so the same queue doesn't raise forty of them. It notifies the channels that matter.",
     "And then it stops. Because the last step is a human.",
-    "That's the rule that makes an automated platform safe to point at a live airport: the machine does the watching, the querying, the explaining and the drafting — and a person makes the call.",
+    "That's the rule that makes an automated platform safe to point at a live airport.",
+    "The machine does the watching, the querying, the explaining and the drafting. And a person makes the call.",
     "Eleven of these ship with the product, switched off, so a fresh install has something real to turn on. They are examples. Swap any node and it's a different workflow entirely."
   ],
   html: () => `
@@ -2495,10 +2503,10 @@ const SCENES = [
   icon: 'sparkle',
   lines: [
     "A word about the agents, because this is where most AI platforms quietly stop being auditable.",
-    "An agent here is not a prompt somebody pasted into a chat window. It's a registered object with a purpose, a risk tier, a declared set of tools, its own governed data scope, an evaluation suite and guardrails.",
-    "There's a catalog of them, a full run history, and a topology view that shows you which agent calls which tool and which other agent — so nobody has to guess what is talking to what.",
+    "An agent here is not a prompt somebody pasted into a chat window. It's a registered object — with a purpose, a risk tier and a declared set of tools. Its own governed data scope, an evaluation suite, and guardrails.",
+    "There's a catalog of them, a full run history, and a topology view. It shows you which agent calls which tool, and which other agent. So nobody has to guess what is talking to what.",
     "Six ship with the product. An airport hub analyst, an operations analyst, a baggage analyst, a retail analyst, a data steward, and a compliance explainer. You register your own the same way.",
-    "And everything irreversible lands in one approvals inbox. Human in the loop is not a setting we can forget to switch on — it is the shape of the thing."
+    "And everything irreversible lands in one approvals inbox. Human in the loop is not a setting we can forget to switch on. It is the shape of the thing."
   ],
   html: () => `
     <p class="eyebrow">07 · the agents · registered, scoped, evaluated</p>
@@ -2541,10 +2549,14 @@ const SCENES = [
   title: 'Governance, risk & compliance',
   icon: 'shield-check',
   lines: [
-    "Most platforms treat governance as a module you buy later. Here it is one of the five things in the navigation, and it governs the platform itself as well as the airport.",
-    "The obligation register carries what you're actually held to. ICAO Annex 19 safety management, Annex 17 security, Annex 14 aerodrome, your emergency plan, IGOM ground operations, slot punctuality, ESG reporting, personal data and cross-border transfer, breach notification, access control, audit evidence — and, increasingly, AI governance and model provenance.",
-    "The risk register scores both sides of the house: runway incursion, emergency readiness, security breach, OT cyber, on-time degradation, baggage SLA, resource shortfall, revenue concentration, ESG targets — and next to them, data access scope, personal-data exposure, and unapproved AI extraction.",
-    "Underneath sit column-level access policies, a trust view covering data protection and AI governance, and an audit and telemetry trail across every surface.",
+    "Most platforms treat governance as a module you buy later. Here it is one of the five things in the navigation. And it governs the platform itself, as well as the airport.",
+    "The obligation register carries what you're actually held to.",
+    "On the aviation side, the annexes of the International Civil Aviation Organization. Annex nineteen for safety management, Annex seventeen for security, Annex fourteen for aerodromes.",
+    "Your airport emergency plan. IGOM, the ground operations manual. Slot punctuality, and ESG reporting.",
+    "Then personal data and cross-border transfer. Breach notification, access control, audit evidence. And, increasingly, AI governance and model provenance.",
+    "The risk register scores both sides of the house. On the airport's side: runway incursion, emergency readiness, security breach, operational technology cyber.",
+    "Then on-time degradation, baggage S-L-A, resource shortfall, revenue concentration and ESG targets. And right next to them: data access scope, personal-data exposure, and unapproved AI extraction.",
+    "Underneath sit column-level access policies. A trust view covering data protection and AI governance. And an audit and telemetry trail across every surface.",
     "The reason this matters commercially is simple. An airport is a regulated environment, and the question that kills AI pilots is never 'is it clever'. It's 'can you show me who saw what, and why the model said that'. This answers both."
   ],
   html: () => `
@@ -2593,10 +2605,13 @@ const SCENES = [
   icon: 'plane-arrival',
   lines: [
     "So how does it actually land in your airport?",
-    "About eighty-five percent of what you'd deploy already exists and is proven in production. The remaining fifteen is your brand, your terminal and zone maps, your local regulations, language and currency, your workflows and SLAs, and your data migration.",
+    "About eighty-five percent of what you'd deploy already exists and is proven in production.",
+    "The remaining fifteen is your brand, your terminal and zone maps, and your local regulations. Language and currency. Your workflows and service-level agreements. And your data migration.",
     "That ratio is the commercial argument. You are not funding a build. You are funding a tailoring.",
-    "Three ways in. Greenfield, where there's no entrenched estate and we stand the whole platform up. Brownfield, where ageing systems get consolidated in phases behind a parallel run with a rollback at every step. Or the intelligent layer, where your systems stay exactly as they are and we overlay on top — fastest ROI, lowest disruption.",
-    "And it runs where you need it. Cloud, on-premise, hybrid, or fully air-gapped for a restricted ops room with no network at all. When a feed drops the board keeps rendering the last known state behind a clear stale banner, and says how old it is — because a dark screen in an operations room is worse than an old one."
+    "Three ways in. Greenfield, where there's no entrenched estate and we stand the whole platform up.",
+    "Brownfield, where ageing systems get consolidated in phases, behind a parallel run with a rollback at every step. Or the intelligent layer, where your systems stay exactly as they are and we overlay on top. Fastest return on investment, lowest disruption.",
+    "And it runs where you need it. Cloud, on-premise, hybrid, or fully air-gapped — for a restricted ops room with no network at all.",
+    "When a feed drops, the board keeps rendering the last known state. It sits behind a clear stale banner, and it says how old the data is. Because a dark screen in an operations room is worse than an old one."
   ],
   html: () => `
     <p class="eyebrow">09 · delivery &amp; engagement</p>
@@ -2649,7 +2664,7 @@ const SCENES = [
   icon: 'users',
   lines: [
     "That's the tour.",
-    "If you take one thing from it: airports do not have a systems problem. They have a coordination problem sitting on top of systems that already work — and a data problem underneath it that nobody has solved once, properly, in one place.",
+    "If you take one thing from it: airports do not have a systems problem. They have a coordination problem, sitting on top of systems that already work. And underneath that, a data problem nobody has solved once, properly, in one place.",
     "This solves the second one first, and then the first one falls out of it.",
     "The shortest honest next step is small. Point it at two or three of your real feeds and let it build the canonical model for them. You'll know inside a fortnight whether what I've told you is true.",
     "Ask me anything you like. I'm still here."
@@ -4829,9 +4844,83 @@ function sanitise(input) {
   return /<p|<ul|<ol/.test(out) ? out : `<p>${out}</p>`;
 }
 
+/* ── what a synthesiser mangles, and where it is safe to fix it ───────────
+   Every engine reads symbols, ranges and some letter-acronyms badly — the
+   browser's own speechSynthesis worst of all, and that is the one running
+   whenever no ElevenLabs key is configured. So the SPOKEN form of an answer
+   is normalised here.
+
+   Why HERE and not in src/voice.js. The scene narration in src/scenes.js is
+   captioned and spoken from the SAME string, and src/app.js lights the
+   caption up word by word by walking its spans BY INDEX against the spoken
+   word timings — so a normaliser that changed the word count on the way to
+   the voice would silently desynchronise the highlight. An answer has no
+   such problem: app.js captions spokenForm(html) and then speaks
+   spokenForm(html), so caption and speech are the same tokens either way,
+   and only the rich answer SHEET keeps the tight typographic form. This
+   file is already the display/speech seam; expanding anywhere downstream of
+   it would not be.
+
+   Numbers stay as digits on purpose — every engine reads 72 as seventy-two.
+   It is the symbols AROUND them (plus-minus, tilde, percent, a dash used as
+   a range, a trailing plus) that come out as silence or as nonsense.      */
+const SPOKEN = [
+  /* symbols and ranges */
+  [/±\s*/g, 'plus or minus '],
+  /* "a ~35% uplift" must not become "a around 35 percent uplift" — the tilde
+     stands where the article's own hedge goes, so it eats the article. */
+  [/\b(?:a|an)\s+~\s*(?=\d)/g, 'around '],
+  [/~\s*(?=\d)/g, 'around '],
+  [/(\d)\s*%/g, '$1 percent'],
+  [/(\d)\s*\+/g, '$1 or more'],
+  [/(\d)\s*[–—-]\s*(?=\d)/g, '$1 to '],          // 15-30 minutes -> 15 to 30
+  [/\b([23])D\b/g, '$1-D'],                      // 2D / 3D, not "twod"
+  [/\s*&\s*/g, ' and '],                         // also turns P&L into P and L
+  [/\s*→\s*/g, ', then '],                       // tariff -> gross charges -> ...
+  [/\s*·\s*/g, '. '],                            // the separator in a long list
+  [/([A-Za-z0-9])\s*\/\s*([A-Za-z0-9])/g, '$1 or $2'],
+  /* a parenthetical is read as one breathless run; commas give it joints */
+  [/\s*\(\s*/g, ', '],
+  [/\s*\)/g, ','],
+
+  /* ── acronyms ──────────────────────────────────────────────────────────
+     Judged one at a time, NOT spelled out wholesale. The audience is airport
+     executives: reading AVSEC or ICAO out in full every time would be
+     condescending and would pad the runtime. The rule is narrower than that.
+
+     An acronym whose letters do NOT form a sayable syllable (ESG, KPI, DXC,
+     CMMS, PRM, BMS, ETL, LLM, CCTV) is already spelled out correctly by every
+     engine, and is left alone. One that is MEANT to be said as a word (ICAO,
+     IGOM, AVSEC, SCADA, FIDS, CUSS, SIEM, AIRIS) is also left alone, because
+     saying it as a word is the correct reading. What is fixed is the middle
+     case: letters that happen to form a word or a plausible syllable, so the
+     engine says the wrong thing out loud — "IT" as "it", "SOC" as "sock",
+     "ASQ" as "ask", "ROI" as "roy", "SLA" as "slah". Those get hyphens,
+     which is the one cue every engine reads as "spell this".              */
+  [/\bAOCC\b/g, 'A-O-C-C'], [/\bNOC\b/g, 'N-O-C'], [/\bSOC\b/g, 'S-O-C'],
+  [/\bEOC\b/g, 'E-O-C'], [/\bIT\b/g, 'I-T'], [/\bOT\b/g, 'O-T'],
+  [/\bSLAs\b/g, 'service-level agreements'], [/\bSLA\b/g, 'S-L-A'],
+  [/\bROI\b/g, 'R-O-I'], [/\bASQ\b/g, 'A-S-Q'], [/\bPOS\b/g, 'P-O-S'],
+  [/\bAPIs\b/g, 'application programming interfaces'], [/\bAPI\b/g, 'A-P-I'],
+  [/\bACI\b/g, 'A-C-I'], [/\bGRI\b/g, 'G-R-I'], [/\bFAA\b/g, 'F-A-A'],
+  [/\bCX\b/g, 'C-X'], [/\bUX\b/g, 'U-X'],
+
+  /* tidy up after the parentheses and the list separators, so nothing is
+     read as a stutter of punctuation */
+  [/\s+([,.;:])/g, '$1'],
+  [/,\s*([,.;:])/g, '$1'],
+  [/\.\s*,/g, '.'],
+  /* a colon introducing a list whose first item then became its own sentence
+     leaves "modelled:." — one stop, not two marks of punctuation. */
+  [/[,;:]+\./g, '.'],
+  [/\s{2,}/g, ' '],
+];
+
 /** Plain text for the voice — the answer sheet shows HTML, Iris speaks this. */
 function spokenForm(html) {
-  return textOf(html).replace(/\s*-\s+/g, '. ').replace(/\.\.+/g, '.').slice(0, 1200);
+  let s = textOf(html).replace(/\s*-\s+/g, '. ').replace(/\.\.+/g, '.');
+  for (const [re, to] of SPOKEN) s = s.replace(re, to);
+  return s.trim().slice(0, 1200);
 }
 
 

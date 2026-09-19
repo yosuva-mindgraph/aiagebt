@@ -168,7 +168,81 @@ function sanitise(input) {
   return /<p|<ul|<ol/.test(out) ? out : `<p>${out}</p>`;
 }
 
+/* ── what a synthesiser mangles, and where it is safe to fix it ───────────
+   Every engine reads symbols, ranges and some letter-acronyms badly — the
+   browser's own speechSynthesis worst of all, and that is the one running
+   whenever no ElevenLabs key is configured. So the SPOKEN form of an answer
+   is normalised here.
+
+   Why HERE and not in src/voice.js. The scene narration in src/scenes.js is
+   captioned and spoken from the SAME string, and src/app.js lights the
+   caption up word by word by walking its spans BY INDEX against the spoken
+   word timings — so a normaliser that changed the word count on the way to
+   the voice would silently desynchronise the highlight. An answer has no
+   such problem: app.js captions spokenForm(html) and then speaks
+   spokenForm(html), so caption and speech are the same tokens either way,
+   and only the rich answer SHEET keeps the tight typographic form. This
+   file is already the display/speech seam; expanding anywhere downstream of
+   it would not be.
+
+   Numbers stay as digits on purpose — every engine reads 72 as seventy-two.
+   It is the symbols AROUND them (plus-minus, tilde, percent, a dash used as
+   a range, a trailing plus) that come out as silence or as nonsense.      */
+const SPOKEN = [
+  /* symbols and ranges */
+  [/±\s*/g, 'plus or minus '],
+  /* "a ~35% uplift" must not become "a around 35 percent uplift" — the tilde
+     stands where the article's own hedge goes, so it eats the article. */
+  [/\b(?:a|an)\s+~\s*(?=\d)/g, 'around '],
+  [/~\s*(?=\d)/g, 'around '],
+  [/(\d)\s*%/g, '$1 percent'],
+  [/(\d)\s*\+/g, '$1 or more'],
+  [/(\d)\s*[–—-]\s*(?=\d)/g, '$1 to '],          // 15-30 minutes -> 15 to 30
+  [/\b([23])D\b/g, '$1-D'],                      // 2D / 3D, not "twod"
+  [/\s*&\s*/g, ' and '],                         // also turns P&L into P and L
+  [/\s*→\s*/g, ', then '],                       // tariff -> gross charges -> ...
+  [/\s*·\s*/g, '. '],                            // the separator in a long list
+  [/([A-Za-z0-9])\s*\/\s*([A-Za-z0-9])/g, '$1 or $2'],
+  /* a parenthetical is read as one breathless run; commas give it joints */
+  [/\s*\(\s*/g, ', '],
+  [/\s*\)/g, ','],
+
+  /* ── acronyms ──────────────────────────────────────────────────────────
+     Judged one at a time, NOT spelled out wholesale. The audience is airport
+     executives: reading AVSEC or ICAO out in full every time would be
+     condescending and would pad the runtime. The rule is narrower than that.
+
+     An acronym whose letters do NOT form a sayable syllable (ESG, KPI, DXC,
+     CMMS, PRM, BMS, ETL, LLM, CCTV) is already spelled out correctly by every
+     engine, and is left alone. One that is MEANT to be said as a word (ICAO,
+     IGOM, AVSEC, SCADA, FIDS, CUSS, SIEM, AIRIS) is also left alone, because
+     saying it as a word is the correct reading. What is fixed is the middle
+     case: letters that happen to form a word or a plausible syllable, so the
+     engine says the wrong thing out loud — "IT" as "it", "SOC" as "sock",
+     "ASQ" as "ask", "ROI" as "roy", "SLA" as "slah". Those get hyphens,
+     which is the one cue every engine reads as "spell this".              */
+  [/\bAOCC\b/g, 'A-O-C-C'], [/\bNOC\b/g, 'N-O-C'], [/\bSOC\b/g, 'S-O-C'],
+  [/\bEOC\b/g, 'E-O-C'], [/\bIT\b/g, 'I-T'], [/\bOT\b/g, 'O-T'],
+  [/\bSLAs\b/g, 'service-level agreements'], [/\bSLA\b/g, 'S-L-A'],
+  [/\bROI\b/g, 'R-O-I'], [/\bASQ\b/g, 'A-S-Q'], [/\bPOS\b/g, 'P-O-S'],
+  [/\bAPIs\b/g, 'application programming interfaces'], [/\bAPI\b/g, 'A-P-I'],
+  [/\bACI\b/g, 'A-C-I'], [/\bGRI\b/g, 'G-R-I'], [/\bFAA\b/g, 'F-A-A'],
+  [/\bCX\b/g, 'C-X'], [/\bUX\b/g, 'U-X'],
+
+  /* tidy up after the parentheses and the list separators, so nothing is
+     read as a stutter of punctuation */
+  [/\s+([,.;:])/g, '$1'],
+  [/,\s*([,.;:])/g, '$1'],
+  [/\.\s*,/g, '.'],
+  /* a colon introducing a list whose first item then became its own sentence
+     leaves "modelled:." — one stop, not two marks of punctuation. */
+  [/[,;:]+\./g, '.'],
+  [/\s{2,}/g, ' '],
+];
+
 /** Plain text for the voice — the answer sheet shows HTML, Iris speaks this. */
 export function spokenForm(html) {
-  return textOf(html).replace(/\s*-\s+/g, '. ').replace(/\.\.+/g, '.').slice(0, 1200);
+  let s = textOf(html).replace(/\s*-\s+/g, '. ').replace(/\.\.+/g, '.');
+  for (const [re, to] of SPOKEN) s = s.replace(re, to);
+  return s.trim().slice(0, 1200);
 }
