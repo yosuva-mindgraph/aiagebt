@@ -205,8 +205,8 @@ export const KB = [
      the one people forget — <b>an expected event that never arrived</b>. A silent feed is a fault, and
      a dashboard reading zero looks identical to one reading nothing until something asks.</p>
      <p><b>Actions:</b> query the lakehouse through the canonical schema, ask a registered agent, branch,
-     open an alert in the operations register (deduped while one is open), email via the relay, POST to
-     any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.</p>
+     open an alert in the operations register (raised once, not again while it is open), email via the
+     relay, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.</p>
      <p>Eleven playbooks ship with the product, disabled, so a fresh install has something real to turn
      on deliberately.</p>`
 },
@@ -284,8 +284,9 @@ export const KB = [
      the platform as well as the airport.</p>
      <p><b>Obligations tracked:</b> ICAO Annex 19 safety management, Annex 17 security, Annex 14
      aerodrome, the Airport Emergency Plan, IGOM ground operations, slot punctuality, ESG reporting
-     (ACI / GRI / Airport Carbon Accreditation), personal-data protection, cross-border transfer, breach
-     notification, access control, audit evidence, AI governance, and model provenance.</p>
+     (against ACI, GRI and Airport Carbon Accreditation), personal-data protection, cross-border
+     transfer, breach notification, access control, audit evidence, AI governance, and model
+     provenance.</p>
      <p>Obligations and policies ship as <b>governance packs</b>, so a new airport starts from the
      aviation baseline rather than a blank register.</p>`
 },
@@ -376,9 +377,9 @@ export const KB = [
   id: 'proof',
   k: 'proof real proven track record production live today reference customer who uses it evidence credibility',
   scene: 'deploy',
-  a: `<p>Fifteen services in production across five airports, two pillars — Digital &amp; Cloud and
-     Data &amp; AI — ring-fenced by a third-party cybersecurity layer. Twelve AI systems deployed, 70+
-     dashboards serving 8 departments, 16+ automation bots live.</p>
+  a: `<p>Fifteen services in production across five airports, two pillars — one <b>Digital &amp; Cloud</b>,
+     one <b>Data &amp; AI</b> — ring-fenced by a third-party cybersecurity layer. Twelve AI systems
+     deployed, 70+ dashboards serving 8 departments, 16+ automation bots live.</p>
      <p>Measured outcomes from that estate: eight departments unified on one real-time picture with a
      ±72-hour flight horizon; security paperwork down ~80% and fully offline-capable in restricted zones;
      complaint response ~25% faster with a ~35% CX uplift; zero paper contracts and four content
