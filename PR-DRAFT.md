@@ -478,3 +478,197 @@ committed targets: `dist/index.html` and `dist/artifact.html` are byte-identical
 $ sha256sum assets/avatar.glb
 70fbdc0efd10b595c7181dc0e4082d8a415e68f6b46d5522ccf73f83d0cf8e35  assets/avatar.glb
 ```
+
+---
+
+## 9. Speech delivery: the script, not the engine
+
+Two further branches, `g11` and `g12`, fast-forwarded onto the tip above. The stack is linear
+(`e844798` → `822ab00` → `96a9fca`), so there was nothing to resolve.
+
+This pass changes **narration and three knowledge-base answers only**. Checked mechanically by
+importing both revisions of `src/scenes.js`: the twelve scene `id`s, titles, icons and flags are
+identical, all twelve `html()` stage markups render byte-identical, and the hedge vocabulary is
+an identical multiset. The only numerals that move anywhere in the narration are the three ICAO
+annexes, spelled out for the voice (below) — the same annexes, not a different claim.
+
+### 9.1 The voice is robotic because there is no key
+
+`config.js` is gitignored and absent from this tree, so **no ElevenLabs credential is
+configured**. `src/voice.js:140` logs `[voice] no ElevenLabs key — narrating with Web Speech`
+and every line is spoken by the browser's built-in `speechSynthesis`. That is the engine in the
+room today, and it is the least forgiving one available.
+
+Fixing the engine needs a key, and the defaults it would use are themselves unvalidated (§9.6).
+This work is the half that needs no key: **the text**. Shorter sentences, a hyphen that tells a
+synthesiser to spell rather than pronounce, and symbols expanded into words improve *every*
+engine — ElevenLabs included — and they help the `speechSynthesis` fallback most, because it has
+the least capacity to recover from input it cannot parse.
+
+Nothing here was listened to. Headless Chromium exposes the `speechSynthesis` API but reports
+**0 installed voices** (measured on this branch), so the strings are proven and the sound is not.
+That limit is why this is a source fix rather than a tuning pass.
+
+### 9.2 Sentence length
+
+`src/scenes.js`, narration `lines` only.
+
+| | before (`e844798`) | after (`96a9fca`) |
+|---|---|---|
+| scenes | 12 | 12 |
+| narration lines | 61 | 71 |
+| sentences | 136 | 184 |
+| mean sentence length | 12.9 w | **9.8 w** |
+| longest sentence | 41 w | 20 w |
+| sentences over 20 w | **29** | **0** |
+
+Measured by importing `SCENES` from both revisions and counting whitespace-separated tokens.
+Re-measured excluding free-standing em-dashes as tokens, the means are 12.8 w → 9.7 w and the
+longest 40 w → 20 w; **29 → 0 holds under both counts**, as does the 20-word ceiling.
+
+The range is still 1 w … 20 w, so this is varied prose rather than staccato. Every split falls on
+a clause boundary that was already in the sentence.
+
+### 9.3 The acronym rule that was actually applied
+
+Acronyms were judged one at a time, not expanded wholesale — the audience is airport executives,
+and reading ICAO or AVSEC out in full every time would be condescending and would pad the runtime.
+Three classes, only one of which is touched:
+
+1. **Letters that cannot form a sayable syllable** — `ESG`, `KPI`, `DXC`, `CFO`, `SQL`, `CMMS`,
+   `PRM`, `BMS`, `ETL`, `LLM`, `CCTV`. Every engine already spells these out correctly, so there
+   is nothing to fix. **Left alone.**
+2. **Acronyms meant to be said as a word** — `ICAO`, `IGOM`, `AVSEC`, `SCADA`, `FIDS`, `CUSS`,
+   `SIEM`, `AIRIS`. Saying them as words is the correct reading. **Left alone.**
+3. **Letters that form a word or a plausible syllable**, so the engine confidently says the wrong
+   thing out loud. **This is the only class changed.**
+
+`IT` is the case that makes the rule obvious: "the network and IT operations centre" is read as
+"the network and *it* operations centre". It becomes `I-T`. Likewise `SLA` → `S-L-A` (else
+"slah"), `SOC` → `S-O-C` ("sock"), `ASQ` → `A-S-Q` ("ask"), `ROI` → `R-O-I` ("roy"). A hyphen is
+the one cue every engine reads as "spell this".
+
+Verified against the branch: `SQL`, `DXC`, `AI`, `ESG`, `KPI`, `CFO`, `ICAO` and `AVSEC` all
+still appear verbatim in the narration — none was expanded.
+
+Two further cases are handled in the narration as **wording** rather than spelling, because a
+gloss is what the audience needs on first use: `AOCC` → "the airport operations control centre —
+the A-O-C-C", `OT` → "operational technology", `IGOM` → "IGOM, the ground operations manual",
+and `ICAO Annex 19 / 17 / 14` → "the annexes of the International Civil Aviation Organization.
+Annex nineteen … Annex seventeen … Annex fourteen". `IGOM` keeps its word-reading; only the gloss
+is added.
+
+### 9.4 `spokenForm()` normalises the speech; the answer sheet keeps its typography
+
+`src/ask.js` gains a 36-rule normalisation table — 13 symbol/range rules, 18 acronym rules
+(16 distinct acronyms, `SLA`/`SLAs` and `API`/`APIs` being singular/plural pairs), and 5 tidy-up
+rules. Measured output:
+
+| sheet (displayed) | spoken |
+|---|---|
+| `a ±72-hour flight horizon` | `a plus or minus 72-hour flight horizon` |
+| `paperwork down ~80% today` | `paperwork down around 80 percent today` |
+| `70+ dashboards` | `70 or more dashboards` |
+| `15-30 minutes` | `15 to 30 minutes` |
+| `2D and 3D maps` | `2-D and 3-D maps` |
+| `Digital & Cloud` | `Digital and Cloud` |
+| `tariff → gross → net` | `tariff, then gross, then net` |
+| `one · two · three` | `one. two. three` |
+| `editor/viewer` | `editor or viewer` |
+| `an alert (raised once) here` | `an alert, raised once, here` |
+| `a baggage SLA and two SLAs` | `a baggage S-L-A and two service-level agreements` |
+| `SQL, DXC, AI, ESG, KPI, ICAO, IGOM, AVSEC` | *(unchanged)* |
+
+It lives in `src/ask.js` and not in `src/voice.js` deliberately. Scene narration is captioned and
+spoken from the *same* string, and `src/app.js` lights the caption word by word **by index**
+against the spoken word timings — so a normaliser that changed the word count on the way to the
+voice would silently desynchronise the highlight the moment a key is configured. An answer has no
+such problem: `app.js` captions `spokenForm(html)` and then speaks `spokenForm(html)`, so caption
+and speech are the same tokens either way, and only the rich answer **sheet** keeps the tight
+typographic form.
+
+Numbers stay as digits on purpose — every engine reads `72` as "seventy-two". It is the symbols
+*around* them that come out as silence or nonsense.
+
+### 9.5 Three knowledge-base answers that read fine and speak wrong
+
+These are content, not symbols: a normaliser rule special-casing them would have been a content
+edit in a normaliser's clothes. Fixed in `src/knowledge.js` (38 entries; 3 answer bodies changed,
+no `id`, no `scene`, no figure, no hedge).
+
+| id | was | now |
+|---|---|---|
+| `workflows` | `(deduped while one is open)` | `(raised once, not again while it is open)` |
+| `proof` | `two pillars — Digital & Cloud and Data & AI` | `two pillars — one **Digital & Cloud**, one **Data & AI**` |
+| `governance` | `ESG reporting (ACI / GRI / Airport Carbon Accreditation)` | `ESG reporting (against ACI, GRI and Airport Carbon Accreditation)` |
+
+- **`deduped`** is a clipping every engine mangles ("dee-doop-ed"). The parenthesis flattens to a
+  comma pair on the way to the voice, so the replacement clause has to stand on its own without
+  the bracket that made it legible on screen. The suppression window is unchanged.
+- **The two pillar names** spoke as four items, and a listener could not recover the grouping.
+  Leaving the ampersand alone does not help — engines say "and", or worse, "ampersand". The
+  "one … one …" enumerator delimits the two names by ear; the bolding is the display half of the
+  same fix. Both pillar names survive intact.
+- **`ACI / GRI / ...`** hit the normaliser's slash-as-"or" rule, which is right for `editor/viewer`
+  and `flight/FIDS` but simply false here — these are three frameworks you report against
+  *collectively*. Fixed in the source rather than by special-casing a sound rule. Spoken output is
+  now `ESG reporting, against A-C-I, G-R-I and Airport Carbon Accreditation`.
+
+One deliberate leftover: the stage label at `src/scenes.js:482` still reads
+`Open in the operations alert register · deduped while one is open`. That is on-screen diagram
+text, never spoken — the same display/speech split that keeps the answer sheet's typography.
+
+### 9.6 Known follow-up: the shipped ElevenLabs defaults are unvalidated
+
+Recorded here alongside §7, and **not blocking** — none of it can execute without a key.
+
+What ships today (`config.example.js:31-36`, defaulted identically at `src/voice.js:145`):
+
+| setting | shipped | status |
+|---|---|---|
+| `modelId` | `eleven_turbo_v2_5` | reported **deprecated**; not verifiable from this tree |
+| `stability` | `0.42` | below the **0.65–0.75** range researched for measured corporate delivery |
+| `style` | *unset* | absent from `voice_settings`; should be explicitly `0` |
+| `similarity` | `0.80` | not in question |
+
+Low stability buys expressiveness at the cost of consistency, which is the wrong trade for a
+narrator reading the same deck to a board every time. None of these three has been validated
+against a live voice, because no key exists in this tree to validate them with.
+
+**The open question is the model, and it is not cosmetic.** `src/voice.js:157` calls
+`/v1/text-to-speech/{voiceId}/with-timestamps?output_format=mp3_44100_128`. That endpoint returns
+the MP3 as `audio_base64` *plus* a character alignment; `wordsFromAlignment()` converts
+`character_start_times_seconds` / `character_end_times_seconds` into `words` / `wtimes` /
+`wdurations`, and `src/avatar3d.js:483` hands those to TalkingHead's `speakAudio()`. That chain
+**is** the word-accurate lip-sync in the 3D build.
+
+**It is unconfirmed whether Eleven v3 serves `/with-timestamps` at all.** If it does not, the
+failure is graceful but real: `src/avatar3d.js:456` falls back to
+`wordTimingsFromText(text, durationMs)`, which *estimates* word timings by distributing the clip
+duration across the text. The mouth keeps moving and stays roughly in sync, but it is no longer
+driven by the measured audio. Moving to v3 for its expressiveness would therefore trade
+word-accurate lip-sync for estimated lip-sync — possibly for nothing, possibly for a lot.
+**Answer the endpoint question before changing `modelId`.** It needs a key; it does not need a
+code change.
+
+### 9.7 Sizes and gate at this tip
+
+The §6 figures were measured at the rebrand tip (`e844798`) and are superseded by these; the
+speech work adds **+5,085 B** to each of the three targets, all of it narration and answer text.
+
+| target | bytes | | vs §6 |
+|---|---|---|---|
+| `dist/index.html` | 1,041,444 B | 0.993 MiB | +5,085 B |
+| `dist/artifact.html` | 1,040,953 B | 0.993 MiB | +5,085 B |
+| `dist/index-3d.html` | 11,714,564 B | 11.172 MiB | +5,085 B |
+| `assets/avatar.glb` | 7,381,268 B | 7.04 MiB | unchanged |
+
+`dist/index-3d.html` now runs **868,348 B (0.828 MiB) under the 12 MiB ceiling**, down from
+873,433 B. The avatar is untouched — still `Hispanic_F_3_Busi`,
+`70fbdc0efd10b595c7181dc0e4082d8a415e68f6b46d5522ccf73f83d0cf8e35`, 7,381,268 B.
+
+Gate on this tip: **322/322 green in 455.1 s**. `shoot.js` 28 shots / 12 scenes on `canvas`;
+`shoot.js --3d` 28 shots reporting `backend: talkinghead` at both viewport sizes;
+`vendor/smoke.cjs` clean offline from `file://`. `git status` is clean after a full rebuild, so
+the two committed targets are byte-identical to what `build.js` produces from this tree, and
+`dist/index-3d.html` remains untracked and ignored.
