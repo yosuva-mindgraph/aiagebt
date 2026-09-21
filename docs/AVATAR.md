@@ -862,13 +862,19 @@ The +503,988 B over `Black_F_1_Busi` is the `h_wig` mesh and its two extra textu
 | Gate | Limit | Actual | Headroom |
 |---|---|---|---|
 | `assets/avatar.glb` (`build.test.mjs:147`) | 8 MiB = 8,388,608 B | 7,381,268 B | **1,007,340 B** |
-| `dist/index-3d.html` (`SIZE_LIMIT_MB` in `build.js`) | 12 MB = 12,582,912 B | 11,619,314 B | **963,598 B** |
+| `dist/index-3d.html` (`SIZE_LIMITS_MB.three` in `build.js`) | 12 MB = 12,582,912 B | 11,619,314 B | **963,598 B** |
 
 `dist/index-3d.html` is the avatar base64'd (≈ 9.84 MB) plus the vendor bundle
-(0.79 MB) plus `src/` and the fonts. **Do not raise `SIZE_LIMIT_MB` to make room** —
-`tests/build.test.mjs:141` reads that constant back out of `build.js`, so raising it
-raises the test with it and the guard stops guarding. If a future avatar blows the
-ceiling, the answer is tighter texture compression in the converter.
+(0.79 MB) plus `src/` and the fonts. **Do not raise `SIZE_LIMITS_MB.three` to make
+room** — both `tests/build.test.mjs` and `tests/voice.test.mjs` §1.3 pin it to 12,
+so raising it fails them rather than quietly raising the guard with it. If a future
+avatar blows the ceiling, the answer is tighter texture compression in the converter.
+
+The ceiling is per target because the three targets are no longer sized by the same
+thing: the canvas targets carry the pre-rendered speech (~15 MB at `--scope all`) and
+this one carries the avatar instead. `SIZE_LIMITS_MB.three` is unchanged at 12 for
+exactly that reason — the speech never enters this file, so it never bought it a
+bigger number.
 
 The whole reason the file is 7 MB rather than 2 MB is morph-target storage: 67 targets
 over a 22k-vertex mesh is ~32 MB of mostly zeroes, because a viseme does not move the

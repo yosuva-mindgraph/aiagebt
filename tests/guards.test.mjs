@@ -197,10 +197,38 @@ window.__qaAsk = {
     };
   },
 
+  /* NOTE: this whole object is a TEMPLATE LITERAL in the module below. No
+     backticks in here — one ends the string and the file stops parsing.
+
+     The stub must honour Ask.answer()'s CONTRACT, not just the fields this
+     test happens to read. src/app.js destructures { html, spoken, ... } and
+     then calls spoken.length — so a stub that omits "spoken" throws inside
+     handleAsk(), which is deliberately not awaited, and surfaces as three
+     opaque "Cannot read properties of undefined" page errors rather than as
+     anything naming the cause. That is exactly what happened when "spoken"
+     was introduced, and it is the third time a fixture's private copy of a
+     contract has drifted from the real one.
+
+     So "spoken" is not typed out here: it comes from spokenForm(), the SAME
+     function src/ask.js uses to build the field. A free variable, because
+     build.js flattens every module into one classic script scope — the same
+     reason SCENES and sceneIndex are reachable above. Derived, so it cannot
+     drift; check() below pins the key set so a future ADDITION to the
+     contract fails by name instead of by TypeError. */
   pin(scene) {
+    const html = '<p>Pinned answer body.</p>';
     window.app.ask.answer = async () => ({
-      html: '<p>Pinned answer body.</p>', scene: scene, grounded: true, via: 'local',
+      html, spoken: spokenForm(html), scene: scene, grounded: true, via: 'local',
     });
+  },
+
+  /** The stub's shape against the REAL Ask.answer()'s, in the page. */
+  async check() {
+    const real = await new Ask({}).answer('what is the intelligent airport platform');
+    const html = '<p>Pinned answer body.</p>';
+    const stub = { html, spoken: spokenForm(html), scene: 'open', grounded: true, via: 'local' };
+    const missing = Object.keys(real).filter(k => !(k in stub));
+    return { realKeys: Object.keys(real).sort(), missing };
   },
 };
 `;
@@ -329,6 +357,16 @@ export async function run(t) {
     t.ok(Boolean(real.jump) && real.resolves >= 0,
       'and the jump it offers names a scene that EXISTS — data-jump is read off the RESOLVED scene, so it cannot be a dead id',
       real.jump ? `data-jump="${real.jump}" → SCENES[${real.resolves}] · ${real.label}` : 'no jump button was offered at all');
+
+    /* (a2) the stub honours the real contract, checked BEFORE anything is
+       pinned. Without this, a field added to Ask.answer() and not to pin()
+       fails as three identical "Cannot read properties of undefined" page
+       errors from inside an unawaited handleAsk() — which names neither the
+       field nor the stub. Here it fails saying which key is missing. */
+    const shape = await page.evaluate(() => window.__qaAsk.check());
+    t.eq(shape.missing, [],
+      'the pin() stub carries every field Ask.answer() returns — the fixture cannot drift from the contract',
+      `real returns { ${shape.realKeys.join(', ')} }`);
 
     /* (b) a KNOWN-GOOD id, pinned, and the button has to actually work */
     const good = await page.evaluate(id => {

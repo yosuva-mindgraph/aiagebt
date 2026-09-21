@@ -142,18 +142,49 @@ export async function run(t) {
       `${mb(bare)} of page + ${mb(size('dist/' + label) - bare)} of speech`);
   }
 
-  /* §1.3 — the ONE ceiling, untouched, and every target still under it. The
-     speech did not buy itself a bigger number: the narration is 4.38 MB, the
-     canvas targets land near 5.4 MB, and the 3D target does not carry it
-     precisely so that this limit keeps meaning what it meant. */
+  /* §1.3 — the ceilings, and that the speech did not simply buy itself bigger
+     ones.
+
+     This assertion used to read "SIZE_LIMIT_MB is still 12 — the speech did not
+     raise it", over one ceiling shared by all three targets. That property is
+     now false BY DESIGN and must not be made to pass: at --scope all the speech
+     is ~15 MB, so the canvas targets genuinely do not fit under 12, and build.js
+     splits the ceiling per target rather than pretending otherwise.
+
+     What is still worth defending is the thing the old assertion was really
+     protecting — that a ceiling is not a number somebody nudges upward whenever
+     the build stops fitting. So both caps are pinned to their DECLARED values
+     here. A cap re-derived from whatever the file happens to contain would pass
+     for any number at all, which is the one failure mode a size guard has.
+
+     The 3D number carries the original claim intact: the speech did NOT raise
+     it, because that target does not carry the speech. The canvas number is the
+     deliberate 18, and it comes from outside this repo — a 25 MB mail limit less
+     MIME base64's third. Change either and this fails, which is the point. */
   const buildSrc = rd('build.js');
-  const limit = Number((buildSrc.match(/^const SIZE_LIMIT_MB = (\d+);$/m) || [])[1]);
-  t.ok(limit === 12, '§1.3 build.js still declares SIZE_LIMIT_MB = 12 — the speech did not raise it',
-    `${limit} MB`);
-  for (const label of ['index.html', 'artifact.html', 'index-3d.html']) {
+  const declared = name =>
+    Number((buildSrc.match(new RegExp(`^ {2}${name}: (\\d+),$`, 'm')) || [])[1]);
+  const limits = { canvas: declared('canvas'), three: declared('three') };
+
+  t.ok(/^const SIZE_LIMITS_MB = \{$/m.test(buildSrc),
+    '§1.3 build.js declares per-target ceilings (SIZE_LIMITS_MB)');
+  t.ok(limits.three === 12,
+    '§1.3 the 3D ceiling is still 12 MB — the speech did not raise it (that target does not carry it)',
+    `${limits.three} MB`);
+  t.ok(limits.canvas === 18,
+    '§1.3 the canvas ceiling is the declared 18 MB — a mail limit, not a number raised to fit the build',
+    `${limits.canvas} MB`);
+
+  /* Each target under ITS OWN cap. index-3d.html is checked against the 3D one
+     because it is the target that does not carry speech; the other two share
+     the canvas cap because artifact.html is cut out of index.html. */
+  for (const [label, cap] of [
+    ['index.html', limits.canvas], ['artifact.html', limits.canvas],
+    ['index-3d.html', limits.three],
+  ]) {
     const b = size('dist/' + label);
-    t.ok(b < limit * 1024 * 1024, `§1.3 dist/${label} is under the ${limit} MB ceiling`,
-      `${mb(b)} — ${mb(limit * 1024 * 1024 - b)} of headroom`);
+    t.ok(b < cap * 1024 * 1024, `§1.3 dist/${label} is under its ${cap} MB ceiling`,
+      `${mb(b)} — ${mb(cap * 1024 * 1024 - b)} of headroom`);
   }
 
   /* §1.4 — THE ABSENT CASE, as an identity. Build the same build.js twice in a
