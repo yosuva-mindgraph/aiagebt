@@ -1569,9 +1569,8 @@ const KB = [
      The briefing states it in one line: it turns a fixed piece of infrastructure into a
      <b>living ecosystem</b>, anticipating, personalising and adapting in real time, for passengers
      and partners alike.</p>
-     <p>It is a single framework spanning four things: <b>predictive operations</b>,
-     <b>hyper-personalised journeys</b>, <b>adaptive infrastructure</b>, and a <b>dynamic commercial
-     ecosystem</b>.</p>
+     <p>It is a single framework spanning <b>predictive operations</b>, <b>hyper-personalised
+     journeys</b>, <b>adaptive infrastructure</b>, and a <b>dynamic commercial ecosystem</b>.</p>
      <p>Three names here, and they don't collapse into one. Thinking Airport is the <b>vision</b>.
      <b>AIRIS</b> is the proof point that demonstrates it. <b>Intelligent Airport</b> is the
      <b>product</b> — the one you'd actually be buying, and what I'm walking you through today. The
@@ -1620,14 +1619,27 @@ const KB = [
      "what is our rule for this?" is answerable alongside "what is the number".</p>`
 },
 
-/* ── the airport model ──────────────────────────────────────────────────── */
+/* ── the airport model ──────────────────────────────────────────────────────
+   NO COUNT SURVIVES A LIST THAT IS PRINTED BESIDE IT. Four entries in this file
+   used to size the thing they then enumerated — the AOCC's subdomains below,
+   Revenue Management's applications, the navigation's areas under `governance`,
+   and the Thinking Airport framework's strands under `thinking-airport`. Each
+   count is redundant against the list, each moves with a release or with the
+   airport's own operating model, and one surviving figure invites "why is that
+   one quotable when nothing else is". The lists all stayed; only the numbers
+   went. docs/CONTENT-SOURCES.md carries the source and the reasoning per row.
+
+   Do not restate a removed figure in a comment either: build.js inlines this
+   file into dist/index.html verbatim, so a number in a comment is a number a
+   prospect finds in View Source. Keep the reasoning, drop the quotation.
+   ------------------------------------------------------------------------ */
 {
   id: 'control-centres',
   k: 'control centres aocc atc eoc noc soc operations tower emergency network security centre',
   scene: 'model',
   a: `<p>The control centres modelled today:</p>
      <ul>
-       <li><b>AOCC</b> — day-to-day flight, baggage, passenger and resource operations. Nine subdomains:
+       <li><b>AOCC</b> — day-to-day flight, baggage, passenger and resource operations. Its subdomains:
          flight/FIDS, cargo, baggage, retail, airline, passenger, ticketing/DCS, vehicle/landside, feedback.</li>
        <li><b>ATC</b> — runway and airspace movements: runway movements, tower watch, airspace feed.</li>
        <li><b>EOC</b> — crisis coordination per the Airport Emergency Plan (ICAO Annex 14 / FAA Part 139):
@@ -1806,8 +1818,8 @@ const KB = [
   id: 'governance',
   k: 'governance compliance grc regulation icao iata annex obligation audit regulator standards',
   scene: 'governance',
-  a: `<p>Governance is one of the five things in the navigation, not a module sold later — and it governs
-     the platform as well as the airport.</p>
+  a: `<p>Governance is in the navigation, not a module sold later — and it governs the platform as well
+     as the airport.</p>
      <p><b>Obligations tracked:</b> ICAO Annex 19 safety management, Annex 17 security, Annex 14
      aerodrome, the Airport Emergency Plan, IGOM ground operations, slot punctuality, ESG reporting
      (against ACI, GRI and Airport Carbon Accreditation), personal-data protection, cross-border
@@ -2015,7 +2027,7 @@ const KB = [
   id: 'revenue',
   k: 'revenue billing airline charges invoice incentive marketing routes commercial non aero retail monetise',
   scene: 'model',
-  a: `<p>Revenue Management is three applications on the governed ledger.</p>
+  a: `<p>Revenue Management is a set of applications on the governed ledger.</p>
      <ul>
        <li><b>Airline Billing</b> — tariff → gross charges → incentive credit → net invoice → collection.</li>
        <li><b>Airline Marketing</b> — the incentive programme: eligibility, quarterly computation,
@@ -2213,9 +2225,9 @@ const choice = (to, icon, label, cls) => `
    the three steps are what the whole deck rests on, and they are the one place
    a reader scans left-to-right for a SHAPE rather than for a word.
 
-   `value` is the big display line (.sv). It USED to be a figure — 21 / 58 / 201
-   — and those were counts of the airport's own estate, so they went. The slot
-   itself did not: a three-stage diagram whose middle line is blank reads as a
+   `value` is the big display line (.sv). It USED to be a figure, and the three
+   of them counted the airport's own data estate, so they went. The slot itself
+   did not: a three-stage diagram whose middle line is blank reads as a
    diagram that failed to load. It now carries a one-word QUANTIFIER instead,
    which is what the count was really there to convey, and the three of them
    read as the scene's own h1 — every source, one model, defined once. Keep
@@ -2304,7 +2316,7 @@ const SCENES = [
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
     <!-- THREE MARKS, AND EVERY ONE OF THEM A PLATFORM INVARIANT. This strip
-         used to open with 58 canonical entities, 201 governed KPIs and 5
+         used to open with counts of canonical entities, governed KPIs and
          control centres. Those three are a function of the AIRPORT's data
          estate, not of the product: an airport with different source systems
          gets a different entity count, a different KPI count and a different
@@ -2658,8 +2670,16 @@ const SCENES = [
       <div class="run-side">
         <div class="card">
           <h3>Every node is swappable</h3>
-          <p style="margin-bottom:10px">The same seven-stage shape runs a baggage SLA watch, a cargo
-            dwell breach, a non-aero revenue dip, an IT availability alert or an emergency activation.
+          <!-- "The same SHAPE", with no length on it. This read "the same
+               seven-stage shape" — a count of the ordered list rendered
+               immediately to the left, which the reader can already see, and
+               which a baggage SLA watch or an emergency activation does not
+               have to match. The claim that carries weight is that the shape
+               repeats and only the nodes differ; the length was never part of
+               it. Same rule as scene 1's metrics strip and scene 4's pipeline:
+               the list stays on screen, the number does not. -->
+          <p style="margin-bottom:10px">The same shape runs a baggage SLA watch, a cargo dwell
+            breach, a non-aero revenue dip, an IT availability alert or an emergency activation.
             Only the nodes differ.</p>
           <div class="estate">
             <span>manual</span><span>schedule / cron</span><span>threshold</span><span>webhook</span>
@@ -2776,7 +2796,7 @@ const SCENES = [
   title: 'Governance, risk & compliance',
   icon: 'shield-check',
   lines: [
-    "Most platforms treat governance as a module you buy later. Here it is one of the five things in the navigation. And it governs the platform itself, as well as the airport.",
+    "Most platforms treat governance as a module you buy later. Here it is in the navigation. And it governs the platform itself, as well as the airport.",
     "The obligation register carries what you're actually held to.",
     "On the aviation side, the annexes of the International Civil Aviation Organization. Annex nineteen for safety management, Annex seventeen for security, Annex fourteen for aerodromes.",
     "Your airport emergency plan. IGOM, the ground operations manual. Slot punctuality, and ESG reporting.",
@@ -2869,15 +2889,20 @@ const SCENES = [
       ${icard('lock', 'Ingest-only by default', 'It reads. It does not write back into an operational system unless you have explicitly opened that door.')}
     </div>`
   /* THE TRACK-RECORD SECTION IS GONE, AND THE SCENE IS BETTER FOR IT.
-     "Where it runs" used to be followed by an <h2>The track record behind it</h2>,
-     a six-figure .metrics strip (15 services, 5 airports, 12 AI systems, 70+
-     dashboards, 16+ bots, 8 departments) and a .note carrying more quantities
-     inside its prose — "across five airports", "zero paper contracts", "four
-     content platforms collapsed into one" — plus the IDC Future Enterprise
-     Award 2023. The operator's decision is total consistency: no numbers
-     anywhere in the walkthrough. Half-removing this one would have been the
-     worst outcome, because a strip of six figures is the single loudest
-     numeric object in the deck.
+     "Where it runs" used to be followed by a track-record heading, a .metrics
+     strip counting DXC's services, airports, AI systems, dashboards, automation
+     bots and departments, a .note repeating more of those quantities inside its
+     prose, and an industry award. The operator's decision is total consistency:
+     no numbers anywhere in the walkthrough. Half-removing this one would have
+     been the worst outcome, because a strip of raw figures is the single
+     loudest numeric object in the deck.
+
+     The figures themselves are deliberately NOT restated here. build.js inlines
+     this file into dist/index.html verbatim, comments included, so a retracted
+     claim quoted in a comment is a retracted claim a prospect can still find in
+     View Source — which is the exposure the removal exists to close. Git history
+     is the durable record of exactly what went; docs/CONTENT-SOURCES.md records
+     which source held it and why it is off screen.
 
      Nothing was invented to fill the space, and nothing now points at an
      absence. The narration was never wired to this section: scene 11's last
@@ -5121,9 +5146,40 @@ class Ask {
 
   get hasLLM() { return Boolean(this.cfg?.llm?.apiKey || this.cfg?.llm?.endpoint); }
 
-  /**
-   * @returns {Promise<{html:string, scene:string|null, grounded:boolean, via:string}>}
-   */
+  /* ── html vs spoken: why an answer carries two forms ──────────────────
+     `html` is what the answer sheet SHOWS. `spoken` is what Iris SAYS. They
+     are usually the same words and deliberately are not always, because they
+     are addressed differently: the sheet is read, and the voice is looked up
+     in a table of clips rendered ahead of time.
+
+     A pre-rendered clip is addressed by the EXACT text it speaks
+     (voiceClipKey in src/voice.js). So any spoken string the generator did
+     not produce is a cache miss, and a miss falls through to the browser's
+     speechSynthesis — the flat robotic voice the pre-rendering exists to get
+     rid of. Whatever goes in `spoken` therefore has to be a string
+     tools/prerender-voice.mjs can enumerate offline.
+
+     That is exactly what the runner-up blend below is not. It concatenates
+     the top entry with a paragraph of the SECOND, and which pair you get
+     depends on the question — 39 entries make up to 1482 ordered pairs, so
+     the set of speakable strings is combinatorial and cannot be enumerated
+     at any cost worth paying. Measured before this existed: of 1400 probe
+     questions, 105 produced a blended answer and every one of them missed
+     the cache and spoke robotically.
+
+     So the blend stays on SCREEN and stops being spoken. The viewer reads
+     the runner-up paragraph and hears a tight single answer, which is also
+     the better outcome out loud — two entries concatenated ran to 818
+     characters of run-on in the worst measured case.
+
+     `spoken` is set on EVERY branch, including the LLM one where nothing is
+     pre-rendered anyway. A field that is present on three paths out of four
+     invites a caller to reach past it "just this once" on the fourth, and
+     the fourth here is the desk build with a key — the configuration least
+     like the one that ships. Total field, one shape of path.
+
+     @returns {Promise<{html:string, spoken:string, scene:string|null,
+     grounded:boolean, via:string}>} */
   async answer(question) {
     const hits = search(question, 3);
     const top = hits[0];
@@ -5131,12 +5187,22 @@ class Ask {
     const scene = grounded ? top.e.scene : null;
 
     if (!this.hasLLM) {
-      if (!grounded) return { html: DONT_KNOW, scene: null, grounded: false, via: 'local' };
+      if (!grounded) {
+        return {
+          html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
+          scene: null, grounded: false, via: 'local',
+        };
+      }
       // Blend in a strong runner-up so related questions get a fuller answer.
       const second = hits[1];
       const extra = second && second.score >= top.score * 0.72 && second.e.id !== top.e.id
         ? `<p style="opacity:.85">${stripP(second.e.a).split('</p>')[0]}</p>` : '';
-      return { html: top.e.a + extra, scene, grounded: true, via: 'local' };
+      /* The blend is shown, not said. spokenForm(top.e.a) is precisely the
+         string the generator renders for this entry, so it is always a hit. */
+      return {
+        html: top.e.a + extra, spoken: spokenForm(top.e.a),
+        scene, grounded: true, via: 'local',
+      };
     }
 
     const grounding = hits
@@ -5146,12 +5212,22 @@ class Ask {
 
     try {
       const html = await this._callLLM(question, grounding || '(nothing relevant found)');
-      return { html, scene, grounded, via: 'llm' };
+      /* Model-generated: unknowable ahead of time, so nothing is pre-rendered
+         for it and this speaks through the live API or Web Speech exactly as
+         it always has. It is never the container's path — the image ships no
+         key, so hasLLM is false there and this branch is unreachable. */
+      return { html, spoken: spokenForm(html), scene, grounded, via: 'llm' };
     } catch (err) {
       console.warn('[ask] LLM failed, answering locally:', err?.message || err);
       return grounded
-        ? { html: top.e.a, scene, grounded: true, via: 'local-fallback' }
-        : { html: DONT_KNOW, scene: null, grounded: false, via: 'local-fallback' };
+        ? {
+          html: top.e.a, spoken: spokenForm(top.e.a),
+          scene, grounded: true, via: 'local-fallback',
+        }
+        : {
+          html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
+          scene: null, grounded: false, via: 'local-fallback',
+        };
     }
   }
 
@@ -5239,11 +5315,13 @@ function sanitise(input) {
    caption up word by word by walking its spans BY INDEX against the spoken
    word timings — so a normaliser that changed the word count on the way to
    the voice would silently desynchronise the highlight. An answer has no
-   such problem: app.js captions spokenForm(html) and then speaks
-   spokenForm(html), so caption and speech are the same tokens either way,
-   and only the rich answer SHEET keeps the tight typographic form. This
-   file is already the display/speech seam; expanding anywhere downstream of
-   it would not be.
+   such problem: app.js captions the answer's `spoken` field and then speaks
+   that same field, so caption and speech are the same tokens either way, and
+   only the rich answer SHEET keeps the tight typographic form. (They are one
+   string on purpose. Captioning the sheet's HTML instead would put the
+   runner-up paragraph on screen as a caption while the voice never said it.)
+   This file is already the display/speech seam; expanding anywhere
+   downstream of it would not be.
 
    Numbers stay as digits on purpose — every engine reads 72 as seventy-two.
    It is the symbols AROUND them (plus-minus, tilde, percent, a dash used as
@@ -5251,13 +5329,13 @@ function sanitise(input) {
 const SPOKEN = [
   /* symbols and ranges */
   [/±\s*/g, 'plus or minus '],
-  /* "a ~35% uplift" must not become "a around 35 percent uplift" — the tilde
+  /* "a ~3 minute hold" must not become "a around 3 minute hold" — the tilde
      stands where the article's own hedge goes, so it eats the article. */
   [/\b(?:a|an)\s+~\s*(?=\d)/g, 'around '],
   [/~\s*(?=\d)/g, 'around '],
   [/(\d)\s*%/g, '$1 percent'],
   [/(\d)\s*\+/g, '$1 or more'],
-  [/(\d)\s*[–—-]\s*(?=\d)/g, '$1 to '],          // 15-30 minutes -> 15 to 30
+  [/(\d)\s*[–—-]\s*(?=\d)/g, '$1 to '],          // a 6-8 range -> 6 to 8
   [/\b([23])D\b/g, '$1-D'],                      // 2D / 3D, not "twod"
   [/\s*&\s*/g, ' and '],                         // also turns P&L into P and L
   [/\s*→\s*/g, ', then '],                       // tariff -> gross charges -> ...
@@ -5686,7 +5764,7 @@ class App {
     this._caption('Let me take that.');
 
     const my = ++this.token;
-    const { html, scene, via } = await this.ask.answer(q);
+    const { html, spoken, scene, via } = await this.ask.answer(q);
     if (my !== this.token) return;
 
     /* An answer names a scene to offer as a jump, and knowledge.js holds 38 of
@@ -5739,7 +5817,11 @@ class App {
       await this.ready;
       if (my !== this.token) return;
     }
-    const spoken = spokenForm(html);
+    /* `spoken`, not spokenForm(html). src/ask.js decides what Iris SAYS, and it
+       is deliberately not always the sheet's markup: a pre-rendered clip is
+       addressed by its exact text, so a spoken string the generator never
+       produced misses the cache and falls back to the robotic browser voice.
+       Re-deriving it from `html` here would reintroduce precisely that. */
     this._caption(spoken.length > 240 ? spoken.slice(0, 237) + '…' : spoken);
     this._setState('speaking');
     await this.presenter.say(spoken);
