@@ -91,7 +91,16 @@ const choice = (to, icon, label, cls) => `
 
 /* One stage of the data pipeline. The icon is 24px and sits on the label row:
    the three steps are what the whole deck rests on, and they are the one place
-   a reader scans left-to-right for a SHAPE rather than for a word. */
+   a reader scans left-to-right for a SHAPE rather than for a word.
+
+   `value` is the big display line (.sv). It USED to be a figure — 21 / 58 / 201
+   — and those were counts of the airport's own estate, so they went. The slot
+   itself did not: a three-stage diagram whose middle line is blank reads as a
+   diagram that failed to load. It now carries a one-word QUANTIFIER instead,
+   which is what the count was really there to convey, and the three of them
+   read as the scene's own h1 — every source, one model, defined once. Keep
+   whatever goes here to a single short word: .sv is set at --step-fig, which
+   clamps up to 36px, and a phrase wraps in a 1fr grid column. */
 const step = (icon, name, value, detail) => `
       <div class="stage-step">
         <div class="sn"><span class="ico">${dxcIcon(icon, 24)}</span>${name}</div>
@@ -174,10 +183,26 @@ export const SCENES = [
       building management, the sensor estate. Intelligent Airport replaces none of it. It reads every
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
+    <!-- THREE MARKS, AND EVERY ONE OF THEM A PLATFORM INVARIANT. This strip
+         used to open with 58 canonical entities, 201 governed KPIs and 5
+         control centres. Those three are a function of the AIRPORT's data
+         estate, not of the product: an airport with different source systems
+         gets a different entity count, a different KPI count and a different
+         number of control centres, so quoting ours implies theirs.
+
+         What is left is not a gap — it is the deck's whole argument in three
+         marks, and none of the three moves from airport to airport: ONE
+         governed model (the architectural claim), ZERO systems replaced (a
+         commitment that holds everywhere), and no ceiling on what gets built
+         on top. All three now pass the human flag, so the strip is uniformly
+         gold rather than two sky figures and an orphan — the same
+         all-or-nothing rule the icard grids follow.
+
+         NOTE, because this comment is INSIDE a template literal: a backtick in
+         here ends the template and the built file dies at first paint. Say
+         flag and icon names in plain words, never in code quotes. -->
     <div class="metrics">
-      ${metric('database', '58', 'Canonical entities')}
-      ${metric('chart-bar', '201', 'Governed KPIs')}
-      ${metric('monitor', '5', 'Control centres')}
+      ${metric('database', '1', 'Governed model', true)}
       ${metric('server', '0', 'Systems replaced', true)}
       ${metric('cubes', '∞', 'Things you can build', true)}
     </div>
@@ -285,7 +310,7 @@ export const SCENES = [
   lines: [
     "Everything else I'm going to show you rests on this scene, so let me spend a moment here.",
     "Source systems land in the lakehouse and are mapped into one canonical model of the airport.",
-    "Fifty-eight entities — flight, bag, passenger, cargo, retail transaction, energy, roster, revenue, sensor, emergency event, I-T system, and so on. On top of them sit two hundred and one key performance indicators, defined once.",
+    "The entities your airport runs on — flight, bag, passenger, cargo, retail transaction, energy, roster, revenue, sensor, emergency event, I-T system, and so on. On top of them sit your key performance indicators, defined once.",
     "Defined once is the important part. On-time performance means the same thing in the operations dashboard and in a workflow's threshold. The same thing in an agent's answer, and in the board that goes to your regulator. There is no second definition hiding in someone's spreadsheet.",
     "Around it sits the catalog — every table and document, with their lineage back to source. And a business glossary, so the word a director uses resolves to the field an engineer built.",
     "And there's a governed SQL explorer, for the people who'd rather write the query themselves. Same masking, same row policies, same audit trail. We do not make the analysts leave."
@@ -295,11 +320,11 @@ export const SCENES = [
     <h1>Every source, one model,<br>one definition of the truth.</h1>
 
     <div class="pipeline">
-      ${step('data-exchange', 'Sources', '21', 'mapped feeds — AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data')}
+      ${step('data-exchange', 'Sources', 'Every', 'feed you run — AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data and the rest of the estate')}
       <div class="arrow-r">${dxcIcon('arrow-right', 20)}</div>
-      ${step('graph-nodes', 'Canonical model', '58', 'entities — the airport described once, independent of the system it came from')}
+      ${step('graph-nodes', 'Canonical model', 'One', 'set of entities — the airport described once, independent of the system it came from')}
       <div class="arrow-r">${dxcIcon('arrow-right', 20)}</div>
-      ${step('chart-bar', 'Governed KPIs', '201', 'measures defined once and reused by every board, workflow, agent and answer')}
+      ${step('chart-bar', 'Governed KPIs', 'Once', 'defined — then reused by every board, workflow, agent and answer')}
     </div>
 
     <h2>What sits around it</h2>
@@ -323,7 +348,7 @@ export const SCENES = [
   icon: 'graph-nodes',
   lines: [
     "On top of the data sits the airport itself — modelled the way you actually run it.",
-    "Five control centres. The airport operations control centre — the A-O-C-C — for day-to-day flight, baggage, passenger and resource operations. The tower.",
+    "Start with the control centres. The airport operations control centre — the A-O-C-C — for day-to-day flight, baggage, passenger and resource operations. The tower.",
     "The emergency operations centre, structured to your airport emergency plan. The network and I-T operations centre. And the security operations centre, physical and cyber together.",
     "Alongside them, the business domains — energy, ESG, facility management, safety training, aviation security, operational technology security. And the applications: passenger flow, revenue management, disaster operations, connected health, rostering.",
     "Now here is the sentence I want you to remember. It's the whole difference between a product and a platform.",
@@ -339,7 +364,7 @@ export const SCENES = [
          to anyone who does not already know what AOCC and NOC stand for — the
          glyph is the only thing that distinguishes them at a glance, which is
          precisely the case where an icon communicates rather than decorates. -->
-    <h2>Five control centres</h2>
+    <h2>The control centres</h2>
     <div class="grid g3">
       ${icard('monitor', 'AOCC', 'Airport Operations Control Centre — day-to-day flight, baggage, passenger and resource operations.', 'Flight / FIDS · Cargo · Baggage · Retail · Airline · Passenger · Ticketing / DCS · Vehicle / Landside · Feedback')}
       ${icard('broadcast', 'ATC', 'Air Traffic Control Tower — runway and airspace movements: tower, ground and approach.', 'Runway movements · Tower watch · Airspace feed')}
@@ -445,7 +470,7 @@ export const SCENES = [
     <div class="grid g2">
       ${icard('monitor', 'Dashboards — endless', 'A canvas of tiles over any governed measure, in any combination, saved and shared. Publish a board to an audience — a partner, an executive, a regulator — with its own access scope. There is no fixed set, and the twentieth costs what the second did.', 'Every tile resolves through the governed pipeline. A board cannot show a number its viewer is not allowed to see.')}
       ${icard('code-window', 'Applications — described, then generated', 'Describe the application you want on your data and it is generated against the canonical model, from a component library: hero, navbar, KPI, chart, data table, timeline, filter bar, search, status badge, flight board, map, gallery, form. Then edited by hand where you want it precise.', 'Generated apps inherit the same scopes and audit as everything else — they are not a side door to the data.')}
-      ${icard('data-pipeline', 'Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Eleven playbooks ship with the product, disabled, so a fresh install has something real to turn on. They are examples — not the ceiling.')}
+      ${icard('data-pipeline', 'Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Playbooks ship with the product, disabled, so a fresh install has something real to turn on. They are examples — not the ceiling.')}
       ${icard('agent', 'Agents — registered, not improvised', 'Purpose-built agents over the same data scope, each with a risk tier, a declared tool set, evaluations and guardrails. A catalog, a run history, and a topology view of which agent calls what.', 'Shipped today: Airport Hub Analyst, Ops Analyst, Baggage Analyst, Retail Analyst, Data Steward, Compliance Explainer.')}
     </div>
 
@@ -454,7 +479,7 @@ export const SCENES = [
       <div class="before"><b>Everyone builds this</b>Alert when a number goes past a threshold. Useful, and it is the first thing every monitoring tool does.</div>
       <div class="after"><b>This one catches the outage</b>Fire when an <b>expected event does not arrive</b> — a heartbeat on a silent feed. A dashboard reading zero and a dashboard reading nothing look identical until something asks the question.</div>
     </div>
-    <div class="note">Three forecast models ship alongside — delay prediction, passenger-flow
+    <div class="note">Forecast models ship alongside — delay prediction, passenger-flow
       forecasting and baggage anomaly detection — and sit in the same catalog, under the same
       provenance rules, as everything else.</div>`
 },
@@ -477,7 +502,7 @@ export const SCENES = [
     "And then it stops. Because the last step is a human.",
     "That's the rule that makes an automated platform safe to point at a live airport.",
     "The machine does the watching, the querying, the explaining and the drafting. And a person makes the call.",
-    "Eleven of these ship with the product, switched off, so a fresh install has something real to turn on. They are examples. Swap any node and it's a different workflow entirely."
+    "The shipped playbooks all arrive switched off, so a fresh install has something real to turn on. They are examples. Swap any node and it's a different workflow entirely."
   ],
   html: () => `
     <p class="eyebrow">06 · one workflow, end to end</p>
@@ -587,7 +612,7 @@ export const SCENES = [
     "A word about the agents, because this is where most AI platforms quietly stop being auditable.",
     "An agent here is not a prompt somebody pasted into a chat window. It's a registered object — with a purpose, a risk tier and a declared set of tools. Its own governed data scope, an evaluation suite, and guardrails.",
     "There's a catalog of them, a full run history, and a topology view. It shows you which agent calls which tool, and which other agent. So nobody has to guess what is talking to what.",
-    "Six ship with the product. An airport hub analyst, an operations analyst, a baggage analyst, a retail analyst, a data steward, and a compliance explainer. You register your own the same way.",
+    "These ship with the product. An airport hub analyst, an operations analyst, a baggage analyst, a retail analyst, a data steward, and a compliance explainer. You register your own the same way.",
     "And everything irreversible lands in one approvals inbox. Human in the loop is not a setting we can forget to switch on. It is the shape of the thing."
   ],
   html: () => `
@@ -722,22 +747,32 @@ export const SCENES = [
         + `<span class="badge stale">${dxcIcon('warning', 12)}FEED STALE</span>`
         + ' banner — and says how old it is.')}
       ${icard('lock', 'Ingest-only by default', 'It reads. It does not write back into an operational system unless you have explicitly opened that door.')}
-    </div>
+    </div>`
+  /* THE TRACK-RECORD SECTION IS GONE, AND THE SCENE IS BETTER FOR IT.
+     "Where it runs" used to be followed by an <h2>The track record behind it</h2>,
+     a six-figure .metrics strip (15 services, 5 airports, 12 AI systems, 70+
+     dashboards, 16+ bots, 8 departments) and a .note carrying more quantities
+     inside its prose — "across five airports", "zero paper contracts", "four
+     content platforms collapsed into one" — plus the IDC Future Enterprise
+     Award 2023. The operator's decision is total consistency: no numbers
+     anywhere in the walkthrough. Half-removing this one would have been the
+     worst outcome, because a strip of six figures is the single loudest
+     numeric object in the deck.
 
-    <h2>The track record behind it</h2>
-    <div class="metrics">
-      ${metric('server', '15', 'Services in production')}
-      ${metric('location-dot', '5', 'Airports live')}
-      ${metric('ai-chip', '12', 'AI systems')}
-      ${metric('monitor', '70+', 'Dashboards')}
-      ${metric('agent', '16+', 'Automation bots', true)}
-      ${metric('user-group', '8', 'Departments unified', true)}
-    </div>
-    <div class="note">Security paperwork largely eliminated and fully offline-capable in restricted
-      zones; complaint response times and customer-experience scores both improved across five airports;
-      zero paper contracts and four content platforms collapsed into one. The home-to-gate passenger
-      ecosystem took the IDC Future Enterprise Award 2023. Those were measured at those airports —
-      yours would be measured at yours.</div>`
+     Nothing was invented to fill the space, and nothing now points at an
+     absence. The narration was never wired to this section: scene 11's last
+     two lines are "it runs where you need it" and the stale-banner line, which
+     are the first two cards of the "Where it runs" grid directly above. So the
+     scene now ENDS where its narration ends, instead of running on for two
+     silent sections past it. <h1>Built once. / Tailored per airport.</h1>, the
+     reused-vs-tailored pair, the estate caveat and the three ways in are all
+     untouched and still carry the whole delivery argument; the proof strip was
+     corroboration, not a premise, and no surviving sentence referred to it.
+
+     Where the proof question now lands: the knowledge base's `proof` entry,
+     which answers it the way scene 3's ROI note and scene 12's Baseline card
+     answer theirs — by saying why there is no figure, and pointing at the
+     baseline assessment. */
 },
 
 /* 12 ─────────────────────────────────────────────────────────────────────── */
