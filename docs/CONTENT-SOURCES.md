@@ -21,8 +21,8 @@ Two locations:
 > keep the three apart. Leave all of it alone.
 
 > **The deck quotes no figures any more.** Where a row below still names one, it is
-> recording what the SOURCE holds — not a claim on screen. Two classes were removed by
-> operator decision, across three passes. **Deployment-shape** counts went first in
+> recording what the SOURCE holds — not a claim on screen. Three classes were removed by
+> operator decision, across four passes. **Deployment-shape** counts went first in
 > principle and last in practice: canonical entities, governed KPIs, mapped sources,
 > control centres, shipped playbooks, agents, ML models, the passenger-flow prediction
 > horizon. Every one of those is a function of the airport's own data estate and systems
@@ -31,7 +31,20 @@ Two locations:
 > the services / airports / AI-systems / dashboards / bots / departments strip, the
 > outcome percentages, the ~85/~15 delivery split, the ±72-hour horizon and the IDC award
 > are DXC's history rather than the prospect's, and a room asked to accept them cannot
-> check them.
+> check them. **Component-shape** counts went last, for consistency: how many subdomains
+> an AOCC has, how many stages a workflow runs, how many applications make up Revenue
+> Management, how many areas the navigation carries, how many strands the Thinking Airport
+> framework spans. Each of those was a count of a list printed directly beside it, so the
+> count added nothing a reader could not see — and each moves with the release or with the
+> airport's operating model. In every case **the list stayed and only the number went**; a
+> single surviving figure invites "why is that one quotable when nothing else is".
+>
+> **Comments are shipped text.** `build.js` inlines `src/*.js` into `dist/index.html`
+> verbatim, comments included, so a figure quoted inside a removal-record comment is a
+> figure a prospect finds in View Source — the exact exposure these passes exist to close.
+> The in-code comments therefore keep the REASONING and never restate the number. This
+> file and git history are the durable record of what the figure was; the shipped artifact
+> is not.
 >
 > **The citations themselves stay exactly as they are**, for the same reason the filenames
 > above do. The metadata files and PDFs are still the provenance for the *qualitative*
@@ -47,11 +60,11 @@ Two locations:
 
 | Claim | Source |
 |---|---|
-| Five areas: Airport Business · Data Fabric · Intelligence 360 · GRC · Settings | Product · `web/src/app/nav.ts` |
+| The navigation's areas — Airport Business · Data Fabric · Intelligence 360 · GRC · Settings | Product · `web/src/app/nav.ts` (five of them). The **areas** are what scene 10 and the kb `governance` rest on — that governance is *in the navigation*, not a module sold later. The **count** is not on screen: an area is added or renamed by a release, and "one of the five things" would date the deck the first time one is. The kb `competitors` already made the claim without a number; scene 10 and the kb `governance` now match it. |
 | The control centres — AOCC, ATC, EOC, NOC, SOC, with their full names and purposes | Product · `metadata/ops/centres/*.yaml` (five files). The **names** are on screen and the **count** is not: which centres an airport runs is its operating model's question. Scene 5's sixth card, "…and the next one", is the qualitative form of the same point. |
-| AOCC subdomains (flight/FIDS, cargo, baggage, retail, airline, passenger, ticketing/DCS, vehicle/landside, feedback) and the ATC / EOC / NOC / SOC subdomains | Product · `metadata/ops/domains/{aocc,atc,eoc,noc,soc}.yaml` |
+| AOCC subdomains (flight/FIDS, cargo, baggage, retail, airline, passenger, ticketing/DCS, vehicle/landside, feedback) and the ATC / EOC / NOC / SOC subdomains | Product · `metadata/ops/domains/{aocc,atc,eoc,noc,soc}.yaml` (nine under AOCC). The subdomains are **named** in the kb `control-centres`; the **count** is not. Which subdomains an AOCC runs follows the airport's own operating model, exactly as the row above says of the centres themselves — and a subdomain is a metadata file, so the number moves. The kb entry said "Nine subdomains" six lines under a sentence that had already dropped the centre count; the two now agree. |
 | Business domains — Energy, ESG, Facility, Safety Training, AVSEC, OT Security, Healthcare | Product · `metadata/ops/domains/business.yaml` |
-| Applications — Passenger360, Revenue Management (Airline Billing / Airline Marketing / Routes), AIR Disaster Management, Connected Health, Roster | Product · `metadata/ops/domains/applications.yaml` |
+| Applications — Passenger360, Revenue Management (Airline Billing / Airline Marketing / Routes), AIR Disaster Management, Connected Health, Roster | Product · `metadata/ops/domains/applications.yaml` (Revenue Management holds three). All of them are **named** on screen in scene 5 and in the kb `domains-apps` and `revenue`; the **count** inside Revenue Management is not. The ledger takes another application the day the product ships one, and "is three applications" is the sentence that then has to be found and corrected. |
 | **"Adding a domain/subdomain is METADATA, not code … a new domain immediately gets the standard 'connect this data' dashboard and lights up when its entity is mapped"** | Product · `api/routes/domains.py`, module docstring. Quoted almost verbatim — it is the single strongest line in the codebase. |
 | EOC follows ICAO Annex 14 / FAA Part 139 | Product · `metadata/ops/centres/eoc.yaml` |
 
@@ -71,6 +84,7 @@ Two locations:
 |---|---|
 | Workflow trigger types — manual, schedule/cron, threshold on a governed measure, webhook, live event, another workflow's failure, **missing expected event (heartbeat)** | Product · `metadata/flows/nodes.yaml` |
 | Action types — canonical query, ask an agent, branch, open alert (deduped), email, HTTP POST, REST call, Slack, Discord, Teams, Telegram, WhatsApp | Product · `metadata/flows/nodes.yaml` |
+| The scene-8 run panel — one playbook drawn as its ordered stages (trigger · query · agent · branch · alert · notify · human approval), with "the same shape runs" the others | Product · same file, composed per flow. The **stages** are on screen as the list itself; the **count** is not. The side card used to read "the same seven-stage shape", which is a length the panel beside it already shows and which a baggage SLA watch or an emergency activation does not have to share — the claim that survives is that the SHAPE is the same and only the nodes differ. |
 | **Shipped playbooks**, seeded disabled, and their eleven names — Flight OTP, Airline OTP, baggage SLA, cargo dwell, retail dip, complaint/ASQ, security screening, security wait, lounge capacity, IT availability, emergency response | Product · `metadata/flows/dxc_demo_use_cases.json` (the `flows` array holds eleven; its own `note` field wrongly says "nine"). The **names** are on screen in scene 8's side panel and the kb `playbooks`; the count is not. That discrepancy is why the count was worth distrusting even before the operator ruled on it. |
 | The scene-8 example (security queue over the wait-time target for two minutes) | Product · same file, flow "Security wait above target" |
 | App component library — hero, navbar, footer, kpi, chart, data-table, timeline, filter-bar, search, status-badge, flight-board, map, gallery, form | Product · `metadata/apps/components.yaml` |
@@ -103,6 +117,7 @@ Two locations:
 | "ROI figures are indicative industry ranges, validated per airport in a short baseline assessment during onboarding" | Share · same, closing note. This line is why the deck holds. **No range appears on screen any more**, so the requirement to caveat one is satisfied by there being nothing to caveat — read it as a floor, not a licence: if a figure is ever added back, this caveat rides with it. What the caveat used to do is now done positively, by scene 3's ROI note, scene 12's Baseline card and the kb `roi`, `data-model`, `sources`, `dashboards`, `proof` and `passenger-flow`, each of which says why there is no figure and points at the baseline. |
 | AIRIS = AI Real-Time Integrated System; "like an iris, AIRIS enables an Airport to *see*" | Share · `Inputs/Thinking_Airport_AIRIS_Briefing - v2[28].docx` |
 | Thinking Airport = the vision; AIRIS = the proof point. Keep distinct. | Share · same |
+| The Thinking Airport framework — predictive operations · hyper-personalised journeys · adaptive infrastructure · a dynamic commercial ecosystem | Share · same. All four are **named** in the kb `thinking-airport` and `name-airis`; the **count** is not. It is DXC's vision statement rather than the product's shape, and a vision is restated more often than a schema is — the strands are the claim, "four things" was only their length. |
 | 83-second coordination vs 5–15 min manual; 17 systems orchestrated | Share · same. **Demonstrated**, per that document. |
 | Financial figures around AIRIS are illustrative, modelled on IATA/ICAO benchmarks | Share · same, "Reading the numbers correctly" |
 | FEED STALE / OFFLINE degradation; ingest-only; air-gapped, no runtime network dependency | `~/projects/airports-in-a-box/README.md` |

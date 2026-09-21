@@ -191,13 +191,13 @@ function sanitise(input) {
 const SPOKEN = [
   /* symbols and ranges */
   [/±\s*/g, 'plus or minus '],
-  /* "a ~35% uplift" must not become "a around 35 percent uplift" — the tilde
+  /* "a ~3 minute hold" must not become "a around 3 minute hold" — the tilde
      stands where the article's own hedge goes, so it eats the article. */
   [/\b(?:a|an)\s+~\s*(?=\d)/g, 'around '],
   [/~\s*(?=\d)/g, 'around '],
   [/(\d)\s*%/g, '$1 percent'],
   [/(\d)\s*\+/g, '$1 or more'],
-  [/(\d)\s*[–—-]\s*(?=\d)/g, '$1 to '],          // 15-30 minutes -> 15 to 30
+  [/(\d)\s*[–—-]\s*(?=\d)/g, '$1 to '],          // a 6-8 range -> 6 to 8
   [/\b([23])D\b/g, '$1-D'],                      // 2D / 3D, not "twod"
   [/\s*&\s*/g, ' and '],                         // also turns P&L into P and L
   [/\s*→\s*/g, ', then '],                       // tariff -> gross charges -> ...

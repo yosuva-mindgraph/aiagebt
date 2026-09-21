@@ -90,9 +90,8 @@ export const KB = [
      The briefing states it in one line: it turns a fixed piece of infrastructure into a
      <b>living ecosystem</b>, anticipating, personalising and adapting in real time, for passengers
      and partners alike.</p>
-     <p>It is a single framework spanning four things: <b>predictive operations</b>,
-     <b>hyper-personalised journeys</b>, <b>adaptive infrastructure</b>, and a <b>dynamic commercial
-     ecosystem</b>.</p>
+     <p>It is a single framework spanning <b>predictive operations</b>, <b>hyper-personalised
+     journeys</b>, <b>adaptive infrastructure</b>, and a <b>dynamic commercial ecosystem</b>.</p>
      <p>Three names here, and they don't collapse into one. Thinking Airport is the <b>vision</b>.
      <b>AIRIS</b> is the proof point that demonstrates it. <b>Intelligent Airport</b> is the
      <b>product</b> — the one you'd actually be buying, and what I'm walking you through today. The
@@ -141,14 +140,27 @@ export const KB = [
      "what is our rule for this?" is answerable alongside "what is the number".</p>`
 },
 
-/* ── the airport model ──────────────────────────────────────────────────── */
+/* ── the airport model ──────────────────────────────────────────────────────
+   NO COUNT SURVIVES A LIST THAT IS PRINTED BESIDE IT. Four entries in this file
+   used to size the thing they then enumerated — the AOCC's subdomains below,
+   Revenue Management's applications, the navigation's areas under `governance`,
+   and the Thinking Airport framework's strands under `thinking-airport`. Each
+   count is redundant against the list, each moves with a release or with the
+   airport's own operating model, and one surviving figure invites "why is that
+   one quotable when nothing else is". The lists all stayed; only the numbers
+   went. docs/CONTENT-SOURCES.md carries the source and the reasoning per row.
+
+   Do not restate a removed figure in a comment either: build.js inlines this
+   file into dist/index.html verbatim, so a number in a comment is a number a
+   prospect finds in View Source. Keep the reasoning, drop the quotation.
+   ------------------------------------------------------------------------ */
 {
   id: 'control-centres',
   k: 'control centres aocc atc eoc noc soc operations tower emergency network security centre',
   scene: 'model',
   a: `<p>The control centres modelled today:</p>
      <ul>
-       <li><b>AOCC</b> — day-to-day flight, baggage, passenger and resource operations. Nine subdomains:
+       <li><b>AOCC</b> — day-to-day flight, baggage, passenger and resource operations. Its subdomains:
          flight/FIDS, cargo, baggage, retail, airline, passenger, ticketing/DCS, vehicle/landside, feedback.</li>
        <li><b>ATC</b> — runway and airspace movements: runway movements, tower watch, airspace feed.</li>
        <li><b>EOC</b> — crisis coordination per the Airport Emergency Plan (ICAO Annex 14 / FAA Part 139):
@@ -327,8 +339,8 @@ export const KB = [
   id: 'governance',
   k: 'governance compliance grc regulation icao iata annex obligation audit regulator standards',
   scene: 'governance',
-  a: `<p>Governance is one of the five things in the navigation, not a module sold later — and it governs
-     the platform as well as the airport.</p>
+  a: `<p>Governance is in the navigation, not a module sold later — and it governs the platform as well
+     as the airport.</p>
      <p><b>Obligations tracked:</b> ICAO Annex 19 safety management, Annex 17 security, Annex 14
      aerodrome, the Airport Emergency Plan, IGOM ground operations, slot punctuality, ESG reporting
      (against ACI, GRI and Airport Carbon Accreditation), personal-data protection, cross-border
@@ -536,7 +548,7 @@ export const KB = [
   id: 'revenue',
   k: 'revenue billing airline charges invoice incentive marketing routes commercial non aero retail monetise',
   scene: 'model',
-  a: `<p>Revenue Management is three applications on the governed ledger.</p>
+  a: `<p>Revenue Management is a set of applications on the governed ledger.</p>
      <ul>
        <li><b>Airline Billing</b> — tariff → gross charges → incentive credit → net invoice → collection.</li>
        <li><b>Airline Marketing</b> — the incentive programme: eligibility, quarterly computation,
