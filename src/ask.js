@@ -61,9 +61,40 @@ export class Ask {
 
   get hasLLM() { return Boolean(this.cfg?.llm?.apiKey || this.cfg?.llm?.endpoint); }
 
-  /**
-   * @returns {Promise<{html:string, scene:string|null, grounded:boolean, via:string}>}
-   */
+  /* ── html vs spoken: why an answer carries two forms ──────────────────
+     `html` is what the answer sheet SHOWS. `spoken` is what Iris SAYS. They
+     are usually the same words and deliberately are not always, because they
+     are addressed differently: the sheet is read, and the voice is looked up
+     in a table of clips rendered ahead of time.
+
+     A pre-rendered clip is addressed by the EXACT text it speaks
+     (voiceClipKey in src/voice.js). So any spoken string the generator did
+     not produce is a cache miss, and a miss falls through to the browser's
+     speechSynthesis — the flat robotic voice the pre-rendering exists to get
+     rid of. Whatever goes in `spoken` therefore has to be a string
+     tools/prerender-voice.mjs can enumerate offline.
+
+     That is exactly what the runner-up blend below is not. It concatenates
+     the top entry with a paragraph of the SECOND, and which pair you get
+     depends on the question — 39 entries make up to 1482 ordered pairs, so
+     the set of speakable strings is combinatorial and cannot be enumerated
+     at any cost worth paying. Measured before this existed: of 1400 probe
+     questions, 105 produced a blended answer and every one of them missed
+     the cache and spoke robotically.
+
+     So the blend stays on SCREEN and stops being spoken. The viewer reads
+     the runner-up paragraph and hears a tight single answer, which is also
+     the better outcome out loud — two entries concatenated ran to 818
+     characters of run-on in the worst measured case.
+
+     `spoken` is set on EVERY branch, including the LLM one where nothing is
+     pre-rendered anyway. A field that is present on three paths out of four
+     invites a caller to reach past it "just this once" on the fourth, and
+     the fourth here is the desk build with a key — the configuration least
+     like the one that ships. Total field, one shape of path.
+
+     @returns {Promise<{html:string, spoken:string, scene:string|null,
+     grounded:boolean, via:string}>} */
   async answer(question) {
     const hits = search(question, 3);
     const top = hits[0];
@@ -71,12 +102,22 @@ export class Ask {
     const scene = grounded ? top.e.scene : null;
 
     if (!this.hasLLM) {
-      if (!grounded) return { html: DONT_KNOW, scene: null, grounded: false, via: 'local' };
+      if (!grounded) {
+        return {
+          html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
+          scene: null, grounded: false, via: 'local',
+        };
+      }
       // Blend in a strong runner-up so related questions get a fuller answer.
       const second = hits[1];
       const extra = second && second.score >= top.score * 0.72 && second.e.id !== top.e.id
         ? `<p style="opacity:.85">${stripP(second.e.a).split('</p>')[0]}</p>` : '';
-      return { html: top.e.a + extra, scene, grounded: true, via: 'local' };
+      /* The blend is shown, not said. spokenForm(top.e.a) is precisely the
+         string the generator renders for this entry, so it is always a hit. */
+      return {
+        html: top.e.a + extra, spoken: spokenForm(top.e.a),
+        scene, grounded: true, via: 'local',
+      };
     }
 
     const grounding = hits
@@ -86,12 +127,22 @@ export class Ask {
 
     try {
       const html = await this._callLLM(question, grounding || '(nothing relevant found)');
-      return { html, scene, grounded, via: 'llm' };
+      /* Model-generated: unknowable ahead of time, so nothing is pre-rendered
+         for it and this speaks through the live API or Web Speech exactly as
+         it always has. It is never the container's path — the image ships no
+         key, so hasLLM is false there and this branch is unreachable. */
+      return { html, spoken: spokenForm(html), scene, grounded, via: 'llm' };
     } catch (err) {
       console.warn('[ask] LLM failed, answering locally:', err?.message || err);
       return grounded
-        ? { html: top.e.a, scene, grounded: true, via: 'local-fallback' }
-        : { html: DONT_KNOW, scene: null, grounded: false, via: 'local-fallback' };
+        ? {
+          html: top.e.a, spoken: spokenForm(top.e.a),
+          scene, grounded: true, via: 'local-fallback',
+        }
+        : {
+          html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
+          scene: null, grounded: false, via: 'local-fallback',
+        };
     }
   }
 
@@ -179,11 +230,13 @@ function sanitise(input) {
    caption up word by word by walking its spans BY INDEX against the spoken
    word timings — so a normaliser that changed the word count on the way to
    the voice would silently desynchronise the highlight. An answer has no
-   such problem: app.js captions spokenForm(html) and then speaks
-   spokenForm(html), so caption and speech are the same tokens either way,
-   and only the rich answer SHEET keeps the tight typographic form. This
-   file is already the display/speech seam; expanding anywhere downstream of
-   it would not be.
+   such problem: app.js captions the answer's `spoken` field and then speaks
+   that same field, so caption and speech are the same tokens either way, and
+   only the rich answer SHEET keeps the tight typographic form. (They are one
+   string on purpose. Captioning the sheet's HTML instead would put the
+   runner-up paragraph on screen as a caption while the voice never said it.)
+   This file is already the display/speech seam; expanding anywhere
+   downstream of it would not be.
 
    Numbers stay as digits on purpose — every engine reads 72 as seventy-two.
    It is the symbols AROUND them (plus-minus, tilde, percent, a dash used as

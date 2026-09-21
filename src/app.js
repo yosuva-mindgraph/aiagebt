@@ -23,7 +23,7 @@
 import { SCENES, sceneIndex, PRODUCT } from './scenes.js';
 import { Voice, createRecogniser, estimate } from './voice.js';
 import { Presenter } from './presenter.js';
-import { Ask, spokenForm } from './ask.js';
+import { Ask } from './ask.js';
 import { dxcIcon, dxcHydrate } from './icons.js';
 
 const $ = sel => document.querySelector(sel);
@@ -377,7 +377,7 @@ class App {
     this._caption('Let me take that.');
 
     const my = ++this.token;
-    const { html, scene, via } = await this.ask.answer(q);
+    const { html, spoken, scene, via } = await this.ask.answer(q);
     if (my !== this.token) return;
 
     /* An answer names a scene to offer as a jump, and knowledge.js holds 38 of
@@ -430,7 +430,11 @@ class App {
       await this.ready;
       if (my !== this.token) return;
     }
-    const spoken = spokenForm(html);
+    /* `spoken`, not spokenForm(html). src/ask.js decides what Iris SAYS, and it
+       is deliberately not always the sheet's markup: a pre-rendered clip is
+       addressed by its exact text, so a spoken string the generator never
+       produced misses the cache and falls back to the robotic browser voice.
+       Re-deriving it from `html` here would reintroduce precisely that. */
     this._caption(spoken.length > 240 ? spoken.slice(0, 237) + '…' : spoken);
     this._setState('speaking');
     await this.presenter.say(spoken);
