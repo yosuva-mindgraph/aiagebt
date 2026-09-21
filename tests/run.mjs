@@ -26,6 +26,11 @@
    units        the character-seconds → word-integer-milliseconds conversion,
                 tested against src/ AND against the code actually inlined into
                 dist/index.html.
+   voice        the PRE-RENDERED speech: which targets carry it, that a build
+                without it is byte-identical to the build before it existed,
+                that the generator and the runtime agree on where a clip lives,
+                and that a clip decodes to actual sound and reaches the
+                speakers. Degrades to one check on a clone with no clips.
    autoadvance  the deck narrating itself from scene 1 to scene 12 with nobody
                 touching it. This is the regression that shipped.
    cancel       presenter.say() settling on presenter.cancel(), on BOTH
@@ -56,6 +61,7 @@ const SUITES = [
   ['build', () => import('./build.test.mjs')],
   ['guards', () => import('./guards.test.mjs')],
   ['units', () => import('./units.test.mjs')],
+  ['voice', () => import('./voice.test.mjs')],
   ['autoadvance', () => import('./autoadvance.test.mjs')],
   ['cancel', () => import('./cancel.test.mjs')],
   ['offline', () => import('./offline.test.mjs')],

@@ -93,6 +93,48 @@ export const KILL_WEBGL = `
   })();
 `;
 
+/* ── the audio accelerant, and why every suite gets it by default ─────────
+   The canvas targets now carry ~14 minutes of pre-rendered narration, and the
+   deck plays it. That is the feature; it is also a problem for a gate, and the
+   problem is not the one it looks like.
+
+   Every budget in this file was calibrated against a deck that narrated in
+   ESSENTIALLY NO TIME. That was never a property of the deck — it was a
+   property of the BOX. With no key, the canvas path ended in
+   voice.speakBrowser(), and a headless Chromium with no installed
+   speech-synthesis voice fires onerror in about a millisecond, so a line cost
+   nothing and twelve scenes cost a few seconds. tests/integration.test.mjs says
+   so in as many words, beside the assertion it stopped anyone from writing.
+   Baked audio removes the accident: a line now costs exactly as long as the
+   line, and the full deck is 14.1 minutes on every machine.
+
+   Two ways out. Multiply every deck budget by fifteen and accept an hour-long
+   gate — or play the same audio faster. This does the second: every
+   AudioBufferSourceNode the page makes gets a playbackRate, so the clip is
+   still fetched from the payload, still base64-decoded, still decoded to PCM,
+   still routed through the analyser, still ends by firing onended — the whole
+   path under test — in a twelfth of the wall time. Nothing is stubbed and
+   nothing is skipped; only the clock moves.
+
+   It is ON BY DEFAULT because the alternative is each suite remembering, and
+   the one that forgets fails as a stall rather than as a timeout. Opt out with
+   openPage(..., { realtimeAudio: true }) where the point IS the real duration —
+   tests/voice.test.mjs does, because it asserts a clip plays at its own length.  */
+export const FAST_AUDIO_RATE = 12;
+
+export const FAST_AUDIO = `
+  (() => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const real = AC.prototype.createBufferSource;
+    AC.prototype.createBufferSource = function (...a) {
+      const node = real.apply(this, a);
+      try { node.playbackRate.value = ${FAST_AUDIO_RATE}; } catch (e) {}
+      return node;
+    };
+  })();
+`;
+
 export async function launch() {
   return chromium.launch({
     /* Headless Chrome will not start an AudioContext without a user gesture,
@@ -114,6 +156,8 @@ export async function openPage(browser, target, opts = {}) {
     viewport: opts.viewport || { width: 1920, height: 1080 },
     deviceScaleFactor: 1,
   });
+  /* FAST_AUDIO first, so a suite's own initScript can still override it. */
+  if (!opts.realtimeAudio) await ctx.addInitScript({ content: FAST_AUDIO });
   if (opts.initScript) await ctx.addInitScript({ content: opts.initScript });
 
   const page = await ctx.newPage();

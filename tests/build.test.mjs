@@ -54,6 +54,21 @@ const PAYLOAD = [
   ['the GLB base64 shim (window.AIB_AVATAR_GLB_B64 = ")', 'window.AIB_AVATAR_GLB_B64 = "'],
 ];
 
+/* The pre-rendered speech is the FOURTH payload, and the only one that goes the
+   other way: the canvas targets carry it and the 3D one does not. It is
+   tests/voice.test.mjs's subject; here it is only subtracted, so the size
+   assertions below stay about the 3D payload they were written for. */
+const VOICE_MARKER = 'window.AIB_VOICE_CLIPS = {';
+
+function withoutVoice(html) {
+  const at = html.indexOf(VOICE_MARKER);
+  if (at < 0) return html;
+  const open = html.lastIndexOf('<scr' + 'ipt>', at);
+  const close = html.indexOf('\n</scr' + 'ipt>\n', at);
+  if (open < 0 || close < 0) return html;
+  return html.slice(0, open) + html.slice(close + 11);
+}
+
 export async function run(t) {
   const canvas = rd('dist/index.html');
   const artifact = rd('dist/artifact.html');
@@ -75,12 +90,21 @@ export async function run(t) {
       `${artifact.split(probe).length - 1} occurrence(s)`);
   }
 
-  // The size proof, independent of any marker: both canvas targets are under a
-  // megabyte, and the vendor bundle alone is 0.79 MB. They cannot be in there.
-  t.ok(size('dist/index.html') < 1.4 * 1024 * 1024,
-    'dist/index.html is under 1.4 MB (the bundle alone is 0.79 MB)', mb(size('dist/index.html')));
-  t.ok(size('dist/artifact.html') < 1.4 * 1024 * 1024,
-    'dist/artifact.html is under 1.4 MB', mb(size('dist/artifact.html')));
+  /* The size proof, independent of any marker: both canvas targets are under a
+     megabyte, and the vendor bundle alone is 0.79 MB. They cannot be in there.
+
+     Measured MINUS the pre-rendered speech, which is ~4.4 MB of base64 audio
+     the canvas targets now carry ON PURPOSE. Taking it out is not a loophole —
+     it is what keeps this assertion about the thing it was written to catch. A
+     target that had somehow acquired the vendor bundle would still be ~0.8 MB
+     over once the audio is discounted. tests/voice.test.mjs owns the audio
+     itself: which targets may carry it, and the ceilings it has to stay under. */
+  for (const [label, out] of [['index.html', canvas], ['artifact.html', artifact]]) {
+    const bare = Buffer.byteLength(withoutVoice(out), 'utf8');
+    t.ok(bare < 1.4 * 1024 * 1024,
+      `dist/${label} is under 1.4 MB with its speech discounted (the bundle alone is 0.79 MB)`,
+      `${mb(bare)} of page${bare === Buffer.byteLength(out, 'utf8') ? ' (no speech in this build)' : ` + ${mb(size('dist/' + label) - bare)} of speech`}`);
+  }
 
   /* ── 1b. the artifact is the page MINUS its scaffolding, PLUS its CSS ──
      build.js cuts dist/artifact.html out of the canvas build by offset, at
@@ -138,7 +162,11 @@ export async function run(t) {
 
   /* ── 3. the --3d size ceiling, and that the guard still bites ───────── */
   const buildSrc = rd('build.js');
-  const limit = Number((buildSrc.match(/SIZE_LIMIT_MB\s*=\s*(\d+)/) || [])[1]);
+  /* Anchored at column 0 on the declaration itself, so this reads the CONSTANT
+     rather than the first place the name appears — build.js now discusses the
+     ceiling in prose above the 3D target as well, and an unanchored match is
+     one edit away from picking up a number out of a sentence. */
+  const limit = Number((buildSrc.match(/^const SIZE_LIMIT_MB = (\d+);$/m) || [])[1]);
   t.ok(Number.isFinite(limit) && limit > 0, 'build.js still declares a SIZE_LIMIT_MB', `${limit} MB`);
   const threeBytes = size('dist/index-3d.html');
   t.ok(threeBytes < limit * 1024 * 1024,
