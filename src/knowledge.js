@@ -393,9 +393,11 @@ export const KB = [
          Fastest ROI and lowest disruption of the three; the risk is source-system API access, mitigated
          by the adapter library and a validation layer.</li>
      </ul>
-     <p>About 85% of what you deploy already exists and is proven; the other 15% is brand and UX,
-     terminal and zone maps, local regulations, language and currency, ops workflows and SLAs, and data
-     migration.</p>`
+     <p>Whichever way in you take, most of what you deploy already exists and is proven. What gets
+     tailored is brand and UX, terminal and zone maps, local regulations, language and currency, ops
+     workflows and SLAs, and data migration. How much tailoring yours needs depends on your estate —
+     a new terminal and a brownfield consolidation are not the same job — which is what the baseline
+     assessment sizes.</p>`
 },
 {
   id: 'replace-systems',
@@ -561,9 +563,10 @@ export const KB = [
   scene: 'talk',
   a: `<p>Pricing isn't mine to quote — that's a conversation with your MindGraph and DXC account team, and
      it depends on scope, airports in the group, and which way in you take.</p>
-     <p>What I can tell you is the shape of the commercial argument: about 85% of what you deploy already
-     exists and is proven, so you are funding a tailoring rather than a build. And the intelligent-layer
-     route is the fastest ROI of the three because nothing is replaced.</p>`
+     <p>What I can tell you is the shape of the commercial argument: most of what you deploy already
+     exists and is proven, so you are funding a tailoring rather than a build. How much tailoring depends
+     on your estate, which is what the baseline assessment sizes. And the intelligent-layer route is the
+     fastest ROI of the three because nothing is replaced.</p>`
 },
 ];
 
