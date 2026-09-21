@@ -93,9 +93,9 @@ const choice = (to, icon, label, cls) => `
    the three steps are what the whole deck rests on, and they are the one place
    a reader scans left-to-right for a SHAPE rather than for a word.
 
-   `value` is the big display line (.sv). It USED to be a figure — 21 / 58 / 201
-   — and those were counts of the airport's own estate, so they went. The slot
-   itself did not: a three-stage diagram whose middle line is blank reads as a
+   `value` is the big display line (.sv). It USED to be a figure, and the three
+   of them counted the airport's own data estate, so they went. The slot itself
+   did not: a three-stage diagram whose middle line is blank reads as a
    diagram that failed to load. It now carries a one-word QUANTIFIER instead,
    which is what the count was really there to convey, and the three of them
    read as the scene's own h1 — every source, one model, defined once. Keep
@@ -184,7 +184,7 @@ export const SCENES = [
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
     <!-- THREE MARKS, AND EVERY ONE OF THEM A PLATFORM INVARIANT. This strip
-         used to open with 58 canonical entities, 201 governed KPIs and 5
+         used to open with counts of canonical entities, governed KPIs and
          control centres. Those three are a function of the AIRPORT's data
          estate, not of the product: an airport with different source systems
          gets a different entity count, a different KPI count and a different
@@ -538,8 +538,16 @@ export const SCENES = [
       <div class="run-side">
         <div class="card">
           <h3>Every node is swappable</h3>
-          <p style="margin-bottom:10px">The same seven-stage shape runs a baggage SLA watch, a cargo
-            dwell breach, a non-aero revenue dip, an IT availability alert or an emergency activation.
+          <!-- "The same SHAPE", with no length on it. This read "the same
+               seven-stage shape" — a count of the ordered list rendered
+               immediately to the left, which the reader can already see, and
+               which a baggage SLA watch or an emergency activation does not
+               have to match. The claim that carries weight is that the shape
+               repeats and only the nodes differ; the length was never part of
+               it. Same rule as scene 1's metrics strip and scene 4's pipeline:
+               the list stays on screen, the number does not. -->
+          <p style="margin-bottom:10px">The same shape runs a baggage SLA watch, a cargo dwell
+            breach, a non-aero revenue dip, an IT availability alert or an emergency activation.
             Only the nodes differ.</p>
           <div class="estate">
             <span>manual</span><span>schedule / cron</span><span>threshold</span><span>webhook</span>
@@ -656,7 +664,7 @@ export const SCENES = [
   title: 'Governance, risk & compliance',
   icon: 'shield-check',
   lines: [
-    "Most platforms treat governance as a module you buy later. Here it is one of the five things in the navigation. And it governs the platform itself, as well as the airport.",
+    "Most platforms treat governance as a module you buy later. Here it is in the navigation. And it governs the platform itself, as well as the airport.",
     "The obligation register carries what you're actually held to.",
     "On the aviation side, the annexes of the International Civil Aviation Organization. Annex nineteen for safety management, Annex seventeen for security, Annex fourteen for aerodromes.",
     "Your airport emergency plan. IGOM, the ground operations manual. Slot punctuality, and ESG reporting.",
@@ -749,15 +757,20 @@ export const SCENES = [
       ${icard('lock', 'Ingest-only by default', 'It reads. It does not write back into an operational system unless you have explicitly opened that door.')}
     </div>`
   /* THE TRACK-RECORD SECTION IS GONE, AND THE SCENE IS BETTER FOR IT.
-     "Where it runs" used to be followed by an <h2>The track record behind it</h2>,
-     a six-figure .metrics strip (15 services, 5 airports, 12 AI systems, 70+
-     dashboards, 16+ bots, 8 departments) and a .note carrying more quantities
-     inside its prose — "across five airports", "zero paper contracts", "four
-     content platforms collapsed into one" — plus the IDC Future Enterprise
-     Award 2023. The operator's decision is total consistency: no numbers
-     anywhere in the walkthrough. Half-removing this one would have been the
-     worst outcome, because a strip of six figures is the single loudest
-     numeric object in the deck.
+     "Where it runs" used to be followed by a track-record heading, a .metrics
+     strip counting DXC's services, airports, AI systems, dashboards, automation
+     bots and departments, a .note repeating more of those quantities inside its
+     prose, and an industry award. The operator's decision is total consistency:
+     no numbers anywhere in the walkthrough. Half-removing this one would have
+     been the worst outcome, because a strip of raw figures is the single
+     loudest numeric object in the deck.
+
+     The figures themselves are deliberately NOT restated here. build.js inlines
+     this file into dist/index.html verbatim, comments included, so a retracted
+     claim quoted in a comment is a retracted claim a prospect can still find in
+     View Source — which is the exposure the removal exists to close. Git history
+     is the durable record of exactly what went; docs/CONTENT-SOURCES.md records
+     which source held it and why it is off screen.
 
      Nothing was invented to fill the space, and nothing now points at an
      absence. The narration was never wired to this section: scene 11's last
