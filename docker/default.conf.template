@@ -1,0 +1,119 @@
+# ============================================================================
+# The one server block.
+#
+# This is a .template, not a .conf: the stock nginx entrypoint runs envsubst
+# over /etc/nginx/templates/*.template at boot and writes the result to
+# /etc/nginx/conf.d/. That is what makes ${AIB_PORT} an actual runtime knob
+# rather than something you have to rebuild the image to change.
+# ============================================================================
+
+server {
+    # 8080, not 80: a process running as uid 101 cannot bind a privileged port,
+    # and binding 80 would mean either running as root or granting
+    # CAP_NET_BIND_SERVICE. Neither is worth it when `-p 80:8080` exists.
+    #
+    # IPv4 only, on purpose. `listen [::]:...` is a hard bind failure in a
+    # container whose network namespace has no IPv6, which is the default on a
+    # plain docker0 bridge — the container would refuse to start on exactly the
+    # VM setup this image is meant for. Host-side IPv6 is the publisher's job.
+    listen      ${AIB_PORT};
+    server_name _;
+
+    root  /usr/share/nginx/html;
+    index index.html;
+
+    # ── liveness ───────────────────────────────────────────────────────────
+    # Deliberately NOT a request for the deck. HEALTHCHECK runs every 30s
+    # forever, and pointing it at `/` would push the whole artifact through the
+    # stack on every probe. Today that is 1 MB a probe; the moment pre-rendered
+    # audio lands it is 4-7 MB a probe, ~10 GB a day, for no added signal. This
+    # location is a constant string served from nginx's own memory, so the
+    # probe's cost does not move when the deck's size does.
+    #
+    # It answers the question a healthcheck is actually asking: is the worker
+    # alive and routing? Whether the file is on disk is settled at image-build
+    # time by the COPY, not per-probe.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        add_header Cache-Control "no-store" always;
+        return 200 "ok\n";
+    }
+
+    # ── the deck ───────────────────────────────────────────────────────────
+    # WHY no-cache AND NOT immutable.
+    #
+    # The instinct with a build artifact is `immutable, max-age=31536000`. That
+    # is right for a CONTENT-HASHED filename (app.a1b2c3.js) — a URL that will
+    # never mean anything else, because a new build gets a new URL. It is wrong
+    # here, and the reason is structural rather than cautious:
+    #
+    #   The deck is served at ONE stable URL, `/`. Rebuilding it does not
+    #   change that URL. So the URL and the bytes are not bound together, and
+    #   a cache entry keyed on the URL is a claim the server cannot honour.
+    #
+    # There is no hashed-asset tier to cache hard either — everything is
+    # inlined, fonts included, so `/` is the only URL this server has. The
+    # usual "cache the HTML briefly, cache the fingerprinted bundles forever"
+    # split has nothing to split.
+    #
+    # Ship an immutable year on `/` and an operator who redeploys a corrected
+    # deck has no way to reach a booth laptop that already loaded it. The
+    # browser will not even ask. On a machine on a stand, in front of a client,
+    # with no obvious fix short of clearing site data. The upside being traded
+    # for that is a page load on a kiosk that loads the page once or twice a
+    # day.
+    #
+    # `no-cache` is the right knob, and it does NOT mean "don't cache" (that is
+    # `no-store`). It means: store it, but revalidate before every use. So the
+    # browser keeps the megabyte and a repeat visit sends a conditional GET;
+    # nginx's ETag matches and answers 304 with an empty body. The revisit
+    # costs a few hundred bytes and one round trip, and is guaranteed fresh.
+    # We get essentially the whole benefit of caching and none of the staleness.
+    #
+    # This also stays correct if the deck grows to 4-7 MB with pre-rendered
+    # audio: the 304 body is empty at any artifact size, so the saving scales
+    # up with the file while the correctness argument does not change.
+    location = /index.html {
+        # ETag + Last-Modified are on by default for static files; they are the
+        # mechanism no-cache depends on, so they are worth naming here.
+        etag on;
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
+    }
+
+    # `/` -> the index module internally redirects to /index.html, which the
+    # exact-match location above then handles (headers and all).
+    location = / {
+    }
+
+    # No SPA fallback, and that is correct, not lazy: the deck has no router. It
+    # does not touch pushState, hash routing or a service worker — it is one
+    # document that swaps scenes in the DOM. So there is no such thing as a deep
+    # link to recover, and serving the deck for /anything would only turn a
+    # typo'd URL and a genuinely missing file into the same silent 200.
+    location / {
+        return 404;
+    }
+
+    # ── OPTIONAL: enforce the zero-egress property at the browser ───────────
+    # This build makes no network requests at all. The ElevenLabs and Anthropic
+    # call sites are compiled in, but both are guarded on a key arriving from
+    # config.js, and config.js is excluded from the image (see .dockerignore),
+    # so window.AIB_CONFIG is {} and neither path is ever taken. Verified with
+    # Playwright against this container: zero requests after the document.
+    #
+    # The CSP below would make that a rule the browser enforces rather than a
+    # property that happens to hold — `connect-src 'none'` means a key baked in
+    # by accident could not phone home even if the code tried.
+    #
+    # It is commented out rather than on because it is a behaviour change, not a
+    # hardening freebie: switch this on and you have also decided the deck may
+    # never call a voice API from this container. If someone later wants a real
+    # ElevenLabs voice here, this line is what will break, and it will break as
+    # a console error rather than an obvious misconfiguration. Turn it on when
+    # you have decided that; don't inherit it by default.
+    #
+    # add_header Content-Security-Policy "default-src 'self' data: blob:; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self'; connect-src 'none'; frame-ancestors 'self'" always;
+}

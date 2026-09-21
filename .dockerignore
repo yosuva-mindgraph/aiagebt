@@ -1,0 +1,58 @@
+# ============================================================================
+# What may enter the Docker build context.
+#
+# Read the FIRST rule as the important one; the rest is size.
+# ============================================================================
+
+# ── 1. THE KEY. Never, under any circumstance. ──────────────────────────────
+# config.js holds an ElevenLabs API key (and optionally an Anthropic one), and
+# build.js INLINES IT VERBATIM into dist/index.html unless it is passed
+# --no-config. So a config.js that reaches the build context does not merely sit
+# in a discarded builder stage — it is baked, in cleartext, into the one file
+# this image exists to serve, and anyone who loads the page can read it out of
+# view-source. It is gitignored for the same reason; .dockerignore is the same
+# fence for the other copy mechanism.
+#
+# This is belt. The braces are in the Dockerfile: the builder stage hard-fails
+# if config.js is present anyway, and greps the built artifact for a key prefix.
+# Two independent guards, because one typo here would be silent.
+config.js
+
+# ── 2. dist/ — deliberately excluded, and this is load-bearing ──────────────
+# dist/index.html IS committed in this repo (it is the thing you double-click).
+# Keeping it out of the context means the image PHYSICALLY CANNOT be assembled
+# from a pre-built host artifact: the builder stage has to run `node build.js`
+# and generate it, or COPY --from finds nothing and the build fails. An image
+# that can quietly ship whatever happened to be sitting in dist/ on the
+# packager's laptop is not reproducible from source, it just looks like it is.
+dist/
+
+# ── 3. Bulk this build does not read ────────────────────────────────────────
+# The canvas target (`node build.js`, no flags) reads exactly: index.html,
+# assets/fonts.css, and src/*.js|css. It never opens vendor/ or the GLB — those
+# belong to `--3d`, which is explicitly NOT what this image serves. Excluding
+# them keeps ~8 MB out of every context upload.
+#
+# If this image is ever repointed at the 3D build, these three lines are what
+# you delete first — the build would otherwise succeed and produce a 3D page
+# with no avatar in it, which presents as the canvas bust rather than an error.
+vendor/
+assets/*.glb
+assets/avatar-glb.js
+
+# ── 4. Ordinary noise ───────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+node_modules/
+package-lock.json
+shots/
+tests/
+tools/
+docs/
+shoot.js
+README.md
+PR-DRAFT.md
+Dockerfile
+.dockerignore
+*.md

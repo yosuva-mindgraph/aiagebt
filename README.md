@@ -158,6 +158,80 @@ This is the most useful command in the repo. Reasoning about a layout is not the
 as looking at it: this pass is what caught the presenter floating in its panel and the
 mouth being invisible at rest.
 
+## Deploying it on a VM
+
+The double-click promise covers a booth machine. When the deck has to live at a URL
+instead, there is a container: **nginx serving `dist/index.html` and nothing else.**
+
+```bash
+docker build -t aib-deck .
+docker run -d --name aib-deck -p 80:8080 aib-deck
+```
+
+That is the whole deployment. **23.6 MB**, serves on **8080** inside the container, and
+carries no Node, no `node_modules` and no source — the build happens in a discarded
+first stage, so the image is reproducible from this repo rather than from whatever was
+in someone's `dist/` at the time. (`dist/` is in `.dockerignore` specifically so that
+cannot happen.)
+
+**Port.** 8080 inside, because a non-root process cannot bind 80. Remap it with `-p`
+(above). If you need a different *internal* port — host networking, say — set
+`-e AIB_PORT=9090 -p 9090:9090`; the config is a template and the healthcheck follows it.
+
+**Updating the deck.** There is no content mount and no copying a file into a running
+container: rebuild the image and replace the container.
+
+```bash
+docker build -t aib-deck . && docker rm -f aib-deck && docker run -d --name aib-deck -p 80:8080 aib-deck
+```
+
+Browsers pick the new deck up on the next load — the page is served `Cache-Control:
+no-cache`, which means *revalidate*, not *don't cache*. A repeat visitor sends a
+conditional request and gets a `304` with an empty body when nothing changed, so
+revisits stay cheap while a redeploy is never stale. Caching it `immutable` would be
+wrong here: there is one URL, `/`, and rebuilding does not change it, so a booth laptop
+that cached it hard would have no way to hear about a fix.
+
+**No key ever enters the image.** `config.js` holds an ElevenLabs key and `build.js`
+inlines it *verbatim* into the page, so it is excluded in `.dockerignore`, the builder
+copies an allowlist rather than `COPY . .`, the build runs `--no-config`, and a final
+step greps the artifact for key-shaped strings and fails the build. The served page ships
+`window.AIB_CONFIG = {}` and Iris uses the browser voice.
+
+**Nothing needs to reach the internet.** Everything is inlined, fonts included, and with
+no key configured the ElevenLabs and Anthropic call sites are never taken. Driving the
+running container with a real browser records **exactly one request — the document
+itself.** So: no CDN, no API, no egress, and **no reverse proxy for services that do not
+exist**. Do not add one looking for a backend; there isn't one.
+
+**HTTPS.** The container deliberately speaks plain HTTP — terminate TLS in front of it.
+On a real VM that is Caddy, Traefik or nginx on the host with a Let's Encrypt cert,
+proxying to `127.0.0.1:8080`; behind a cloud load balancer, terminate there and point the
+target group at the container. The only thing to get right is forwarding the `Host`
+header. Nothing in the deck reads a cookie, a session or a header, so there is no
+trusted-proxy configuration to do.
+
+**Hardening.** It already runs as `nginx` (uid 101) — including PID 1, which the stock
+nginx image does not do — and everything writable lives in `/tmp`. So it runs fully
+locked down:
+
+```bash
+docker run -d --name aib-deck -p 80:8080 \
+  --read-only --tmpfs /tmp --tmpfs /etc/nginx/conf.d:uid=101,gid=101 \
+  --cap-drop ALL --security-opt no-new-privileges \
+  aib-deck
+```
+
+The second `--tmpfs` is not optional under `--read-only`: the entrypoint renders the port
+template into `/etc/nginx/conf.d` at boot and needs somewhere to write it.
+
+**Liveness.** `HEALTHCHECK` polls `/healthz`, a constant string — not `/`. Probing the
+deck itself would push the whole artifact through the stack every 30 seconds for no
+added signal, and that bill grows with the file.
+
+`docker/nginx.conf` and `docker/default.conf.template` carry the reasoning for each
+choice.
+
 ## Layout
 
 ```
@@ -177,6 +251,8 @@ src/
 vendor/             TalkingHead + three.js bundled offline, and the smoke test that pins it
 tools/              avatar validation and compression
 build.js  shoot.js  build the single file · look at it
+Dockerfile          multi-stage: build the deck, then nginx + the one artifact
+docker/             nginx main config and the port template
 docs/               where every claim came from · the avatar · the open-source evaluation · the TalkingHead traps
 ```
 
