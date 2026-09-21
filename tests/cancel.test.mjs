@@ -133,8 +133,16 @@ window.__qa = {
 
 const LIMIT = 200;   // the brief's number, and a generous one for a local resolve
 
+/* realtimeAudio — THIS SUITE MEASURES TIME, so it opts out of the harness's
+   playback accelerant. FAST_AUDIO multiplies every AudioBufferSourceNode's
+   playbackRate so a 14-minute deck fits a gate; here it would finish the
+   six-second synthetic clip in half a second, the probe would cancel a line
+   that had already ended, and the result is the one thing cancelAfter() refuses
+   to report — a fast zero from a measurement that never happened. It fails
+   loudly ("the line was still in flight"), which is the right failure, but the
+   fix belongs here rather than in the budget. */
 async function probeBackend(t, browser, target, budget, label) {
-  const { page, errors } = await openPage(browser, target, { budget });
+  const { page, errors } = await openPage(browser, target, { budget, realtimeAudio: true });
   const info = await ready(page, budget);
   await page.evaluate(PROBE);
   t.note(`${label}: backend=${info.backendKind}`);
@@ -197,7 +205,8 @@ async function probeBackend(t, browser, target, budget, label) {
 
 /** The real thing: interrupt the running walkthrough with a typed question. */
 async function probeInterruptForReal(t, browser, budget) {
-  const { page, errors } = await openPage(browser, 'canvas', { budget });
+  // Same reason as probeBackend: every number below is a millisecond count.
+  const { page, errors } = await openPage(browser, 'canvas', { budget, realtimeAudio: true });
   await ready(page, budget);
 
   await page.click('#startBtn');

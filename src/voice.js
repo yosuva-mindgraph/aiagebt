@@ -1,18 +1,35 @@
 /* ============================================================================
    Voice.
 
-   Two backends behind one interface:
+   Three backends behind one interface, tried in this order:
+
+     0. PRE-RENDERED — clips baked into the build by tools/prerender-voice.mjs
+        and inlined as window.AIB_VOICE_CLIPS. Real ElevenLabs audio with real
+        word timings, decoded from base64 that is already in the page. No key,
+        no network, no account. This is what the booth pod, the emailed file and
+        a published artifact all get, and it is why they stopped sounding
+        robotic. Checked FIRST, always — a clip on disk beats a round trip.
 
      1. ElevenLabs — used whenever CONFIG.elevenLabs.apiKey is set AND the page
         is served from a host that is allowed to reach api.elevenlabs.io.
         Fetches MP3, plays it through an AudioContext, and feeds real RMS to the
         avatar so the jaw follows actual speech rather than a text estimate.
+        This is now the path for text nobody pre-rendered — chiefly an LLM
+        answer, which is written at the moment it is asked.
 
      2. Web Speech (speechSynthesis) — the fallback. No key, no network, works
         offline. The avatar lip-syncs from the text instead.
 
-   Both resolve the same promise when the line finishes, so the narration loop
-   does not care which one ran. Both are interruptible.
+   All three resolve the same promise when the line finishes, so the narration
+   loop does not care which one ran. All three are interruptible.
+
+   ── why the lookup is keyed by the TEXT ───────────────────────────────────
+   A pre-rendered clip is addressed by a hash of the EXACT string that was
+   spoken (voiceClipKey below). Edit a narration line and its clip simply goes
+   missing, so that line falls through to the live path or to Web Speech. The
+   alternative — keying by scene id and line index — would keep playing
+   yesterday's audio under today's caption, silently, with no error anywhere.
+   Missing audio is a fallback; wrong audio is a lie told to a room.
 
    ── the fetch/play seam ──────────────────────────────────────────────────
    Fetching and playing used to be one method. They are now separate:
@@ -55,6 +72,10 @@ export class Voice {
     this._epoch = 0;            // bumped by stop(); lets an in-flight say() bail
     this._warnedNoKey = false;
     this._warnedNoAlign = false;
+    /* Decoded pre-rendered clips, keyed by voiceClipKey. An AudioBuffer belongs
+       to the context that decoded it, so this is dropped whenever the context
+       changes — see useAudioContext. */
+    this._preCache = new Map();
     this._pickVoice();
     if ('speechSynthesis' in window) {
       speechSynthesis.addEventListener?.('voiceschanged', () => this._pickVoice());
@@ -63,6 +84,11 @@ export class Voice {
 
   get usingElevenLabs() {
     return Boolean(this.cfg?.elevenLabs?.apiKey && this.cfg?.elevenLabs?.voiceId);
+  }
+
+  /** How many pre-rendered clips this build carries. 0 on a build with none. */
+  get prerenderedCount() {
+    return Object.keys(prerenderedClips()).length;
   }
 
   setMuted(m) { this.muted = m; if (m) this.stop(); }
@@ -107,6 +133,10 @@ export class Voice {
     this.stop();                        // whatever is playing belongs to the old ctx
     this.audioCtx = ctx;
     this._ownsCtx = false;
+    // Every cached AudioBuffer was decoded in the context we just let go of.
+    // Playing one in the new context resamples it across the boundary, which is
+    // the whole thing this handover exists to avoid.
+    this._preCache.clear();
     if (orphan) { try { orphan.close(); } catch {} }
     return this.audioCtx;
   }
@@ -121,23 +151,74 @@ export class Voice {
     return this.audioCtx;
   }
 
+  /* ── pre-rendered clips ─────────────────────────────────────────────── */
+
+  /**
+   * The clip this build already carries for this exact text, or null.
+   *
+   * Returns the SAME Clip shape the ElevenLabs path returns, so Presenter and
+   * both avatar backends cannot tell the difference — which is the point: this
+   * whole feature is one lookup in front of synthesize(), and nothing
+   * downstream of it changed.
+   *
+   * Never throws. A payload that is missing, malformed, or fails to decode is a
+   * miss, and a miss falls through to whatever the build can still do.
+   */
+  async prerendered(text) {
+    const key = voiceClipKey(text);
+    const rec = prerenderedClips()[key];
+    if (!rec) return null;
+
+    const cached = this._preCache.get(key);
+    if (cached) return cached;
+
+    try {
+      const ctx = this._ctx();
+      if (!ctx) return null;
+      if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
+      const data = base64ToBytes(rec.a);
+      if (!data.length) return null;
+      const audioBuffer = await ctx.decodeAudioData(data.buffer);
+
+      const clip = {
+        audioBuffer,
+        ...timingsOf(rec),
+        durationMs: Math.round(audioBuffer.duration * 1000),
+      };
+      this._preCache.set(key, clip);
+      return clip;
+    } catch (err) {
+      console.warn('[voice] a pre-rendered clip would not decode:', err?.message || err);
+      return null;
+    }
+  }
+
   /* ── ElevenLabs: synthesize ─────────────────────────────────────────── */
 
   /**
-   * Fetch one line and decode it into a Clip.
+   * Turn one line into a Clip: pre-rendered if this build carries it, otherwise
+   * fetched from ElevenLabs.
    *
-   * Resolves null — never throws — when muted, keyless, or on any HTTP/decode
-   * failure, with one console.warn, so every caller can fall back to Web Speech
-   * the way say() always has.
+   * Resolves null — never throws — when muted, when nothing is pre-rendered and
+   * there is no key, or on any HTTP/decode failure, with one console.warn, so
+   * every caller can fall back to Web Speech the way say() always has.
    */
   async synthesize(text) {
     if (this.muted || !text) return null;
+
+    /* Step 0, before any thought of the network. On the shipped file this is
+       the ONLY step that ever runs. */
+    const baked = await this.prerendered(text);
+    if (baked) return baked;
+
     if (!this.usingElevenLabs) {
       // Keyless is the normal artifact case, not a fault — say it once per
-      // Voice rather than once per line, or the console fills with it.
+      // Voice rather than once per line, or the console fills with it. It now
+      // means "this text was not pre-rendered EITHER", which on a voiced build
+      // is only ever an answer a model just wrote.
       if (!this._warnedNoKey) {
         this._warnedNoKey = true;
-        console.warn('[voice] no ElevenLabs key — narrating with Web Speech.');
+        console.warn('[voice] no pre-rendered clip and no ElevenLabs key — Web Speech for this line.');
       }
       return null;
     }
@@ -300,6 +381,71 @@ export class Voice {
       try { speechSynthesis.speak(u); } catch { finish(); }
     });
   }
+}
+
+/* ── pre-rendered clips: the address, and the payload ──────────────────── */
+
+/**
+ * The address of a pre-rendered clip: a hash of the EXACT string to be spoken.
+ *
+ * ── this function is a CONTRACT, not an implementation detail ──
+ * tools/prerender-voice.mjs imports THIS function to name the files it writes,
+ * so the build and the runtime cannot disagree about where a clip lives. Change
+ * the arithmetic and every existing clip is orphaned at once — which is safe
+ * (every line falls back) but throws away an hour of rendering, so change it
+ * deliberately or not at all.
+ *
+ * FNV-1a, twice, over UTF-16 code units, rendered base36. Deliberately NOT
+ * crypto.subtle: that is asynchronous, it is gated on a secure context, and
+ * this is called on every line of narration. Nothing here is defending against
+ * an adversary — it is naming 111 strings, and a 64-bit space does that with
+ * room to spare. The generator asserts the keys it produced are distinct, so a
+ * collision is a build failure rather than a clip playing under the wrong line.
+ */
+export function voiceClipKey(text) {
+  const s = String(text ?? '');
+  let h1 = 0x811c9dc5, h2 = 0xcbf29ce4;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ (c + i), 0x85ebca6b) >>> 0;
+  }
+  return h1.toString(36).padStart(7, '0') + h2.toString(36).padStart(7, '0');
+}
+
+/**
+ * The clip table this build carries, or an empty object.
+ *
+ * build.js emits window.AIB_VOICE_CLIPS immediately before the app, from
+ * assets/voice-clips.js, exactly as it emits window.AIB_AVATAR_GLB_B64. A build
+ * with no clips has no such global and everything below reads as a miss.
+ */
+function prerenderedClips() {
+  const g = typeof window !== 'undefined' ? window.AIB_VOICE_CLIPS : null;
+  return (g && typeof g === 'object' && g.clips) || {};
+}
+
+/**
+ * A stored record's word timings, in the shape wordsFromAlignment() returns.
+ *
+ * The generator ran the alignment through wordsFromAlignment() ONCE, offline,
+ * and stored the result — so there is exactly one character-seconds to
+ * word-milliseconds converter in this repo and this is not a second one. The
+ * three arrays travel as delimited strings because 5,500 words of JSON arrays
+ * cost about a hundred kilobytes more than 5,500 words of comma-separated
+ * digits, and this payload is already the largest thing in the file.
+ */
+function timingsOf(rec) {
+  const words = String(rec?.w || '').split(' ').filter(Boolean);
+  const nums = s => String(s || '').split(',').filter(t => t !== '').map(Number);
+  const wtimes = nums(rec?.t);
+  const wdurations = nums(rec?.d);
+  // Equal lengths or nothing: the avatar schedules off all three by index, and
+  // a ragged set is worse than no timings at all.
+  if (words.length !== wtimes.length || words.length !== wdurations.length) {
+    return { words: [], wtimes: [], wdurations: [] };
+  }
+  return { words, wtimes, wdurations };
 }
 
 /* ── alignment → word timings ──────────────────────────────────────────── */

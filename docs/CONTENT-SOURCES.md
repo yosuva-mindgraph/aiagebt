@@ -91,7 +91,42 @@ Two locations:
 |---|---|
 | Midnight `#0e1020` · Canvas `#f6f3f0` · Sky `#a1e6ff` · Gold `#ffae41` · Peach `#ffc982` · True Blue `#4995ff` · Royal `#004aac` · Melon `#ff7e51` · Red `#d14600` | Share · `Inputs/Brand Guidelines/Color Palette ASE/DXC Brand Colors-RGB.ase` |
 | GT Standard L Extended (Medium 500, Bold 700) · Inter (variable) | Share · `Inputs/Brand Guidelines/{GT_Standard_font,Inter_font}/` — inlined as data URIs in `assets/fonts.css` |
-| Mindgraph logo is **not** in the software; partner branding sits on the venue screens | Per the 16 September call, recorded in the PTE stand build's README |
+| Mindgraph logo, 200×200 RGBA — coral-to-gold node mark over a grey `MINDGRAPH` wordmark | Share · `Inputs/Brand Guidelines/Mindgraph Logo.png`, committed verbatim as `assets/mindgraph-logo.png` and cropped into two `data:` URIs in `src/styles.css` |
+
+### The MindGraph logo: two surfaces, two decisions
+
+These read as a contradiction and are not. They are decisions about **different
+products**, taken five days apart, and each one still holds on its own surface.
+
+| Surface | Decision | Source |
+|---|---|---|
+| **The PTE stand build** (separate repo, different audience) | The Mindgraph logo is **not** in the software; partner branding sits on the venue screens around it | Per the 16 September call, recorded in that build's README. Unchanged — nothing here touches it |
+| **This presenter** (`index.html` header) | The MindGraph logo **is** in the software, in the header, as the first half of a `MindGraph × DXC` partner lockup | Per the operator, after the client demo. This **reverses** the line above *for this surface only* |
+
+The reversal was asked for because the presenter's header carried the DXC mark
+and the product name while MindGraph appeared only as text in scene 1's eyebrow
+— on a deck that is a joint proposition, and that a stranger reads in ten
+seconds. The stand's argument (the venue screens already carry the partner
+brands, so the software need not) never applied to a file that is opened on a
+laptop with no venue around it.
+
+Two details of the implementation are themselves source decisions, recorded here
+because the next person will otherwise read them as drift from the brand file:
+
+- **The wordmark is knocked through to `--ink`, not painted grey.** The supplied
+  grey measures **2.95:1 on the dark header** — below even the 3:1 floor for a
+  non-text graphic, on the theme this deck defaults to. Knocked through it reads
+  17.06:1 dark and 15.43:1 light. The letterforms are the brand's own and
+  untouched; only the fill follows the theme, which is what the DXC mark beside
+  it already does. `src/styles.css` carries both measurements.
+- **The node mark keeps its own colours in both themes.** That coral-to-gold
+  gradient is the logo. Its two ends resolve to `#E06F51` and `#FFAC49` — Melon
+  and Gold to within a few points — so it sits inside the DXC ten by accident
+  rather than by adjustment, and nothing was recoloured to make it fit. The
+  price is the light theme, where those ends measure 2.62:1 and 1.53:1; the mark
+  still reads because the coral strokes carry the shape, but if that is ever
+  judged unacceptable the fix is **a reversed asset from MindGraph**, not a
+  filter invented in this repo.
 
 ---
 

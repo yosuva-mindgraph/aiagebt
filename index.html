@@ -17,19 +17,45 @@
 <div id="shell">
 
   <header>
-    <!-- ONE lockup, then one rule, then the scene. The DXC mark is inlined at
-         currentColor by src/icons.js (data-dxc-mark = its height in px, 17,
-         cap-height matched to the product name beside it) so it needs no second
-         asset for the light theme and no network for either.
+    <!-- ONE partner lockup, then one rule, then the scene. The DXC mark is
+         inlined at currentColor by src/icons.js (data-dxc-mark = its height in
+         px, 17, cap-height matched to the product name beside it) so it needs no
+         second asset for the light theme and no network for either.
 
-         There is no second wordmark here on purpose: "MindGraph × DXC" reads on
-         the cold open and again on scene 1's eyebrow, and a header carrying two
-         marks and an attribution is three things competing to be the brand.
+         BOTH partners are here, and MindGraph reads FIRST. That order is not a
+         new decision — it is the one the deck already states in the two places
+         it names the partnership out loud (the cold open's kicker and scene 1's
+         eyebrow, both "MindGraph × DXC"). A header that reversed it would make
+         the chrome disagree with the copy directly under it. The "×" is the
+         same separator those two strings already use; nothing new was coined
+         for the header.
+
+         This REPLACES the note that used to sit here arguing for one mark only.
+         That argument was sound for a header carrying a mark, an attribution and
+         a product name — but the client asked for the MindGraph logo in the
+         presenter after the demo, so the job changed from "keep it to one brand"
+         to "carry two without crowding the row". What pays for the second mark:
+         the MindGraph logo is STACKED, in its own configuration, so it costs
+         85px of width rather than the 120px a horizontal one would, and the
+         scene title beside it still has 700px+ at 1440 and 400px+ at 1041.
+
+         The MindGraph asset is two data: URIs in src/styles.css — nothing is
+         fetched, which is the whole promise of this file. Its grey wordmark
+         measures 2.95:1 on the dark header and would not survive this deck's
+         default theme, so it is knocked through to --ink: the letterforms are the
+         brand's own, and only the colour follows the theme. Same principle as
+         the DXC mark beside it, and the same reason — one asset, both themes,
+         no second copy waiting to diverge.
 
          Sound and Light are WORDS, not glyphs. The DXC pack has no speaker,
          mute, sun, moon or bell — borrowing a lookalike from another set would
          be decoration wearing a brand's clothes. See src/icons.js. -->
     <div class="lockup">
+      <span class="mg" role="img" aria-label="MindGraph">
+        <span class="mg-mark"></span>
+        <span class="mg-word"></span>
+      </span>
+      <span class="lockup-x" aria-hidden="true">×</span>
       <span class="mark" data-dxc-mark="17"></span>
       <span class="product">Intelligent Airport</span>
     </div>

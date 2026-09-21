@@ -137,11 +137,34 @@ export const SCENES = [
   id: 'open',
   title: PRODUCT,
   icon: 'airline',
+  /* THE OPENING ORDER IS THE POINT. This scene used to run claim → NEGATE →
+     re-claim: line 1 spent the most valuable ten seconds of the deck on "let me
+     be clear about what this is … it is not an application, it is not a fixed
+     list of modules", and line 2 then asserted the positive anyway. A stranger
+     heard what it is NOT before they had any idea what it IS, and heard the
+     same idea twice.
+
+     So the contrast MOVED rather than went: it is still here, once, at index 3,
+     after the positive claim has landed and after the four build surfaces have
+     shown what the claim buys. Nothing about the argument changed — scene 3 is
+     still built on "replaces nothing" and needs this deck to have set it up.
+
+     Index 4 is the Thinking Airport line, and it is ONE sentence on purpose.
+     Thinking Airport is DXC's VISION; Intelligent Airport is the product that
+     serves it; AIRIS is the named proof point. Three names that sound alike and
+     must not merge — src/knowledge.js has two entries holding them apart, and
+     docs/CONTENT-SOURCES.md says the same thing about the sources. A second
+     sentence here starts explaining the vision instead of selling the product.
+
+     Every sentence in this scene is under 20 words and the scene means 7.8 —
+     the delivery pass's numbers, unchanged. Check with the count before editing:
+     a 30-word sentence reads fine and speaks badly. */
   lines: [
     "I'm Iris, and I speak for Intelligent Airport. It's the platform MindGraph and DXC put on top of an airport you already run.",
-    "Let me be clear about what this is before anything else. It is not an application. It is not a fixed list of modules you pick from a menu.",
-    "It is a platform. Every system in your airport, read into one governed model of your data. And then anything you want built on top of it.",
+    "Every system in your airport, read into one governed model of your data. And then anything you want built on top of it.",
     "A dashboard. An application. An automated workflow. An AI agent. Asked for in plain language, and built without an engineering ticket. Governed the same way whether it took you five minutes or five months.",
+    "So it is a platform. Not an application. And not a fixed menu of modules.",
+    "DXC's vision behind it is the Thinking Airport — an airport anticipating, personalising and adapting in real time.",
     "Your airport already owns the plumbing. This is the brain that sits on top of it. Let me show you."
   ],
   html: () => `
