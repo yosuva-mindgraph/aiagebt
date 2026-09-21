@@ -168,11 +168,21 @@ docker build -t aib-deck .
 docker run -d --name aib-deck -p 80:8080 aib-deck
 ```
 
-That is the whole deployment. **23.6 MB**, serves on **8080** inside the container, and
-carries no Node, no `node_modules` and no source — the build happens in a discarded
-first stage, so the image is reproducible from this repo rather than from whatever was
-in someone's `dist/` at the time. (`dist/` is in `.dockerignore` specifically so that
-cannot happen.)
+That is the whole deployment. **~75 MB** with the pre-rendered speech baked in (23.6 MB
+without it), serves on **8080** inside the container, and carries no Node, no
+`node_modules` and no source — the build happens in a discarded first stage, so the image
+is reproducible from this repo rather than from whatever was in someone's `dist/` at the
+time. (`dist/` is in `.dockerignore` specifically so that cannot happen.)
+
+The image needs `assets/voice-clips.js` to exist, rendered at `--scope all`. It is
+generated and gitignored, so a fresh clone does not have one:
+
+```bash
+node tools/prerender-voice.mjs --scope all      # once, on a machine with a key
+```
+
+The build **refuses** to proceed without it rather than quietly shipping a robotic deck —
+see below.
 
 **Port.** 8080 inside, because a non-root process cannot bind 80. Remap it with `-p`
 (above). If you need a different *internal* port — host networking, say — set
@@ -196,7 +206,22 @@ that cached it hard would have no way to hear about a fix.
 inlines it *verbatim* into the page, so it is excluded in `.dockerignore`, the builder
 copies an allowlist rather than `COPY . .`, the build runs `--no-config`, and a final
 step greps the artifact for key-shaped strings and fails the build. The served page ships
-`window.AIB_CONFIG = {}` and Iris uses the browser voice.
+`window.AIB_CONFIG = {}`.
+
+**And it still speaks in the real voice — that is the point.** The image needs no key
+because there is nothing left for one to do: at `--scope all` the pre-rendered payload
+covers *every string the deck can speak* — the twelve scenes' narration, all 39
+knowledge-base answers, and the "I don't have that" reply Iris falls back on when a
+question is off-script. No runtime text means no synthesis, which means no credential,
+which is what makes this a **host-and-run** container rather than one you configure.
+
+That property is load-bearing and it used to be unenforced. `assets/voice-clips.js` is
+gitignored, so whether the image spoke in a human voice or the flat browser one came down
+to whether the file happened to exist on the packager's machine — and nothing failed
+either way. `build.js --require-voice`, which the Dockerfile passes, turns all three
+versions of that into a build error naming the cause: no payload, a narration-scope one
+(which narrates beautifully and answers every question robotically), or one short of the
+corpus because an edited line silently dropped its own clip.
 
 **Nothing needs to reach the internet.** Everything is inlined, fonts included, and with
 no key configured the ElevenLabs and Anthropic call sites are never taken. Driving the

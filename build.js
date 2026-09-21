@@ -9,6 +9,9 @@
        node build.js --artifact   → + dist/artifact.html  for a hosted Artifact
        node build.js --no-config  → omit config.js (composes with all of them)
        node build.js --no-voice   → omit the pre-rendered speech
+       node build.js --require-voice
+                                  → refuse to build unless the speech is
+                                    complete and all-scope (the container)
 
    Every run rebuilds dist/index.html; the flags ADD targets rather than
    replacing it. So dist/index.html is never accidentally a 3D build.
@@ -21,13 +24,23 @@
    decision made per target, exactly as TalkingHead and the GLB are.
 
    The canvas targets carry it because they are the ones that go out: the booth
-   pod, the emailed file, and above all dist/artifact.html, the hosted preview
-   that a published Artifact's CSP has always denied a live voice. The 3D target
-   already spends ~10.4 MB on the vendor bundle and the avatar, so the speech
-   would put it past SIZE_LIMIT_MB on its own — it does not get it, and there is
-   no flag to give it one. An unvoiced 3D build is not a broken one: src/voice.js
-   falls through to the live API or to Web Speech, precisely as it did before
-   any of this.
+   pod, the emailed file, the container, and dist/artifact.html, the hosted
+   preview that a published Artifact's CSP has always denied a live voice. The
+   3D target already spends ~10.4 MB on the vendor bundle and the avatar, so the
+   speech would put it past its own ceiling on its own — it does not get it, and
+   there is no flag to give it one. An unvoiced 3D build is not a broken one:
+   src/voice.js falls through to the live API or to Web Speech, precisely as it
+   did before any of this.
+
+   A consequence worth stating, because it is the whole reason the container
+   needs no API key: at --scope all the payload covers EVERY string the deck can
+   speak — the twelve scenes' narration, all 39 knowledge-base answers, and
+   DONT_KNOW, which src/ask.js returns for anything it cannot answer. With that
+   file present there is no runtime text left to synthesise, so the image ships
+   with no ElevenLabs credential at all and cannot leak one. --require-voice is
+   what turns that from an intention into something the build enforces; without
+   it, a missing or narration-scope payload produces a green build that answers
+   questions in the robotic browser voice and says nothing about it.
 
    ── WHY THE 3D PRESENTER IS A SEPARATE FILE ───────────────────────────────
    dist/index.html has one promise and it is narrow and absolute: copy it to a
@@ -79,10 +92,47 @@ const MODULES = [
   'src/app.js',
 ];
 
-/* Past this, a single HTML file stops being a thing you can hand somebody.
-   The guard exists because the GLB is the one input whose size can change by
-   an order of magnitude without anyone touching this file. */
-const SIZE_LIMIT_MB = 12;
+/* ── the size ceilings, PER TARGET ────────────────────────────────────────
+   One number covered all three targets while they were within a megabyte of
+   each other. They are not any more, and they no longer grow for the same
+   reason: the canvas targets carry the pre-rendered speech and the 3D target
+   carries the avatar INSTEAD, so they move independently and are ~5 MB apart.
+   A single cap set high enough for the larger stops constraining the smaller —
+   it silently becomes a cap on nothing, which is the failure mode every shared
+   threshold has.
+
+   Each number below is the point past which that target stops doing its job,
+   and each is derived from a constraint OUTSIDE this repo. A ceiling set just
+   above what the build measures today catches the thing it was written for
+   exactly never; it only ratchets upward each time someone hits it. */
+const SIZE_LIMITS_MB = {
+  /* The canvas targets are the ones that GO OUT — emailed, carried on a stick,
+     opened from a booth desktop. Email is the binding constraint and it is not
+     ours to negotiate: the common attachment ceiling is 25 MB, and MIME base64
+     inflates an attachment by a third in transit, so anything above ~18.7 MB
+     cannot be sent at all. 18 is that, rounded down.
+
+     What it protects against: the speech is the one input here that scales with
+     CONTENT rather than with a single asset. Every knowledge-base entry added is
+     another clip, and re-rendering the corpus at a higher bitrate multiplies all
+     of it at once — mp3_44100_128 is four times the size of the mp3_22050_32
+     these are rendered at, and would carry a perfectly compliant build straight
+     past this line without one source file changing. Before this existed the
+     canvas targets had NO ceiling at all; the 12 MB one only ever tested the 3D
+     file, so the target that actually ships was the unguarded one. */
+  canvas: 18,
+
+  /* Unchanged, and so is the reason for it: the GLB is the one input whose size
+     can change by an order of magnitude without anyone touching this file, and
+     base64 adds a third on top. Past 12 MB a single HTML file stops being a
+     thing you can hand somebody.
+
+     It keeps the tighter number because it does NOT carry the speech and does
+     not grow when the voice scope does — `--scope all` costs this target
+     nothing. It is also the cap with the least headroom of the two (measured
+     11.20 MB against 12), which is the guard biting rather than slack. */
+  three: 12,
+};
 
 /** Strip ES module syntax so the files can share one classic script scope. */
 function flatten(src) {
@@ -257,7 +307,130 @@ function voiceClipsPayload() {
   // the build log so the operator sees what is in the file without opening a
   // ten-megabyte line.
   const note = (js.match(/^\/\* voice-clips: ([^*]*)\*\//) || [])[1];
-  return { js, bytes: Buffer.byteLength(js, 'utf8'), note: (note || '').trim() };
+  /* `scope` and `corpus`/`n` are read off the ASSIGNMENT, not the header
+     comment, because --require-voice below refuses a build on them and a
+     decorative comment is not a thing to refuse a build on.
+
+     Only the first 512 bytes are searched, which is what makes these three
+     regexes safe on a ten-megabyte line. The generator emits its keys in a
+     fixed order (v, format, model, voice, scope, n, corpus, ms, ... clips), so
+     all three sit in the first couple of hundred characters, well ahead of the
+     clip data — and base64's alphabet contains no double quote, so a match
+     cannot come from inside an audio payload even in principle. This is still
+     not parsing the file: ten megabytes of base64 is re-read to learn nothing
+     the generator did not already print. */
+  const head = js.slice(0, 512);
+  const scope = (head.match(/"scope":"([a-z]+)"/) || [])[1] || null;
+  const n = Number((head.match(/"n":(\d+)/) || [])[1]);
+  const corpus = Number((head.match(/"corpus":(\d+)/) || [])[1]);
+  return {
+    js, bytes: Buffer.byteLength(js, 'utf8'), note: (note || '').trim(),
+    scope, n, corpus,
+  };
+}
+
+/* ── --require-voice ──────────────────────────────────────────────────────
+   Refuse to produce a build that LOOKS voiced and is not.
+
+   This exists because the failure it catches is completely silent. The image
+   the operator ships is "host and run" — no ElevenLabs key inside it — and that
+   promise holds for exactly one reason: every string the deck can speak was
+   pre-rendered, so there is nothing left at runtime to synthesise. The moment
+   the payload is missing, narration-scope, or short of the corpus, src/voice.js
+   reads a miss and falls straight through to the browser's speechSynthesis. The
+   build still exits 0. The page still loads. The deck still talks. It simply
+   does it in the robotic voice this whole mechanism was built to get rid of,
+   and nothing anywhere says so.
+
+   The three cases it names, all of which have happened or nearly have:
+
+     · NO FILE — assets/voice-clips.js is generated and gitignored, so a fresh
+       clone has none. Whether the image speaks was therefore a property of
+       whose machine packaged it, which is not a property a deliverable may have.
+     · WRONG SCOPE — the default is `narration`, which renders the twelve scenes
+       and no answers. That image narrates beautifully and answers every single
+       question robotically, which is the worst of the three because it passes a
+       casual check.
+     · SHORT OF THE CORPUS — a clip is addressed by the text it speaks, so
+       editing one narration line changes its key and drops it silently out of
+       both the cache and the payload. Nothing else notices; that one line goes
+       robotic mid-walkthrough.
+
+   Deliberately NOT implied by anything. It is opt-in so that the tracked,
+   unvoiced dist/ pair and a keyless clone both still build, and the Dockerfile
+   passes it because the image is the artifact where the promise is made. */
+function assertVoiceComplete(clips, { withVoice }) {
+  const die = lines => {
+    console.error('');
+    console.error('REFUSING TO BUILD: --require-voice was asked for and this build is not voiced.');
+    console.error('');
+    lines.forEach(l => console.error(l));
+    console.error('');
+    process.exit(1);
+  };
+
+  /* Both flags at once is incoherent, and it is worth stopping ON rather than
+     resolving by whichever is tested first. --no-voice says omit the speech;
+     --require-voice says refuse to build without it. Picking a winner quietly
+     would make the next person's "add --no-voice to get the build green" into a
+     working way to paper over exactly the fault this flag exists to surface. */
+  if (!withVoice) {
+    die([
+      '--no-voice and --require-voice contradict each other: one omits the speech,',
+      'the other refuses to build without it. Nothing can satisfy both.',
+      '',
+      'Fix: drop whichever one you did not mean. --no-voice builds the unvoiced',
+      'pair that is committed to dist/; --require-voice is for the container.',
+    ]);
+  }
+
+  if (!clips) {
+    die([
+      'There is no assets/voice-clips.js. It is GENERATED and gitignored, so a',
+      'clone does not have one and the deck would fall back to the browser\'s',
+      'speechSynthesis — the robotic voice — for every line it speaks.',
+      '',
+      'Fix, once, on a machine with a key:',
+      '  node tools/prerender-voice.mjs --scope all',
+    ]);
+  }
+
+  if (clips.scope !== 'all') {
+    die([
+      `assets/voice-clips.js was rendered at scope ${JSON.stringify(clips.scope)}, not "all".`,
+      '',
+      'Only "all" covers the knowledge-base answers. A narration-scope payload',
+      'narrates the twelve scenes in the real voice and answers every question a',
+      'viewer asks in the robotic one — which looks correct right up until',
+      'somebody asks something.',
+      '',
+      'Fix:',
+      '  node tools/prerender-voice.mjs --scope all',
+    ]);
+  }
+
+  if (!Number.isFinite(clips.corpus) || !Number.isFinite(clips.n)) {
+    die([
+      'assets/voice-clips.js does not record "n"/"corpus", so its completeness',
+      'cannot be checked. It predates that field.',
+      '',
+      'Fix — this needs no API calls, it repacks the cache you already have:',
+      '  node tools/prerender-voice.mjs --pack-only --scope all',
+    ]);
+  }
+
+  if (clips.n < clips.corpus) {
+    die([
+      `assets/voice-clips.js carries ${clips.n} of ${clips.corpus} clips — ${clips.corpus - clips.n} are missing.`,
+      '',
+      'A clip is addressed by the exact text it speaks, so an edit to a narration',
+      'line or a knowledge-base answer changes its key and drops it out of the',
+      'payload. Those lines, and only those, would speak in the robotic voice.',
+      '',
+      'Fix — renders only what actually changed; everything else is cached:',
+      '  node tools/prerender-voice.mjs --scope all',
+    ]);
+  }
 }
 
 const mb = n => (n / 1024 / 1024).toFixed(2) + ' MB';
@@ -271,7 +444,7 @@ function write(name, html) {
 }
 
 function build({ withConfig = true, want3d = false, wantArtifact = false,
-  withVoice = true } = {}) {
+  withVoice = true, requireVoice = false } = {}) {
   const shell = read('index.html');
   const css = read('assets/fonts.css') + '\n' + read('src/styles.css');
   const flattened = MODULES.map(m => [m, flatten(read(m))]);
@@ -295,6 +468,9 @@ function build({ withConfig = true, want3d = false, wantArtifact = false,
      front of the app, and the 3D target does not carry it. */
   const APP_SEAM = /<script type="module" src="src\/app\.js"><\/script>/;
   const clips = withVoice ? voiceClipsPayload() : null;
+  /* Before a single byte is written. A build that is going to be refused should
+     not leave a half-correct dist/ behind for someone to pick up by mistake. */
+  if (requireVoice) assertVoiceComplete(clips, { withVoice });
   /* Its own script element, ahead of the app's. Ahead because src/voice.js
      reads window.AIB_VOICE_CLIPS at call time and app.js constructs Voice on
      load; separate because a multi-megabyte string literal has no business
@@ -324,6 +500,22 @@ function build({ withConfig = true, want3d = false, wantArtifact = false,
     console.log('     node tools/prerender-voice.mjs');
   }
   if (configJs) console.log('  ⚠  a key is baked into this file — do not hand it out');
+
+  /* The canvas ceiling. Checked here rather than once at the end because this
+     is the file the promise is about, and because artifact.html is cut out of
+     this exact string below — if this one is too big to send, so is that one. */
+  if (indexBytes > SIZE_LIMITS_MB.canvas * 1024 * 1024) {
+    console.log('');
+    console.log(`  ⚠⚠  ${mb(indexBytes)} — this is NOT a deliverable (the ceiling is ~${SIZE_LIMITS_MB.canvas} MB).`);
+    console.log('      Past this it cannot be emailed: a 25 MB attachment limit is ~18.7 MB of');
+    console.log('      file once MIME base64 has taken its third.');
+    if (clips) {
+      console.log(`      The speech is ${mb(clips.bytes)} of it${clips.note ? ` (${clips.note})` : ''}.`);
+      console.log('      Check the render format first — mp3_22050_32 is the one this is sized for:');
+      console.log('      node tools/prerender-voice.mjs --plan --scope all');
+    }
+    console.log('');
+  }
 
 
   /* ── target 2: dist/index-3d.html — the same page, plus the presenter ──── */
@@ -356,14 +548,14 @@ function build({ withConfig = true, want3d = false, wantArtifact = false,
     }
     if (clips) {
       console.log(`  ·  the speech (${mb(clips.bytes)}) is deliberately NOT in this file — it would`);
-      console.log(`     put it at ${mb(threeBytes + clips.bytes)}, past the ${SIZE_LIMIT_MB} MB ceiling. See the note at the top.`);
+      console.log(`     put it at ${mb(threeBytes + clips.bytes)}, past its ${SIZE_LIMITS_MB.three} MB ceiling. See the note at the top.`);
     }
 
-    if (threeBytes > SIZE_LIMIT_MB * 1024 * 1024) {
+    if (threeBytes > SIZE_LIMITS_MB.three * 1024 * 1024) {
       // Loud on purpose. An HTML file this big is not a thing you email, put on
       // a stick, or open on a booth laptop, and the cause is always the same.
       console.log('');
-      console.log(`  ⚠⚠  ${mb(threeBytes)} — this is NOT a deliverable (the ceiling is ~${SIZE_LIMIT_MB} MB).`);
+      console.log(`  ⚠⚠  ${mb(threeBytes)} — this is NOT a deliverable (the ceiling is ~${SIZE_LIMITS_MB.three} MB).`);
       if (shim && shim.glbBytes) {
         console.log(`      assets/avatar.glb is ${mb(shim.glbBytes)}; base64 makes that ~${mb(shim.glbBytes * 4 / 3)}.`);
       } else if (shim) {
@@ -412,4 +604,5 @@ build({
   want3d: process.argv.includes('--3d'),
   wantArtifact: process.argv.includes('--artifact'),
   withVoice: !process.argv.includes('--no-voice'),
+  requireVoice: process.argv.includes('--require-voice'),
 });

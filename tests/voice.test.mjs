@@ -47,7 +47,7 @@ import { execFileSync } from 'node:child_process';
 
 import { launch, openPage, ready, BUDGET, ROOT } from './lib/harness.mjs';
 import { SCENES } from '../src/scenes.js';
-import { KB } from '../src/knowledge.js';
+import { KB, DONT_KNOW } from '../src/knowledge.js';
 import { spokenForm } from '../src/ask.js';
 import { voiceClipKey } from '../src/voice.js';
 
@@ -68,6 +68,14 @@ function corpus() {
   SCENES.forEach((s, i) => (s.lines || []).forEach((l, j) =>
     out.push({ text: String(l).trim(), tier: 'narration', from: `scene ${i + 1} (${s.id}) line ${j + 1}` })));
   KB.forEach(e => out.push({ text: spokenForm(e.a).trim(), tier: 'answer', from: `kb ${e.id}` }));
+  /* DONT_KNOW is an answer the deck speaks and is NOT an entry in KB — it is
+     declared beside it, and src/ask.js returns it verbatim for anything under
+     CONFIDENCE_FLOOR. It has to be here for the same reason it is in the
+     generator's corpus: this list is what §2.1 calls missing and §2.2 calls an
+     orphan, so a clip the generator renders and this does not know about would
+     be reported as "baked in that nothing says" — when in fact it is the reply
+     to every off-script question anyone asks. */
+  out.push({ text: spokenForm(DONT_KNOW).trim(), tier: 'answer', from: 'kb (dont-know)' });
   return out.filter(c => c.text);
 }
 
