@@ -189,7 +189,9 @@ export const KB = [
      row policies apply, and it can only see what that person is allowed to see. It names the entities
      and KPIs it resolved through, so a sceptical director can follow the number back to source. And it
      is logged.</p>
-     <p>In practice this is where roughly 80% of analyst time gets handed back.</p>`
+     <p>In practice this is where analyst time gets handed back — they stop running other people's
+     reports. How much depends on how much of that work your analysts are doing today, which is one of
+     the things a baseline assessment measures.</p>`
 },
 {
   id: 'hallucination',
@@ -416,11 +418,14 @@ export const KB = [
   a: `<p>Fifteen services in production across five airports, two pillars — one <b>Digital &amp; Cloud</b>,
      one <b>Data &amp; AI</b> — ring-fenced by a third-party cybersecurity layer. Twelve AI systems
      deployed, 70+ dashboards serving 8 departments, 16+ automation bots live.</p>
-     <p>Measured outcomes from that estate: eight departments unified on one real-time picture with a
-     ±72-hour flight horizon; security paperwork down ~80% and fully offline-capable in restricted zones;
-     complaint response ~25% faster with a ~35% CX uplift; zero paper contracts and four content
-     platforms collapsed into one. The home-to-gate passenger ecosystem took the <b>IDC Future Enterprise
-     Award 2023</b>.</p>`
+     <p>Outcomes from that estate: eight departments unified on one real-time picture with a
+     ±72-hour flight horizon; security paperwork largely eliminated and fully offline-capable in
+     restricted zones; complaint response times and customer-experience scores both improved; zero paper
+     contracts and four content platforms collapsed into one. The home-to-gate passenger ecosystem took
+     the <b>IDC Future Enterprise Award 2023</b>.</p>
+     <p>I won't put a percentage on any of those for you. They were measured at those airports, against
+     their baselines — yours would be measured at yours, and the honest answer today is that we don't
+     know your number yet.</p>`
 },
 {
   id: 'roi',
@@ -430,10 +435,12 @@ export const KB = [
      maintenance, labour), <b>capex deferred</b> (sweat the stands, belts and terminal you already own),
      <b>revenue up</b> (non-aero spend per passenger on the same footfall), and <b>risk removed</b>
      (compliance, carbon and security exposure closed, with the audit trail behind it).</p>
-     <p>I'll be straight with you about the numbers. Any ROI range you hear from us is an indicative
-     industry figure. It gets replaced by your own number in a short baseline assessment during
-     onboarding, and it is never quoted as a guarantee before that. Treat a single dollar figure as a
-     starting point for discovery, not a commitment.</p>`
+     <p>I'll be straight with you about the numbers: I am not going to quote you one. What each lever
+     is worth varies enormously by airport — traffic mix, cost base, what you have already automated —
+     so a percentage lifted from somebody else's airport tells you nothing reliable about yours.</p>
+     <p>Your numbers come out of a short baseline assessment against your own systems, incident volume
+     and cost data during onboarding. Anything you hear before that is a starting point for discovery,
+     not a commitment.</p>`
 },
 {
   id: 'where-to-start',
@@ -506,8 +513,9 @@ export const KB = [
      <p>ESG sits beside it for sustainability, emissions and carbon reporting against ACI, GRI and Airport
      Carbon Accreditation, with ESG reporting tracked as a governance obligation.</p>
      <p>It is the usual first module when an airport wants one contained, high-visibility P&amp;L win
-     before scaling — double-digit utility-cost reduction with payback in months is the indicative range,
-     validated against your own meters at baseline.</p>`
+     before scaling. What it is worth depends on your tariffs, your climate and how your plant runs
+     today, so the number comes out of a baseline against your own meters rather than out of a
+     brochure.</p>`
 },
 {
   id: 'revenue',

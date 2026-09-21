@@ -1668,7 +1668,9 @@ const KB = [
      row policies apply, and it can only see what that person is allowed to see. It names the entities
      and KPIs it resolved through, so a sceptical director can follow the number back to source. And it
      is logged.</p>
-     <p>In practice this is where roughly 80% of analyst time gets handed back.</p>`
+     <p>In practice this is where analyst time gets handed back — they stop running other people's
+     reports. How much depends on how much of that work your analysts are doing today, which is one of
+     the things a baseline assessment measures.</p>`
 },
 {
   id: 'hallucination',
@@ -1895,11 +1897,14 @@ const KB = [
   a: `<p>Fifteen services in production across five airports, two pillars — one <b>Digital &amp; Cloud</b>,
      one <b>Data &amp; AI</b> — ring-fenced by a third-party cybersecurity layer. Twelve AI systems
      deployed, 70+ dashboards serving 8 departments, 16+ automation bots live.</p>
-     <p>Measured outcomes from that estate: eight departments unified on one real-time picture with a
-     ±72-hour flight horizon; security paperwork down ~80% and fully offline-capable in restricted zones;
-     complaint response ~25% faster with a ~35% CX uplift; zero paper contracts and four content
-     platforms collapsed into one. The home-to-gate passenger ecosystem took the <b>IDC Future Enterprise
-     Award 2023</b>.</p>`
+     <p>Outcomes from that estate: eight departments unified on one real-time picture with a
+     ±72-hour flight horizon; security paperwork largely eliminated and fully offline-capable in
+     restricted zones; complaint response times and customer-experience scores both improved; zero paper
+     contracts and four content platforms collapsed into one. The home-to-gate passenger ecosystem took
+     the <b>IDC Future Enterprise Award 2023</b>.</p>
+     <p>I won't put a percentage on any of those for you. They were measured at those airports, against
+     their baselines — yours would be measured at yours, and the honest answer today is that we don't
+     know your number yet.</p>`
 },
 {
   id: 'roi',
@@ -1909,10 +1914,12 @@ const KB = [
      maintenance, labour), <b>capex deferred</b> (sweat the stands, belts and terminal you already own),
      <b>revenue up</b> (non-aero spend per passenger on the same footfall), and <b>risk removed</b>
      (compliance, carbon and security exposure closed, with the audit trail behind it).</p>
-     <p>I'll be straight with you about the numbers. Any ROI range you hear from us is an indicative
-     industry figure. It gets replaced by your own number in a short baseline assessment during
-     onboarding, and it is never quoted as a guarantee before that. Treat a single dollar figure as a
-     starting point for discovery, not a commitment.</p>`
+     <p>I'll be straight with you about the numbers: I am not going to quote you one. What each lever
+     is worth varies enormously by airport — traffic mix, cost base, what you have already automated —
+     so a percentage lifted from somebody else's airport tells you nothing reliable about yours.</p>
+     <p>Your numbers come out of a short baseline assessment against your own systems, incident volume
+     and cost data during onboarding. Anything you hear before that is a starting point for discovery,
+     not a commitment.</p>`
 },
 {
   id: 'where-to-start',
@@ -1985,8 +1992,9 @@ const KB = [
      <p>ESG sits beside it for sustainability, emissions and carbon reporting against ACI, GRI and Airport
      Carbon Accreditation, with ESG reporting tracked as a governance obligation.</p>
      <p>It is the usual first module when an airport wants one contained, high-visibility P&amp;L win
-     before scaling — double-digit utility-cost reduction with payback in months is the indicative range,
-     validated against your own meters at baseline.</p>`
+     before scaling. What it is worth depends on your tariffs, your climate and how your plant runs
+     today, so the number comes out of a baseline against your own meters rather than out of a
+     brochure.</p>`
 },
 {
   id: 'revenue',
@@ -2367,9 +2375,10 @@ const SCENES = [
       ${icard('chart-line-up', 'Revenue up', 'Non-aeronautical spend per passenger, on the same footfall.')}
       ${icard('shield-check', 'Risk removed', 'Compliance, carbon and security exposure closed, with the audit trail behind it.')}
     </div>
-    <div class="note">Any ROI range quoted in this walkthrough is an indicative industry figure. It is
-      replaced by your own number in a short baseline assessment during onboarding — never quoted as a
-      guarantee before that.</div>`
+    <div class="note">These are the levers, not a promise of a percentage. What each one is worth
+      differs enormously by airport — traffic mix, cost base, what you have already automated — so your
+      numbers come out of a short baseline assessment against your own data at onboarding, not out of
+      this walkthrough.</div>`
 },
 
 /* 4 ──────────────────────────────────────────────────────────────────────── */
@@ -2474,7 +2483,7 @@ const SCENES = [
     "Anyone in the building asks an operational question in plain language. They get an answer, with a chart, in seconds — across every connected source at once. No SQL. No ticket to the analytics team. No two-day wait for a report that was stale when it arrived.",
     "The word governed matters here. The assistant answers through the same pipeline as everything else. So it can only see what your role is allowed to see. Masking applies. Row policies apply. The answer is logged.",
     "It cites where the number came from, so a sceptical director can follow it back to the source table. And when it doesn't know, it says so, rather than inventing a figure. That is the single most important behaviour in a room full of operators.",
-    "In practice this is where roughly eighty percent of analyst time gets handed back."
+    "In practice this is where analyst time gets handed back. They stop running other people's reports."
   ],
   html: () => `
     <p class="eyebrow">04 · the assistant · governed natural language</p>
@@ -2828,10 +2837,11 @@ const SCENES = [
       ${metric('agent', '16+', 'Automation bots', true)}
       ${metric('user-group', '8', 'Departments unified', true)}
     </div>
-    <div class="note">Security paperwork down ~80% and fully offline-capable in restricted zones;
-      complaint response ~25% faster with a ~35% CX uplift across five airports; zero paper contracts
-      and four content platforms collapsed into one. The home-to-gate passenger ecosystem took the
-      IDC Future Enterprise Award 2023.</div>`
+    <div class="note">Security paperwork largely eliminated and fully offline-capable in restricted
+      zones; complaint response times and customer-experience scores both improved across five airports;
+      zero paper contracts and four content platforms collapsed into one. The home-to-gate passenger
+      ecosystem took the IDC Future Enterprise Award 2023. Those were measured at those airports —
+      yours would be measured at yours.</div>`
 },
 
 /* 12 ─────────────────────────────────────────────────────────────────────── */
@@ -2853,7 +2863,7 @@ const SCENES = [
       contained piece of your real estate, mapped into the canonical model, with a board, a workflow
       and an agent built on top of it by your own people.</p>
     <div class="grid g3">
-      ${card('1 · Baseline', 'A short assessment against your own systems, incident volume and cost data. Every indicative range in this walkthrough gets replaced by your number.')}
+      ${card('1 · Baseline', 'A short assessment against your own systems, incident volume and cost data. This is where the numbers come from — yours, not an industry average borrowed from another airport.')}
       ${card('2 · Three feeds, mapped', 'Two or three real sources into the canonical model. Then your team builds a board, a workflow and an agent on it — without us.')}
       ${card('3 · Scale on evidence', 'What gets built next is decided by what the first one proved, not by what was on the original slide.')}
     </div>
