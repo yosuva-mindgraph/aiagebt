@@ -1,0 +1,14 @@
+{
+  "name": "aib-presenter-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Key-holding proxy for the AIB Presenter deck: /api/llm and /api/tts, loopback only, zero dependencies.",
+  "type": "module",
+  "main": "server.mjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

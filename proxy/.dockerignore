@@ -1,0 +1,14 @@
+# The image must contain no key. .env is the file that holds them, so it is the
+# first line here — it arrives at RUN time via --env-file and never at build time.
+.env
+*.env
+env
+secrets/
+
+node_modules/
+npm-debug.log*
+.DS_Store
+*.log
+.git/
+.gitignore
+README.md
