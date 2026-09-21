@@ -89,7 +89,31 @@ COPY assets/ ./assets/
 # GUARD 2 — build without the key even if one were somehow present. `--no-config`
 # makes build.js skip config.js unconditionally, so the key cannot be inlined
 # even in a world where guards 1 and 0 both failed.
-RUN node build.js --no-config
+#
+# `--require-voice` is the OTHER half of that same decision, and the two belong
+# on one line because neither is safe alone.
+#
+# This image ships no ElevenLabs key — guards 0 through 3 exist to make sure of
+# it — and it does not need one for exactly one reason: assets/voice-clips.js
+# carries every string the deck can speak, pre-rendered. The twelve scenes'
+# narration, all 39 knowledge-base answers, and the "I don't have that" reply
+# src/ask.js falls back on. There is no runtime text left to synthesise, so
+# there is nothing for a credential to be needed FOR. That is what makes this
+# a host-and-run container rather than one you have to configure.
+#
+# Take the payload away and none of the guards notice. src/voice.js reads a
+# miss, falls through to the browser's speechSynthesis, and the deck answers in
+# the flat robotic voice this mechanism was built to replace — from an image
+# that built green, serves a valid page, and talks. The file is GENERATED and
+# gitignored, so "is it there" was until now a property of whose laptop ran
+# `docker build`. `--require-voice` makes that a build failure instead: no
+# clips file, a narration-scope one, or one short of the corpus all stop here
+# with a message naming which. It is the difference between shipping the wrong
+# thing and being told you were about to.
+#
+# If this line fails for you, the fix is in the error — usually:
+#   node tools/prerender-voice.mjs --scope all      (on a machine with a key)
+RUN node build.js --no-config --require-voice
 
 # GUARD 3 — inspect the OUTPUT, not the inputs.
 #

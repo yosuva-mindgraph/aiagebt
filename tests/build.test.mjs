@@ -160,18 +160,41 @@ export async function run(t) {
   t.ok(!/<script src="vendor\/talkinghead\.bundle\.js"><\/script>[\s\S]{0,80}colorMask/.test(three),
     'the seam-S5 tag was not re-injected into the middle of three.js');
 
-  /* ── 3. the --3d size ceiling, and that the guard still bites ───────── */
+  /* ── 3. the size ceilings, and that the guards still bite ───────────── */
   const buildSrc = rd('build.js');
-  /* Anchored at column 0 on the declaration itself, so this reads the CONSTANT
-     rather than the first place the name appears — build.js now discusses the
-     ceiling in prose above the 3D target as well, and an unanchored match is
-     one edit away from picking up a number out of a sentence. */
-  const limit = Number((buildSrc.match(/^const SIZE_LIMIT_MB = (\d+);$/m) || [])[1]);
-  t.ok(Number.isFinite(limit) && limit > 0, 'build.js still declares a SIZE_LIMIT_MB', `${limit} MB`);
+  /* Anchored on the declarations themselves, so these read the CONSTANTS rather
+     than the first place each name appears — build.js discusses both ceilings in
+     prose as well, and an unanchored match is one edit away from picking a
+     number out of a sentence.
+
+     Two caps now, not one. They were split because the targets stopped growing
+     for the same reason: the canvas targets carry the pre-rendered speech, the
+     3D target carries the avatar instead, and a shared number high enough for
+     the larger constrains the smaller not at all. */
+  t.ok(/^const SIZE_LIMITS_MB = \{$/m.test(buildSrc),
+    'build.js declares per-target size ceilings (SIZE_LIMITS_MB)');
+  const limits = {
+    canvas: Number((buildSrc.match(/^ {2}canvas: (\d+),$/m) || [])[1]),
+    three: Number((buildSrc.match(/^ {2}three: (\d+),$/m) || [])[1]),
+  };
+  for (const [name, v] of Object.entries(limits)) {
+    t.ok(Number.isFinite(v) && v > 0, `build.js still declares a ${name} ceiling`, `${v} MB`);
+  }
+  /* The 3D target does NOT carry the speech, so its ceiling stays the tighter
+     one and --scope all costs it nothing. That is the point of the split. */
+  t.ok(limits.canvas > limits.three,
+    'the canvas ceiling is the looser of the two (it carries the speech; the 3D target does not)',
+    `canvas ${limits.canvas} MB · 3D ${limits.three} MB`);
+
   const threeBytes = size('dist/index-3d.html');
-  t.ok(threeBytes < limit * 1024 * 1024,
-    `dist/index-3d.html is under build.js's ${limit} MB ceiling`,
-    `${mb(threeBytes)} of ${limit}.00 MB — ${mb(limit * 1024 * 1024 - threeBytes)} of headroom`);
+  t.ok(threeBytes < limits.three * 1024 * 1024,
+    `dist/index-3d.html is under build.js's ${limits.three} MB ceiling`,
+    `${mb(threeBytes)} of ${limits.three}.00 MB — ${mb(limits.three * 1024 * 1024 - threeBytes)} of headroom`);
+  for (const label of ['index.html', 'artifact.html']) {
+    t.ok(size('dist/' + label) < limits.canvas * 1024 * 1024,
+      `dist/${label} is under build.js's ${limits.canvas} MB canvas ceiling`,
+      `${mb(size('dist/' + label))} of ${limits.canvas}.00 MB — ${mb(limits.canvas * 1024 * 1024 - size('dist/' + label))} of headroom`);
+  }
   t.ok(fs.statSync(path.join(ROOT, 'assets/avatar.glb')).size < 8 * 1024 * 1024,
     'assets/avatar.glb is small enough to base64 into a deliverable',
     `${fs.statSync(path.join(ROOT, 'assets/avatar.glb')).size} B = ${mb(fs.statSync(path.join(ROOT, 'assets/avatar.glb')).size)}`);
@@ -195,11 +218,87 @@ export async function run(t) {
       Buffer.concat([real, Buffer.alloc(10 * 1024 * 1024)]));
 
     const out = execFileSync(process.execPath, ['build.js', '--3d'], { cwd: scratch, encoding: 'utf8' });
-    const fired = /NOT a deliverable/.test(out) && new RegExp(`ceiling is ~${limit} MB`).test(out);
+    const fired = /NOT a deliverable/.test(out) && new RegExp(`ceiling is ~${limits.three} MB`).test(out);
     t.ok(fired, 'the size guard fires on an oversized GLB',
       (out.split('\n').find(l => /NOT a deliverable/.test(l)) || out.slice(-200)).trim());
     t.ok(/Compress the avatar first/.test(out),
       'the guard names the fix (tools/convert-valid-avatar.mjs)');
+
+    /* The canvas ceiling, same treatment. It is the NEW half of the split and
+       the one that guards the file that actually ships, so it gets watched fire
+       too. A synthetic payload, because the real one is minutes of API calls:
+       build.js does not parse this file, it inlines it, so a plausible header
+       over a block of filler exercises the identical path. */
+    const filler = 'A'.repeat(Math.round(limits.canvas * 1024 * 1024));
+    fs.writeFileSync(path.join(scratch, 'assets/voice-clips.js'),
+      '/* voice-clips: 112/112 clips · 40.0 min · mp3_22050_32 · eleven_v3 · scope all */\n'
+      + `window.AIB_VOICE_CLIPS = {"v":1,"format":"mp3_22050_32","model":"eleven_v3","voice":"x","scope":"all","n":112,"corpus":112,"ms":1,"clips":{"k":{"a":"${filler}","w":"","t":"","d":""}}};\n`);
+    const big = execFileSync(process.execPath, ['build.js'], { cwd: scratch, encoding: 'utf8' });
+    t.ok(new RegExp(`NOT a deliverable \\(the ceiling is ~${limits.canvas} MB\\)`).test(big),
+      'the canvas size guard fires on an oversized speech payload',
+      (big.split('\n').find(l => /NOT a deliverable/.test(l)) || big.slice(-200)).trim());
+    t.ok(/cannot be emailed/.test(big),
+      'the canvas guard names what the ceiling protects (the 25 MB attachment limit)');
+
+    /* ── --require-voice: the three silent failures it converts to loud ones.
+       Each must EXIT NON-ZERO and name its own cause; a guard that exits 0 is
+       the exact fault being closed here. */
+    const refuses = (args, what) => {
+      try {
+        execFileSync(process.execPath, ['build.js', ...args], { cwd: scratch, encoding: 'utf8', stdio: 'pipe' });
+        return { ok: false, out: '(build SUCCEEDED — it should have refused)' };
+      } catch (e) {
+        return { ok: true, out: String(e.stderr || '').trim() };
+      }
+    };
+
+    // a: no clips file at all (a fresh clone — it is gitignored)
+    fs.rmSync(path.join(scratch, 'assets/voice-clips.js'));
+    let r = refuses(['--require-voice']);
+    t.ok(r.ok && /no assets\/voice-clips\.js/.test(r.out) && /--scope all/.test(r.out),
+      '--require-voice refuses a build with no clips file, and names the fix',
+      r.out.split('\n').filter(Boolean)[0] || r.out);
+
+    // b: the DEFAULT scope — narrates in the real voice, answers robotically
+    fs.writeFileSync(path.join(scratch, 'assets/voice-clips.js'),
+      '/* voice-clips: 72/72 clips · 14.1 min · mp3_22050_32 · eleven_v3 · scope narration */\n'
+      + 'window.AIB_VOICE_CLIPS = {"v":1,"format":"mp3_22050_32","model":"eleven_v3","voice":"x","scope":"narration","n":72,"corpus":72,"ms":1,"clips":{}};\n');
+    r = refuses(['--require-voice']);
+    t.ok(r.ok && /not "all"/.test(r.out),
+      '--require-voice refuses a narration-scope payload',
+      r.out.split('\n').filter(Boolean)[0] || r.out);
+
+    // c: all-scope but SHORT — an edited line drops its own clip silently
+    fs.writeFileSync(path.join(scratch, 'assets/voice-clips.js'),
+      '/* voice-clips: 88/112 clips · 30.6 min · mp3_22050_32 · eleven_v3 · scope all */\n'
+      + 'window.AIB_VOICE_CLIPS = {"v":1,"format":"mp3_22050_32","model":"eleven_v3","voice":"x","scope":"all","n":88,"corpus":112,"ms":1,"clips":{}};\n');
+    r = refuses(['--require-voice']);
+    t.ok(r.ok && /88 of 112 clips/.test(r.out) && /24 are missing/.test(r.out),
+      '--require-voice refuses an all-scope payload that is short of the corpus',
+      r.out.split('\n').filter(Boolean)[0] || r.out);
+
+    // d: the contradiction. Neither flag wins; the incoherence is the error.
+    r = refuses(['--require-voice', '--no-voice']);
+    t.ok(r.ok && /contradict each other/.test(r.out),
+      '--require-voice with --no-voice is a hard error naming the contradiction',
+      r.out.split('\n').filter(Boolean)[0] || r.out);
+
+    // e: the positive control. A complete all-scope payload BUILDS.
+    fs.writeFileSync(path.join(scratch, 'assets/voice-clips.js'),
+      '/* voice-clips: 112/112 clips · 40.0 min · mp3_22050_32 · eleven_v3 · scope all */\n'
+      + 'window.AIB_VOICE_CLIPS = {"v":1,"format":"mp3_22050_32","model":"eleven_v3","voice":"x","scope":"all","n":112,"corpus":112,"ms":1,"clips":{}};\n');
+    let passed = true, pout = '';
+    try { pout = execFileSync(process.execPath, ['build.js', '--require-voice'], { cwd: scratch, encoding: 'utf8' }); }
+    catch (e) { passed = false; pout = String(e.stderr || e.stdout || ''); }
+    t.ok(passed, 'positive control: --require-voice passes a complete all-scope payload',
+      (pout.split('\n').find(l => /scope all/.test(l)) || '').trim());
+
+    // f: --no-voice ALONE is an explicit opt-out and still builds. This is the
+    //    tracked, deliberately unvoiced dist/ pair.
+    let optOut = true;
+    try { execFileSync(process.execPath, ['build.js', '--no-voice'], { cwd: scratch, encoding: 'utf8' }); }
+    catch { optOut = false; }
+    t.ok(optOut, '--no-voice alone still builds (the committed dist/ pair is unvoiced on purpose)');
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
