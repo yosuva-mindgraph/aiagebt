@@ -687,9 +687,9 @@ export const SCENES = [
   icon: 'plane-arrival',
   lines: [
     "So how does it actually land in your airport?",
-    "About eighty-five percent of what you'd deploy already exists and is proven in production.",
-    "The remaining fifteen is your brand, your terminal and zone maps, and your local regulations. Language and currency. Your workflows and service-level agreements. And your data migration.",
-    "That ratio is the commercial argument. You are not funding a build. You are funding a tailoring.",
+    "Most of what you'd deploy already exists and is proven in production.",
+    "What gets tailored is your brand, your terminal and zone maps, and your local regulations. Language and currency. Your workflows and service-level agreements. And your data migration.",
+    "That is the commercial argument. How much tailoring your airport needs depends on your estate. You are not funding a build. You are funding a tailoring.",
     "Three ways in. Greenfield, where there's no entrenched estate and we stand the whole platform up.",
     "Brownfield, where ageing systems get consolidated in phases, behind a parallel run with a rollback at every step. Or the intelligent layer, where your systems stay exactly as they are and we overlay on top. Fastest return on investment, lowest disruption.",
     "And it runs where you need it. Cloud, on-premise, hybrid, or fully air-gapped — for a restricted ops room with no network at all.",
@@ -699,14 +699,14 @@ export const SCENES = [
     <p class="eyebrow">09 · delivery &amp; engagement</p>
     <h1>Built once.<br>Tailored per airport.</h1>
 
-    <h2>Effort to go live</h2>
-    <div class="bars" style="margin-top:4px">
-      <div class="bar"><span>Pre-built &amp; proven</span><span class="track"><span class="fill" style="width:85%"></span></span><span class="v">~85%</span></div>
-      <div class="bar"><span>Tailored to you</span><span class="track"><span class="fill" style="width:15%;background:linear-gradient(90deg,var(--gold),var(--peach))"></span></span><span class="v">~15%</span></div>
+    <h2>What is reused, and what is tailored</h2>
+    <div class="grid g2">
+      ${icard('cubes', 'Reused as-is', 'The canonical model, the pipelines, the boards and KPIs, the playbooks, the agents and the governance register — already built, and already running at other airports.')}
+      ${icard('sliders', 'Tailored to you', 'Brand and UX, terminal and zone maps, local regulations, language and currency, ops workflows and SLAs, and your data migration.')}
     </div>
-    <p class="lede" style="margin-top:14px">The tailored fifteen is brand and UX, terminal and zone maps,
-      local regulations, language and currency, ops workflows and SLAs, and data migration. Everything
-      else is reused as-is.</p>
+    <p class="lede" style="margin-top:14px">Most of what you deploy already exists. How much tailoring
+      yours needs depends on your estate — a new terminal and a brownfield consolidation are not the same
+      job — which is what the baseline assessment sizes.</p>
 
     <h2>Three ways in</h2>
     <div class="grid g3">
