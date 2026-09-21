@@ -26,10 +26,11 @@ export const KB = [
   scene: 'open',
   a: `<p>Intelligent Airport is a <b>platform</b> that sits on top of the systems an airport
      already runs — it replaces none of them.</p>
-     <p>It reads every source system into <b>one governed model of the airport</b>: 58 canonical entities
-     and 201 KPIs defined once. On top of that model you get a governed assistant you can ask anything,
-     and four build surfaces — <b>dashboards, applications, workflows and AI agents</b> — all of which
-     your own people build, without an engineering ticket.</p>
+     <p>It reads every source system into <b>one governed model of the airport</b>: the canonical
+     entities your airport actually runs on, and the KPIs over them, <b>defined once</b>. On top of that
+     model you get a governed assistant you can ask anything, and four build surfaces —
+     <b>dashboards, applications, workflows and AI agents</b> — all of which your own people build,
+     without an engineering ticket.</p>
      <p>The important distinction: it is not a fixed menu of modules. Adding a business domain or a
      control centre is <b>metadata, not code</b>. That is why I won't give you a finite list of use
      cases — the list is however many your airport has.</p>`
@@ -103,10 +104,14 @@ export const KB = [
   id: 'data-model',
   k: 'data model canonical entities schema kpi kpis how many single source of truth semantic layer definition',
   scene: 'data',
-  a: `<p>Source systems land in the lakehouse and are mapped into one canonical model: <b>58 entities</b>
-     — flight, flight leg, bag, bag event, passenger, check-in, cargo, retail transaction, parking,
-     energy, ESG, facility, roster, revenue, sensor, emergency event, IT system, security event and so
-     on — with <b>201 governed KPIs</b> defined on top of them.</p>
+  a: `<p>Source systems land in the lakehouse and are mapped into <b>one canonical model</b> — flight,
+     flight leg, bag, bag event, passenger, check-in, cargo, retail transaction, parking, energy, ESG,
+     facility, roster, revenue, sensor, emergency event, IT system, security event and so on — with the
+     <b>governed KPIs</b> defined on top of them.</p>
+     <p>I won't quote you a number of entities or a number of KPIs, because it isn't a fixed property of
+     the product. It falls out of the source systems <i>your</i> airport runs and the measures <i>your</i>
+     airport is held to — a different estate lands on a different model, which is what the baseline
+     assessment maps.</p>
      <p>Defined once is the point. On-time performance means the same thing in a dashboard, in a
      workflow's threshold, in an agent's answer and in the board that goes to your regulator. There is
      exactly one place to change a definition, and exactly one place to audit who saw what.</p>`
@@ -115,10 +120,11 @@ export const KB = [
   id: 'sources',
   k: 'data sources feeds connect integration how many sources what systems ingest mapped',
   scene: 'data',
-  a: `<p>Twenty-one source feeds are mapped today — A-CDM staging, active flight, baggage handling
-     messages and reclaim, self-bag-drop passenger and session data, CUSS check-in, vehicle access and
-     car-park transactions, camera data, retail POS, ASQ survey data and airline master data among
-     them.</p>
+  a: `<p>The feeds mapped today include A-CDM staging, active flight, baggage handling messages and
+     reclaim, self-bag-drop passenger and session data, CUSS check-in, vehicle access and car-park
+     transactions, camera data, retail POS, ASQ survey data and airline master data.</p>
+     <p>How many you end up with is a question about your estate rather than about the product — you
+     connect the systems you run, and the answer is however many that is.</p>
      <p>New sources connect through the same layer: real-time streaming, scheduled ETL, REST pulls,
      webhooks, file drops — and RPA where a system has no API at all. Mapping a new system's entity into
      the canonical model lights up everything downstream with no downstream change.</p>`
@@ -140,7 +146,7 @@ export const KB = [
   id: 'control-centres',
   k: 'control centres aocc atc eoc noc soc operations tower emergency network security centre',
   scene: 'model',
-  a: `<p>Five control centres are modelled:</p>
+  a: `<p>The control centres modelled today:</p>
      <ul>
        <li><b>AOCC</b> — day-to-day flight, baggage, passenger and resource operations. Nine subdomains:
          flight/FIDS, cargo, baggage, retail, airline, passenger, ticketing/DCS, vehicle/landside, feedback.</li>
@@ -151,7 +157,8 @@ export const KB = [
        <li><b>SOC</b> — physical and cyber together: CCTV and access control, checkpoint screening,
          perimeter and restricted areas, cyber/SIEM.</li>
      </ul>
-     <p>And the sixth is whichever one you need — a centre is a metadata file, not a release.</p>`
+     <p>And the next one is whichever you need — a centre is a metadata file, not a release. Which
+     centres your airport ends up running is your operating model's question, not ours.</p>`
 },
 {
   id: 'domains-apps',
@@ -220,7 +227,9 @@ export const KB = [
      <p>There is no fixed set. Every tile resolves through the governed pipeline, so a board cannot show
      a number its viewer is not allowed to see — which is what makes "let them build their own" a safe
      sentence rather than a reckless one.</p>
-     <p>For scale: the current production estate runs 70+ dashboards across 8 departments.</p>`
+     <p>How many you end up with is not a number I can give you — that is the point of the surface. The
+     twentieth board costs what the second did, so the ceiling is your people's appetite rather than our
+     roadmap.</p>`
 },
 {
   id: 'apps',
@@ -245,8 +254,8 @@ export const KB = [
      <p><b>Actions:</b> query the lakehouse through the canonical schema, ask a registered agent, branch,
      open an alert in the operations register (raised once, not again while it is open), email via the
      relay, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.</p>
-     <p>Eleven playbooks ship with the product, disabled, so a fresh install has something real to turn
-     on deliberately.</p>`
+     <p>Playbooks ship with the product, disabled, so a fresh install has something real to turn on
+     deliberately.</p>`
 },
 {
   id: 'playbooks',
@@ -266,7 +275,7 @@ export const KB = [
   id: 'agents',
   k: 'agents ai agents how many agents what agents bot autonomous llm which agents',
   scene: 'agents',
-  a: `<p>Six ship today: <b>Airport Hub Analyst</b> (the general analyst, routes to the specialist that
+  a: `<p>These ship today: <b>Airport Hub Analyst</b> (the general analyst, routes to the specialist that
      owns the question), <b>Ops Analyst</b>, <b>Baggage Analyst</b>, <b>Retail Analyst</b>,
      <b>Data Steward</b> (catalog, lineage and glossary hygiene — proposes, never decides) and
      <b>Compliance Explainer</b>. You register your own the same way.</p>
@@ -305,7 +314,7 @@ export const KB = [
   id: 'models',
   k: 'ml models prediction forecast predictive delay predictor pax flow baggage anomaly which llm engine model',
   scene: 'build',
-  a: `<p>Three forecast models ship alongside the platform: a <b>delay predictor</b>, a <b>passenger-flow
+  a: `<p>Forecast models ship alongside the platform: a <b>delay predictor</b>, a <b>passenger-flow
      forecaster</b> and a <b>baggage anomaly</b> detector. They sit in the same catalog under the same
      provenance rules as everything else.</p>
      <p>Which LLM engine serves which purpose is an administrator setting — you can point it at your own
@@ -417,17 +426,17 @@ export const KB = [
   id: 'proof',
   k: 'proof real proven track record production live today reference customer who uses it evidence credibility',
   scene: 'deploy',
-  a: `<p>Fifteen services in production across five airports, two pillars — one <b>Digital &amp; Cloud</b>,
-     one <b>Data &amp; AI</b> — ring-fenced by a third-party cybersecurity layer. Twelve AI systems
-     deployed, 70+ dashboards serving 8 departments, 16+ automation bots live.</p>
-     <p>Outcomes from that estate: eight departments unified on one real-time picture with a
-     ±72-hour flight horizon; security paperwork largely eliminated and fully offline-capable in
-     restricted zones; complaint response times and customer-experience scores both improved; zero paper
-     contracts and four content platforms collapsed into one. The home-to-gate passenger ecosystem took
-     the <b>IDC Future Enterprise Award 2023</b>.</p>
-     <p>I won't put a percentage on any of those for you. They were measured at those airports, against
-     their baselines — yours would be measured at yours, and the honest answer today is that we don't
-     know your number yet.</p>`
+  a: `<p>It is in production today rather than in a lab. The live estate is built on two pillars —
+     <b>Digital &amp; Cloud</b> and <b>Data &amp; AI</b> — ring-fenced by a third-party cybersecurity
+     layer, with services, AI systems, dashboards and automation bots in daily use at airports that are
+     already customers.</p>
+     <p>What I won't do is put figures on that. Not a count of deployments, not a percentage, not a
+     benefit. Every one of those was measured at those airports, against their baselines and their
+     estates — quoting them to you implies they are what yours would be, and today nobody knows that.</p>
+     <p>So the honest form of proof is a reference call and a baseline. Ask the MindGraph and DXC team
+     to put you in front of an airport already running it, and let the baseline assessment produce your
+     numbers out of your own systems. That is proof you can check, rather than proof you have to
+     take.</p>`
 },
 {
   id: 'roi',
@@ -502,8 +511,8 @@ export const KB = [
      line, sensor, process point, occupancy, queue, heat, forecast, alert).</p>
      <p>The prediction side calls congestion <b>15–30 minutes ahead</b> at security, immigration and
      check-in from IoT sensor trends and the flight schedule, and alerts staffing before the queue is
-     visible on the ground. Two of the shipped playbooks ride on it: a security queue over target for two
-     minutes, and a lounge reaching capacity.</p>`
+     visible on the ground. Shipped playbooks ride on it: a security queue over target for two minutes, and
+     a lounge reaching capacity.</p>`
 },
 {
   id: 'energy',
