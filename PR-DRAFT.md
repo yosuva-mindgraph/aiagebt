@@ -861,3 +861,124 @@ Added to §7.
 4. **`.bars` / `.bar` in `src/styles.css` is now dead CSS.** Scene 11's effort-split bar chart was
    its only consumer and `g17` replaced it with an `icard` pair. Left in place deliberately: it is
    harmless, and an unrelated edit does not belong in the tree the final gate measured.
+
+---
+
+## 11. No figures anywhere: the deployment-shape counts and the proof strip
+
+`g18-noshapecounts-frontend` (two commits, `1cea452` then `6e04148`) merged clean onto
+`c345be5` — no conflict, `dist/` deliberately not committed on the branch and regenerated here.
+
+This is the **third** correction in the same direction. §10.2 recorded `g15` removing quantified
+*outcomes* and `g17` removing the `~85/~15` split, and it recorded that architecture and track
+record were *"deliberately kept"*. The operator has now rejected both of those categories too:
+first the platform-shape counts (58 canonical entities, 201 governed KPIs, 21 mapped sources, five
+control centres, eleven playbooks, six agents, three ML models), then scene 11's entire
+track-record strip and the last surviving figure, the `15–30 minutes` prediction horizon in
+`kb passenger-flow`.
+
+**The pattern is worth naming, because it is the useful finding here.** Each pass removed numbers
+a previous pass had explicitly decided to keep, and the reasoning that protected them each time —
+*"that is architecture, not an outcome"*, *"that is a platform property, not an airport's"* — did
+not survive contact with the operator. The stable rule turned out to be simpler and blunter than
+any of the three passes guessed: **a figure on screen is a figure the room can hold us to,
+regardless of what class we think it belongs to.** Anything numeric in this deck should be
+treated as removed-by-default rather than as agreed, and §11.4 lists what is still there.
+
+### 11.1 What replaced the counts
+
+Nothing was left blank and nothing points at an absence, which is the part worth reviewing:
+
+- Scene 4's three-stage pipeline read `21 / 58 / 201`; it now reads **Every / One / Once** —
+  which, read across, is the scene's own `h1`: *every source, one model, one definition*.
+- Scene 1's opening `.metrics` strip dropped three airport-varying counts and now carries three
+  platform invariants — **1 governed model · 0 systems replaced · ∞ things you can build** — all
+  three human-flagged, so the strip is uniform rather than two figures and an orphan.
+- `kb data-model`, `kb sources`, `kb dashboards` and `kb passenger-flow` gained an explicit
+  paragraph saying *why* there is no number, each pointing at the baseline assessment — the same
+  move scene 3's ROI note and scene 12's Baseline card already made.
+- `kb proof` was rewritten around a **reference call plus a baseline** — *"proof you can check,
+  rather than proof you have to take"* — which is a stronger answer than the strip it replaces.
+- Scene 11 now **ends where its narration ends**. The track-record section was never narrated, so
+  the scene previously ran on for two silent sections past its last spoken line.
+
+`docs/CONTENT-SOURCES.md` keeps every citation and moves the figures into the *source* column, so
+the provenance survives without the claim. That is the right call: a reader who cannot see where a
+count came from is a reader who helpfully puts it back.
+
+### 11.2 Re-render: 4 clips
+
+`g18` invalidated 14 clips — 4 narration lines (scene 4 `data` idx 2, scene 5 `model` idx 1,
+scene 8 `live` idx 6, scene 9 `agents` idx 3) and 10 knowledge answers. At the shipped
+`narration` scope that is **4 API calls**; the 10 answers are not packed. The other 68 came
+straight from `.voice-cache/`. Narration line count is 72 before and after, so no index shifted
+and scene 8's `onLine(2)` hook is unaffected.
+
+### 11.3 Gate and sizes
+
+**359/359 green in 571.8 s.** No `browserType.launch` contention signature.
+
+| target | chars (gate) | bytes on disk | sha256 |
+|---|---|---|---|
+| `dist/index.html` voiced | 5,658,123 | **5,669,764** | `d055c53b…` |
+| `dist/artifact.html` voiced | 5,657,634 | **5,669,273** | `5e81adec…` |
+| `dist/index-3d.html` | 11,736,765 | **11,748,378** | — |
+| `dist/index.html` tracked, unvoiced | — | **1,075,258** | — |
+| `dist/artifact.html` tracked, unvoiced | — | **1,074,767** | — |
+| `assets/voice-clips.js` | — | 4,594,486 | 72 clips · 14.1 min |
+| `aib-deck:final` | — | **38.4 MB** | serves the 5,669,764 B voiced deck |
+
+The ~11.6 KB char/byte delta is multi-byte UTF-8, as in §10.6 — the same three files in both
+columns.
+
+`shoot.js` and `vendor/smoke.cjs` were green at §10.6 and neither is affected by a text-only
+change. Docker context audit on `aib-deck:final`: **0** `config.js` anywhere in the image, **0**
+`sk_`/`sk-ant-` matches in the served deck, `apiKey` present only as an identifier in the
+config-*reading* code and never assigned a literal, no node binary, document root is the deck and
+its `.gz` and nothing else.
+
+### 11.4 Figures that SURVIVED, and are suspect rather than agreed
+
+Per the rule in §11, these are reported and **not acted on**. None is an outcome or benefit claim;
+all are structure counts of the same class `g18` was removing, and for the first four the
+corresponding `docs/CONTENT-SOURCES.md` row was *not* updated while its siblings were — which
+suggests they were missed rather than decided.
+
+| # | figure | where | note |
+|---|---|---|---|
+| 1 | "**Nine** subdomains: flight/FIDS, cargo, baggage…" | `src/knowledge.js:151`, `kb control-centres` | The strongest case. `g18` edited *this entry*, changing "Five control centres are modelled" to "The control centres modelled today" — and left a count six lines below it. |
+| 2 | "The same **seven-stage** shape runs a baggage SLA watch…" | `src/scenes.js:541`, scene 8 on-screen | Counts the workflow diagram's stages — same class as the removed "eleven playbooks". |
+| 3 | "Revenue Management is **three** applications" | `src/knowledge.js:539`, `kb revenue` | Same class as the removed "six agents" / "three ML models". |
+| 4 | "one of the **five** things in the navigation" | `src/scenes.js:659` (**spoken**), `src/knowledge.js:330` | Counts the product's own nav, so the weakest case — but its `CONTENT-SOURCES.md` row ("Five areas: …") is the one row in Platform structure left unrevised. Fixing this one costs a clip re-render; the other three do not. |
+| 5 | `1` / `0` / `∞` in scene 1's `.metrics` | `src/scenes.js:205` | **Deliberate and documented** — platform invariants, not estate counts. Recorded only because they are still digits in the same visual object the removed counts sat in, so a reader applying the blunt rule will ask. |
+
+### 11.5 The retracted figures still ship inside the artifact's source comments
+
+`build.js` inlines `src/*.js` verbatim, comments included — it always has. `g18` documented its
+removals in long block comments *in the files that get inlined*, quoting what went. So **View
+Source on the published artifact shows every number the operator ordered removed**, with
+attribution:
+
+> `58 canonical entities` · `201 governed KPIs` · `21 / 58 / 201` · `15 services` · `5 airports` ·
+> `12 AI systems` · `16+ bots` · `8 departments` · `zero paper contracts`
+
+Not on screen, not spoken, not in the caption — but in the file that gets handed to a prospect,
+and findable with Ctrl-F. Given that the stated reason for the removals is that a prospect could
+hold us to these numbers, this is worth a decision. **Not acted on** — stripping comments from the
+build is a change to `build.js`'s contract, and editing another branch's comments is not
+integration work.
+
+### 11.6 Carried forward from §10.5, still open, still not acted on
+
+1. **`assets/voice-clips.js` is not in `.dockerignore`**, so the image's size and audio behaviour
+   depend on untracked local state: 38.4 MB serving a voiced deck here, 23.6 MB serving a silent
+   one on a clone. Unchanged this pass.
+2. **The voiced and unvoiced builds share filenames**, so the voiced targets cannot be gitignored.
+   `git status` is clean after `node build.js --no-voice --3d --artifact` and dirty after
+   `node tests/run.mjs`. Unchanged this pass.
+
+Also still open from §10.7: the canvas caption has no word-by-word highlight despite shipping
+72/72 exactly-tokenising timings; the 39 knowledge answers are cached but unpacked; and
+`.bars` / `.bar` in `src/styles.css` is dead CSS — its only consumer was scene 11's effort-split
+bar chart, removed in `g17`, and a fresh grep over `src/` after `g18` still finds no `class="bar"`
+or `class="bars"` anywhere.
