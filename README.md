@@ -115,7 +115,8 @@ and no TalkingHead bytes.
 
 `dist/index-3d.html` is **built on demand and not committed**. Base64 adds a third again
 to whatever `assets/avatar.glb` weighs, so this target's size is the avatar's size and
-almost nothing else's. `build.js` declares a `SIZE_LIMIT_MB` and goes loud rather than
+almost nothing else's. `build.js` declares a per-target `SIZE_LIMITS_MB` (`three: 12`,
+against `canvas: 18` for the speech-carrying targets) and goes loud rather than
 quietly emitting a file too big to hand anybody, naming `tools/convert-valid-avatar.mjs`
 as the fix; `tests/build.test.mjs` builds an oversized GLB in a scratch tree to watch
 that guard actually fire. The fix for an over-ceiling build is always **compressing that
