@@ -59,6 +59,10 @@ import { T, ROOT } from './lib/harness.mjs';
 
 const SUITES = [
   ['build', () => import('./build.test.mjs')],
+  /* Pure Node, like `build` — no browser. It guards the rule that every string
+     Iris speaks is one tools/prerender-voice.mjs rendered, which is what lets
+     the container ship with no ElevenLabs key. */
+  ['ask', () => import('./ask.test.mjs')],
   ['guards', () => import('./guards.test.mjs')],
   ['units', () => import('./units.test.mjs')],
   ['voice', () => import('./voice.test.mjs')],
