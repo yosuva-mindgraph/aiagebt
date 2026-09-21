@@ -672,3 +672,192 @@ Gate on this tip: **322/322 green in 455.1 s**. `shoot.js` 28 shots / 12 scenes 
 `vendor/smoke.cjs` clean offline from `file://`. `git status` is clean after a full rebuild, so
 the two committed targets are byte-identical to what `build.js` produces from this tree, and
 `dist/index-3d.html` remains untracked and ignored.
+
+---
+
+## 10. Pre-rendered voice, unquantified claims, and a container
+
+This pass integrates four branches onto `matron/integration-intelligent-airport`, merged in
+dependency order: `g14-prerender-backend` → `g15-noclaims-frontend` → `g16-docker-backend` →
+`g17-effortsplit-frontend`. Voice first, deliberately: `g15` and `g17` edit narration lines, and
+the clip-keying has to exist before those edits land or there is nothing for the fallback to be
+measured against.
+
+All four merged cleanly except `dist/*.html`, which conflicted on `g15` and was resolved the only
+way a built file should be — **take one side, then rebuild**. No built file was hand-merged.
+
+### 10.1 Iris has a real voice, and it is in the file
+
+`tools/prerender-voice.mjs` renders every spoken line ONCE, at a desk, with a key nobody ships,
+and bakes the result into the canvas targets as base64. The runtime needs no key, no account and
+no network, which is what makes it work in the three places a live API never could: the booth pod
+with the network unplugged, the emailed file, and `dist/artifact.html`, whose CSP as a published
+Artifact has always denied an outbound call.
+
+**The endpoint question left open in §9.6 is now answered, empirically.** `eleven_v3` *does*
+serve `/with-timestamps`: all **115** clips in the cache came back with a usable character
+alignment, and the gate measures **72/72 clips carrying word timings, 72/72 tokenising exactly as
+the caption does**. The trade §9.6 worried about — expressiveness bought with estimated rather
+than measured lip-sync — does not have to be made. Settings as shipped: `eleven_v3`,
+`mp3_22050_32`, stability `0.70`, similarity `0.80`, style `0`, speaker boost on; the low-stability
+default §9.6 flagged is gone.
+
+A full narration render is **~2 minutes**, not an afternoon: the original 66-clip run took
+**96.7 s** wall at concurrency 3, and 72 clips extrapolates to a little under two minutes.
+
+**Clips are addressed by a hash of the exact spoken string, not by scene id and line index**, and
+this is the load-bearing design decision rather than an implementation detail. Under id-and-index
+keying an edited line keeps its old clip: the caption reads the new sentence while the room hears
+the old one, with nothing red anywhere — a deck confidently saying something nobody wrote. Under
+text keying an edited line simply has no clip, misses, and falls back to the voice this deck has
+always had. The gate asserts both halves (`§3.5`): the edited line misses, and **6/6 of its
+unedited neighbours still hit**, so invalidation is per LINE and not per scene.
+
+That property paid for itself twice in this pass. `g15` changed one narration line and the
+re-render called the API **once**; `g17` changed three and it called the API **three times**, with
+the other 69 coming straight from `.voice-cache/`.
+
+### 10.2 The numbers a prospect could hold us to are gone
+
+`g15` and `g17` remove every quantified benefit or outcome claim from the script and the
+knowledge base, and replace it with the qualitative form plus a pointer to where a real number
+comes from.
+
+| removed | now reads | where |
+|---|---|---|
+| "roughly eighty percent of analyst time gets handed back" | "analyst time gets handed back. They stop running other people's reports." | scene 6 `ask`, `kb assistant` |
+| "~25% faster / ~35% CX uplift / paperwork down ~80%" | "complaint response times and customer-experience scores both improved" | scene 11 `deploy`, `kb proof` |
+| "double-digit utility-cost reduction with payback in months" | "depends on your tariffs, your climate and how your plant runs today" | `kb energy` |
+| indicative ROI range | "I am not going to quote you one" | scene 3 `proposition`, `kb roi` |
+| "~85% pre-built / ~15% tailored" | "most of what you deploy already exists and is proven" | scene 11 `deploy`, `kb onboarding`, `kb cost-price` |
+
+**The reason is not squeamishness.** Every one of these varies per airport — traffic mix, cost
+base, tariffs, how much is already automated, whether it is a new terminal or a brownfield
+consolidation — and the source documents *already said so*. The deck was quoting another airport's
+measurement as though it were a forecast of the listener's. The replacement is not vaguer, it is
+more honest about the same fact, and it routes every one of them to the baseline assessment, which
+is where the airport's own number was always going to come from.
+
+The `~85/15` split was kept in `g15` and removed in `g17`. Keeping it was the wrong call — it is
+the clearest case in the deck of a number that varies per airport — and `g15`'s commit message
+overstated the confirmation behind that judgement. `g17` corrects both.
+
+**Deliberately kept:** everything about *architecture* and everything about *track record*. Fifteen
+services in production across five airports, twelve AI systems, 70+ dashboards, 8 departments,
+16+ automation bots, the ±72-hour flight horizon, the IDC Future Enterprise Award 2023. Those are
+things that happened, not outcomes promised to a listener, and scene 11 now says so in as many
+words: *"Those were measured at those airports — yours would be measured at yours."*
+
+### 10.3 The deck as a container
+
+`g16` adds a multi-stage `Dockerfile` that serves the canvas build over nginx, with four
+independent guards against the key ever reaching the image — a context audit that fails if
+`config.js` is in the build context at all, a `COPY` allowlist that structurally cannot admit it,
+`--no-config` on the build, and a `grep` over the *built artifact* rather than over its inputs.
+The final image carries the deck, its `.gz`, and nothing else: **no node binary, no `node_modules`,
+no source**. Verified on `aib-deck:final`: `0` matches for `config.js` anywhere in the filesystem,
+`0` matches for an `sk_`/`sk-ant-` key shape in the served deck.
+
+### 10.4 Sizes at this tip
+
+The tracked pair is **UNVOICED** and stays that way. `g14` committed them carrying the 4.4 MB
+speech payload; that is regenerable output that goes stale the moment a line changes — precisely
+the argument `.gitignore` already makes for `assets/voice-clips.js` and `dist/index-3d.html`.
+
+| target | bytes | | tracked? | voice |
+|---|---|---|---|---|
+| `dist/index.html` | 1,071,628 B | 1.02 MB | **yes** | no |
+| `dist/artifact.html` | 1,071,137 B | 1.02 MB | **yes** | no |
+| `dist/index.html` (voiced) | 5,684,530 B | 5.42 MB | no — generated | 72 clips, 14.2 min |
+| `dist/artifact.html` (voiced) | 5,684,039 B | 5.42 MB | no — generated | 72 clips, 14.2 min |
+| `dist/index-3d.html` | 11,744,748 B | 11.20 MB | no — gitignored | none, by design |
+| `assets/voice-clips.js` | 4,612,882 B | 4.40 MB | no — gitignored | — |
+| `aib-deck:final` image | — | **38.4 MB** | — | see §10.5 |
+
+`dist/index-3d.html` is **byte-identical with and without `--no-voice`**
+(`ad036999…8cbd4bd8e6` either way), which is the 3D target's "no flag can give this speech" rule
+holding in practice rather than in a comment.
+
+### 10.5 Two things that need a decision, not a patch
+
+**(a) `assets/voice-clips.js` is not in `.dockerignore`, so the image size depends on untracked
+local state.** The `Dockerfile` builds with `--no-config` but not `--no-voice`, and `assets/` is
+copied wholesale into the builder. Measured, on one tree, changing nothing but whether the
+generated clips file is present:
+
+| build context | served `index.html` | image |
+|---|---|---|
+| with `assets/voice-clips.js` | 5,684,530 B | **38.4 MB** |
+| without it | 1,071,628 B | **23.6 MB** |
+
+Both builds are green and both pass every key guard; `23.6 MB` is what `g16` measured on its own
+branch, where the clips file did not exist yet. This is the *same* objection `.dockerignore`
+already makes, in writing, about `dist/`: *"An image that can quietly ship whatever happened to be
+sitting in dist/ on the packager's laptop is not reproducible from source, it just looks like it
+is."* The clips file is now a second instance of exactly that. Either the container ships the
+voice on purpose (add nothing, restate the size, and the build stops being reproducible without
+the cache) or it does not (one line in `.dockerignore`, or `--no-voice` in the `RUN`). **Left
+untouched — this is a product decision about what the container is, not a merge conflict.**
+
+**(b) The voiced and unvoiced builds write to the SAME two paths**, so the voiced outputs cannot be
+gitignored the way `dist/index-3d.html` is. `git status` is clean after `node build.js --no-voice
+--3d --artifact`, and *dirty* after `node build.js --artifact` or after `node tests/run.mjs` —
+which builds voiced whenever the clips file exists, and must, because that is the build the voice
+suite tests. Today that is a footgun handled by knowing about it. If the tracked pair is to stay
+unvoiced permanently, the voiced targets want their own filenames.
+
+The voiced pair for publication has been preserved outside the repository at
+`/home/mindgraph1/projects/aib-presenter-voiced/`, and regenerates in about a second with
+`node build.js --artifact`.
+
+### 10.6 Gate at this tip
+
+**359/359 green in 564.7 s**, measured against the voiced build.
+
+| target | chars scanned by the gate | bytes on disk |
+|---|---|---|
+| `dist/index.html` | 5,672,908 | 5,684,530 |
+| `dist/artifact.html` | 5,672,419 | 5,684,039 |
+| `dist/index-3d.html` | 11,733,154 | 11,744,748 |
+
+The ~11.6 KB gap between the two columns is **not a stale build** — it is multi-byte UTF-8 (em
+dashes, curly quotes, `±`) counted once as characters and once as bytes. Both columns describe the
+same three files, `sha256` verified.
+
+Also green on this tree: `shoot.js` 28 shots / 12 scenes on `canvas`; `shoot.js --3d` 28 shots
+reporting `backend: talkinghead` at both viewports; `vendor/smoke.cjs` clean offline from `file://`
+with 15/15 visemes and 52/52 required bones. A separate probe pointed at `dist/artifact.html`
+confirms the **voiced artifact plays real audio from `file://` with zero external requests** —
+rms `0.1198`, peak `0.720`, 626/692 analyser frames over 0.05, `external === []`. `git grep -E
+'sk_[A-Za-z0-9]{40,}'` matches nothing in any tracked file.
+
+### 10.7 Known non-blocking follow-ups
+
+Added to §7.
+
+1. **The canvas caption has no word-by-word highlight, and now visibly leaves something on the
+   table.** `src/app.js:343 _word()` is driven by TalkingHead's `onsubtitles`; the canvas backend
+   has no word clock and never calls it, so the caption is one static, fully-lit line. That was a
+   fair trade when there were no timings. There are now: every clip ships `words`/`wtimes`/
+   `wdurations`, and the gate measures **72/72 tokenising exactly as the caption splits** — i.e.
+   the highlight could be driven by index, today, on the target that actually goes out. The data
+   is in the file and unused.
+
+2. **The 39 knowledge-base answers are rendered and cached but not packed.** They are in
+   `.voice-cache/` — 39 clips, 7.56 MB of MP3, 32.9 minutes — and the shipped payload is
+   `scope narration`, so an answer falls back to Web Speech exactly as it always has. The gate
+   asserts this is a decision rather than a bug (`§2.2`, *"39 string(s) deliberately unvoiced"*).
+   `--scope all` packs them: measured today that is **13.78 MB** of canvas target with 6 answers
+   still uncached, and **~15.3 MB** once those 6 are rendered — against a 12 MB ceiling. Six
+   answers are stale (`assistant`, `proof`, `roi`, `energy` from `g15`; `onboarding`,
+   `cost-price` from `g17`) and would cost 6 API calls, not 39.
+
+3. **Scene 11's track-record note lost force.** "Complaint response times and customer-experience
+   scores both improved" is true and unfalsifiable and lands softer than the figures it replaced.
+   The figures themselves were never the problem — presenting another airport's measurement as an
+   unattributed general claim was. Restoring them attributed to a named airport and year would put
+   the force back without putting a number in the listener's hands that they could hold us to.
+
+4. **`.bars` / `.bar` in `src/styles.css` is now dead CSS.** Scene 11's effort-split bar chart was
+   its only consumer and `g17` replaced it with an `icard` pair. Left in place deliberately: it is
+   harmless, and an unrelated edit does not belong in the tree the final gate measured.
