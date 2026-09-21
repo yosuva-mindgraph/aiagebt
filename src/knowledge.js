@@ -509,10 +509,14 @@ export const KB = [
   a: `<p>Passenger360 runs live flow on the sensor estate — queues, check-in, fill level, object and PRM
      counts, forecasts, a live 2D floor and a 3D twin layer, modelled as its own canonical entities (zone,
      line, sensor, process point, occupancy, queue, heat, forecast, alert).</p>
-     <p>The prediction side calls congestion <b>15–30 minutes ahead</b> at security, immigration and
-     check-in from IoT sensor trends and the flight schedule, and alerts staffing before the queue is
-     visible on the ground. Shipped playbooks ride on it: a security queue over target for two minutes, and
-     a lounge reaching capacity.</p>`
+     <p>The prediction side calls congestion at security, immigration and check-in from IoT sensor trends
+     and the flight schedule, and alerts staffing <b>while there is still time to act on it</b> — far
+     enough ahead that a duty manager can open a lane before the queue forms, rather than reading about
+     it once it is visible on the ground.</p>
+     <p>How far ahead that lands is your airport's answer rather than ours. It falls out of your sensor
+     coverage, your feed latency and how passengers actually move through your terminal, which is what
+     the baseline measures. Shipped playbooks ride on it: a security queue over target for two minutes,
+     and a lounge reaching capacity.</p>`
 },
 {
   id: 'energy',
