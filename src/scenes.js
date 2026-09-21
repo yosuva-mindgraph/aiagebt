@@ -271,9 +271,10 @@ export const SCENES = [
       ${icard('chart-line-up', 'Revenue up', 'Non-aeronautical spend per passenger, on the same footfall.')}
       ${icard('shield-check', 'Risk removed', 'Compliance, carbon and security exposure closed, with the audit trail behind it.')}
     </div>
-    <div class="note">Any ROI range quoted in this walkthrough is an indicative industry figure. It is
-      replaced by your own number in a short baseline assessment during onboarding — never quoted as a
-      guarantee before that.</div>`
+    <div class="note">These are the levers, not a promise of a percentage. What each one is worth
+      differs enormously by airport — traffic mix, cost base, what you have already automated — so your
+      numbers come out of a short baseline assessment against your own data at onboarding, not out of
+      this walkthrough.</div>`
 },
 
 /* 4 ──────────────────────────────────────────────────────────────────────── */
@@ -378,7 +379,7 @@ export const SCENES = [
     "Anyone in the building asks an operational question in plain language. They get an answer, with a chart, in seconds — across every connected source at once. No SQL. No ticket to the analytics team. No two-day wait for a report that was stale when it arrived.",
     "The word governed matters here. The assistant answers through the same pipeline as everything else. So it can only see what your role is allowed to see. Masking applies. Row policies apply. The answer is logged.",
     "It cites where the number came from, so a sceptical director can follow it back to the source table. And when it doesn't know, it says so, rather than inventing a figure. That is the single most important behaviour in a room full of operators.",
-    "In practice this is where roughly eighty percent of analyst time gets handed back."
+    "In practice this is where analyst time gets handed back. They stop running other people's reports."
   ],
   html: () => `
     <p class="eyebrow">04 · the assistant · governed natural language</p>
@@ -732,10 +733,11 @@ export const SCENES = [
       ${metric('agent', '16+', 'Automation bots', true)}
       ${metric('user-group', '8', 'Departments unified', true)}
     </div>
-    <div class="note">Security paperwork down ~80% and fully offline-capable in restricted zones;
-      complaint response ~25% faster with a ~35% CX uplift across five airports; zero paper contracts
-      and four content platforms collapsed into one. The home-to-gate passenger ecosystem took the
-      IDC Future Enterprise Award 2023.</div>`
+    <div class="note">Security paperwork largely eliminated and fully offline-capable in restricted
+      zones; complaint response times and customer-experience scores both improved across five airports;
+      zero paper contracts and four content platforms collapsed into one. The home-to-gate passenger
+      ecosystem took the IDC Future Enterprise Award 2023. Those were measured at those airports —
+      yours would be measured at yours.</div>`
 },
 
 /* 12 ─────────────────────────────────────────────────────────────────────── */
@@ -757,7 +759,7 @@ export const SCENES = [
       contained piece of your real estate, mapped into the canonical model, with a board, a workflow
       and an agent built on top of it by your own people.</p>
     <div class="grid g3">
-      ${card('1 · Baseline', 'A short assessment against your own systems, incident volume and cost data. Every indicative range in this walkthrough gets replaced by your number.')}
+      ${card('1 · Baseline', 'A short assessment against your own systems, incident volume and cost data. This is where the numbers come from — yours, not an industry average borrowed from another airport.')}
       ${card('2 · Three feeds, mapped', 'Two or three real sources into the canonical model. Then your team builds a board, a workflow and an agent on it — without us.')}
       ${card('3 · Scale on evidence', 'What gets built next is decided by what the first one proved, not by what was on the original slide.')}
     </div>
