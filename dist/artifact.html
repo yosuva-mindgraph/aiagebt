@@ -401,6 +401,109 @@ header {
   letter-spacing: var(--track-caps);
   color: var(--ink);
 }
+/* ── the MindGraph half of the lockup ─────────────────────────────────────
+   Two data: URIs, both cropped from assets/mindgraph-logo.png (the brand file,
+   200x200 RGBA, committed beside them so the crop is reproducible without the
+   share mounted). Nothing is fetched — tests/offline.test.mjs asserts zero
+   network requests and this file has to survive being double-clicked off a USB
+   stick with the cable out. The crop boxes, in source pixels:
+
+       node mark   x 65..134, y  69..110   ->  70x42, kept in its own colours
+       wordmark    x 10..189, y 114..130   -> 180x17, alpha only (see below)
+
+   ── why the wordmark is a MASK and not an image ────────────────────────────
+   The supplied wordmark is grey #5F5F5F. Measured against the two grounds the
+   HEADER actually paints, which are --recess in each theme and NOT the raw
+   palette colours — #0E1020 in dark, and Midnight 5% over Canvas (#EAE8E6) in
+   light:
+
+                                    dark header      light header
+       grey #5F5F5F as supplied        2.95:1            5.23:1
+       knocked through to --ink       17.06:1           15.43:1
+
+   2.95:1 does not hold. It is under even the 3:1 floor a non-text graphic is
+   held to, and dark is the DEFAULT theme here — the lights-down panel in the
+   room is where this logo spends most of its life. A logo is exempt from the
+   contrast rules, which is exactly the trap: it would have passed every check
+   in the gate and still read as a smudge on the stand.
+
+   The three ways out are a second reversed asset, a filter, or a knockout. A
+   filter is out because one filter has to serve a coloured mark and a grey
+   wordmark in one image and cannot: invert() turns the coral node graph cyan,
+   and brightness() blows it to white. A second asset is the thing the DXC mark
+   three rules above explicitly refuses — "the Light and Dark marks are the same
+   geometry and differ only in fill, so a second asset would be a second copy of
+   the same thing waiting to diverge."
+
+   So the wordmark is a KNOCKOUT: the PNG carries only the letterform alpha, and
+   the paint is background: currentColor. The letterforms are the brand's own,
+   untouched; only the fill follows --ink, which is Canvas on Midnight and
+   Midnight on Canvas. One asset, both themes, no filter, and the same principle
+   as the mark beside it — and the numbers in the table above.
+
+   ── the node mark keeps its own colours, and what that costs ───────────────
+   The coral-to-gold gradient IS the logo; recolouring it per theme would be
+   inventing a brand variant nobody supplied. It happens to sit inside this
+   palette anyway — its two ends resolve to #E06F51 and #FFAC49, which are Melon
+   and Gold to within a few points. Measured on the same two grounds:
+
+                                    dark header      light header
+       coral end #E06F51               5.89:1            2.62:1
+       gold end  #FFAC49              10.10:1            1.53:1
+
+   The light column is the honest weakness and it is stated rather than hidden.
+   It is the same fact the palette note at the top of this file already records
+   about Gold and Melon on paper, and it is why the two VOICE tokens re-key in
+   light while this mark does not: a token is a slot and may be re-keyed, a
+   brand mark is an asset and may not. In practice the mark still reads — the
+   coral strokes and nodes carry the whole shape at 2.62:1 and only the two pale
+   nodes soften — but a light-theme booth is the one place to look at it first.
+   If it is ever judged unacceptable, the fix is a reversed asset FROM MINDGRAPH,
+   not a filter invented here.
+
+   ── ONE number sets the whole lockup, and it is a WIDTH ────────────────────
+   --mg-w is the only measurement typed here. Every other dimension — the mark's
+   width and height, the gap between the two, the wordmark's height — is a ratio
+   off the SOURCE PIXELS, so the stacked lockup keeps the proportions the brand
+   file actually has (mark 70x42 over a 180x17 wordmark, 3px apart, both centred
+   on the same axis). That is the same argument dxcMark() makes when it derives
+   its width from 3.583:1 rather than typing it: a mark that CAN be stretched by
+   a rounding edit eventually is. Size it by picking --mg-w and nothing else.
+
+   85px is that pick. It puts the block at 29px tall in a 58px row — taller than
+   the DXC mark's 17px, which is correct rather than accidental: this is the
+   lead brand in the lockup, and a stacked logo beside a horizontal one is
+   allowed the extra height. The lockup comes to 357px at 1440, leaving the
+   scene title 860px. */
+.lockup .mg {
+  --mg-w: 85px;
+  display: flex; flex-direction: column; align-items: center;
+  width: var(--mg-w); gap: calc(var(--mg-w) * 3 / 180); flex: 0 0 auto;
+  color: var(--ink);
+}
+.lockup .mg-mark {
+  display: block; width: calc(var(--mg-w) * 70 / 180); aspect-ratio: 70 / 42;
+  background-image: url("data:image/png;base64,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");
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+}
+.lockup .mg-word {
+  --mg-wordmark: url("data:image/png;base64,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");
+  display: block; width: 100%; aspect-ratio: 180 / 17;
+  background: currentColor;
+  -webkit-mask-image: var(--mg-wordmark); mask-image: var(--mg-wordmark);
+  -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+}
+/* The separator the deck ALREADY uses for this partnership, in the cold open's
+   kicker and in scene 1's eyebrow. Not a new piece of brand vocabulary, and not
+   a glyph: it is the multiplication sign, which both faces carry, so it is not
+   at the mercy of a fallback font the way an arrow character would be. */
+.lockup-x {
+  font-family: var(--font-body); font-size: var(--step--1); line-height: 1;
+  color: var(--ink-3); flex: 0 0 auto;
+}
+
 #sceneTitle {
   font-family: var(--font-display); font-weight: 500;
   font-size: var(--step-1); line-height: var(--lh-1);
@@ -1035,19 +1138,45 @@ header {
 <div id="shell">
 
   <header>
-    <!-- ONE lockup, then one rule, then the scene. The DXC mark is inlined at
-         currentColor by src/icons.js (data-dxc-mark = its height in px, 17,
-         cap-height matched to the product name beside it) so it needs no second
-         asset for the light theme and no network for either.
+    <!-- ONE partner lockup, then one rule, then the scene. The DXC mark is
+         inlined at currentColor by src/icons.js (data-dxc-mark = its height in
+         px, 17, cap-height matched to the product name beside it) so it needs no
+         second asset for the light theme and no network for either.
 
-         There is no second wordmark here on purpose: "MindGraph × DXC" reads on
-         the cold open and again on scene 1's eyebrow, and a header carrying two
-         marks and an attribution is three things competing to be the brand.
+         BOTH partners are here, and MindGraph reads FIRST. That order is not a
+         new decision — it is the one the deck already states in the two places
+         it names the partnership out loud (the cold open's kicker and scene 1's
+         eyebrow, both "MindGraph × DXC"). A header that reversed it would make
+         the chrome disagree with the copy directly under it. The "×" is the
+         same separator those two strings already use; nothing new was coined
+         for the header.
+
+         This REPLACES the note that used to sit here arguing for one mark only.
+         That argument was sound for a header carrying a mark, an attribution and
+         a product name — but the client asked for the MindGraph logo in the
+         presenter after the demo, so the job changed from "keep it to one brand"
+         to "carry two without crowding the row". What pays for the second mark:
+         the MindGraph logo is STACKED, in its own configuration, so it costs
+         85px of width rather than the 120px a horizontal one would, and the
+         scene title beside it still has 700px+ at 1440 and 400px+ at 1041.
+
+         The MindGraph asset is two data: URIs in src/styles.css — nothing is
+         fetched, which is the whole promise of this file. Its grey wordmark
+         measures 2.95:1 on the dark header and would not survive this deck's
+         default theme, so it is knocked through to --ink: the letterforms are the
+         brand's own, and only the colour follows the theme. Same principle as
+         the DXC mark beside it, and the same reason — one asset, both themes,
+         no second copy waiting to diverge.
 
          Sound and Light are WORDS, not glyphs. The DXC pack has no speaker,
          mute, sun, moon or bell — borrowing a lookalike from another set would
          be decoration wearing a brand's clothes. See src/icons.js. -->
     <div class="lockup">
+      <span class="mg" role="img" aria-label="MindGraph">
+        <span class="mg-mark"></span>
+        <span class="mg-word"></span>
+      </span>
+      <span class="lockup-x" aria-hidden="true">×</span>
       <span class="mark" data-dxc-mark="17"></span>
       <span class="product">Intelligent Airport</span>
     </div>
@@ -1396,9 +1525,29 @@ const KB = [
      <p>Same for boards, apps, workflows and agents — the twentieth costs what the second did. That is
      what "unbounded" actually means, and it is the whole commercial argument.</p>`
 },
+/* ── the three names, and why they are TWO entries ─────────────────────────
+   The entry named name-airis answers "which of these is which?" — it is the
+   disambiguator, and it leads with AIRIS because that is the name people hear
+   and cannot place. The entry named thinking-airport, below it, answers "what
+   IS the Thinking Airport?" — a different question, which wants the vision
+   first rather than a glossary.
+
+   Splitting them is deliberate, not duplication. Folding the vision into the
+   disambiguator would mean that question got an answer opening "AIRIS is the
+   AI Real-Time Integrated System…", which is a correct paragraph about
+   something else. Both entries end by holding the three apart, because the one
+   failure that matters here is letting any two of them merge:
+
+       Intelligent Airport — the PRODUCT. What is bought and delivered.
+       Thinking Airport    — DXC's VISION. A framework, not a purchasable thing.
+       AIRIS               — the named PROOF POINT inside that vision.
+
+   src/ask.js's system prompt says the same thing to the LLM, and
+   docs/CONTENT-SOURCES.md keeps the sources apart on the same grounds.
+   ------------------------------------------------------------------------ */
 {
   id: 'name-airis',
-  k: 'airis what does airis mean thinking airport name iris acronym',
+  k: 'airis what does airis mean thinking airport name iris acronym three names difference between distinguish which is which',
   scene: 'open',
   a: `<p><b>AIRIS</b> is the AI Real-Time Integrated System — the name for the real-time intelligence that
      connects the airport's systems and puts customer experience at the centre of the decision. The
@@ -1410,6 +1559,22 @@ const KB = [
      <p><b>Intelligent Airport</b> is the third name in that family: the product itself — the one
      you'd actually be buying, and what I'm walking you through today.</p>
      <p>And I'm Iris — I just do the talking.</p>`
+},
+{
+  id: 'thinking-airport',
+  k: 'thinking airport dxc vision framework living ecosystem adaptive person-centric ai-driven anticipating personalising journeys predictive operations infrastructure dynamic commercial ecosystem pillars aspiration',
+  scene: 'open',
+  a: `<p><b>Thinking Airport</b> is DXC's vision for the AI-driven, person-centric, adaptive airport.
+     The briefing states it in one line: it turns a fixed piece of infrastructure into a
+     <b>living ecosystem</b>, anticipating, personalising and adapting in real time, for passengers
+     and partners alike.</p>
+     <p>It is a single framework spanning four things: <b>predictive operations</b>,
+     <b>hyper-personalised journeys</b>, <b>adaptive infrastructure</b>, and a <b>dynamic commercial
+     ecosystem</b>.</p>
+     <p>Three names here, and they don't collapse into one. Thinking Airport is the <b>vision</b>.
+     <b>AIRIS</b> is the proof point that demonstrates it. <b>Intelligent Airport</b> is the
+     <b>product</b> — the one you'd actually be buying, and what I'm walking you through today. The
+     product is how an airport gets a foundation the vision can stand on.</p>`
 },
 
 /* ── the data foundation ────────────────────────────────────────────────── */
@@ -2068,11 +2233,34 @@ const SCENES = [
   id: 'open',
   title: PRODUCT,
   icon: 'airline',
+  /* THE OPENING ORDER IS THE POINT. This scene used to run claim → NEGATE →
+     re-claim: line 1 spent the most valuable ten seconds of the deck on "let me
+     be clear about what this is … it is not an application, it is not a fixed
+     list of modules", and line 2 then asserted the positive anyway. A stranger
+     heard what it is NOT before they had any idea what it IS, and heard the
+     same idea twice.
+
+     So the contrast MOVED rather than went: it is still here, once, at index 3,
+     after the positive claim has landed and after the four build surfaces have
+     shown what the claim buys. Nothing about the argument changed — scene 3 is
+     still built on "replaces nothing" and needs this deck to have set it up.
+
+     Index 4 is the Thinking Airport line, and it is ONE sentence on purpose.
+     Thinking Airport is DXC's VISION; Intelligent Airport is the product that
+     serves it; AIRIS is the named proof point. Three names that sound alike and
+     must not merge — src/knowledge.js has two entries holding them apart, and
+     docs/CONTENT-SOURCES.md says the same thing about the sources. A second
+     sentence here starts explaining the vision instead of selling the product.
+
+     Every sentence in this scene is under 20 words and the scene means 7.8 —
+     the delivery pass's numbers, unchanged. Check with the count before editing:
+     a 30-word sentence reads fine and speaks badly. */
   lines: [
     "I'm Iris, and I speak for Intelligent Airport. It's the platform MindGraph and DXC put on top of an airport you already run.",
-    "Let me be clear about what this is before anything else. It is not an application. It is not a fixed list of modules you pick from a menu.",
-    "It is a platform. Every system in your airport, read into one governed model of your data. And then anything you want built on top of it.",
+    "Every system in your airport, read into one governed model of your data. And then anything you want built on top of it.",
     "A dashboard. An application. An automated workflow. An AI agent. Asked for in plain language, and built without an engineering ticket. Governed the same way whether it took you five minutes or five months.",
+    "So it is a platform. Not an application. And not a fixed menu of modules.",
+    "DXC's vision behind it is the Thinking Airport — an airport anticipating, personalising and adapting in real time.",
     "Your airport already owns the plumbing. This is the brain that sits on top of it. Let me show you."
   ],
   html: () => `

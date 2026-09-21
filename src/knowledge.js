@@ -46,9 +46,29 @@ export const KB = [
      <p>Same for boards, apps, workflows and agents — the twentieth costs what the second did. That is
      what "unbounded" actually means, and it is the whole commercial argument.</p>`
 },
+/* ── the three names, and why they are TWO entries ─────────────────────────
+   The entry named name-airis answers "which of these is which?" — it is the
+   disambiguator, and it leads with AIRIS because that is the name people hear
+   and cannot place. The entry named thinking-airport, below it, answers "what
+   IS the Thinking Airport?" — a different question, which wants the vision
+   first rather than a glossary.
+
+   Splitting them is deliberate, not duplication. Folding the vision into the
+   disambiguator would mean that question got an answer opening "AIRIS is the
+   AI Real-Time Integrated System…", which is a correct paragraph about
+   something else. Both entries end by holding the three apart, because the one
+   failure that matters here is letting any two of them merge:
+
+       Intelligent Airport — the PRODUCT. What is bought and delivered.
+       Thinking Airport    — DXC's VISION. A framework, not a purchasable thing.
+       AIRIS               — the named PROOF POINT inside that vision.
+
+   src/ask.js's system prompt says the same thing to the LLM, and
+   docs/CONTENT-SOURCES.md keeps the sources apart on the same grounds.
+   ------------------------------------------------------------------------ */
 {
   id: 'name-airis',
-  k: 'airis what does airis mean thinking airport name iris acronym',
+  k: 'airis what does airis mean thinking airport name iris acronym three names difference between distinguish which is which',
   scene: 'open',
   a: `<p><b>AIRIS</b> is the AI Real-Time Integrated System — the name for the real-time intelligence that
      connects the airport's systems and puts customer experience at the centre of the decision. The
@@ -60,6 +80,22 @@ export const KB = [
      <p><b>Intelligent Airport</b> is the third name in that family: the product itself — the one
      you'd actually be buying, and what I'm walking you through today.</p>
      <p>And I'm Iris — I just do the talking.</p>`
+},
+{
+  id: 'thinking-airport',
+  k: 'thinking airport dxc vision framework living ecosystem adaptive person-centric ai-driven anticipating personalising journeys predictive operations infrastructure dynamic commercial ecosystem pillars aspiration',
+  scene: 'open',
+  a: `<p><b>Thinking Airport</b> is DXC's vision for the AI-driven, person-centric, adaptive airport.
+     The briefing states it in one line: it turns a fixed piece of infrastructure into a
+     <b>living ecosystem</b>, anticipating, personalising and adapting in real time, for passengers
+     and partners alike.</p>
+     <p>It is a single framework spanning four things: <b>predictive operations</b>,
+     <b>hyper-personalised journeys</b>, <b>adaptive infrastructure</b>, and a <b>dynamic commercial
+     ecosystem</b>.</p>
+     <p>Three names here, and they don't collapse into one. Thinking Airport is the <b>vision</b>.
+     <b>AIRIS</b> is the proof point that demonstrates it. <b>Intelligent Airport</b> is the
+     <b>product</b> — the one you'd actually be buying, and what I'm walking you through today. The
+     product is how an airport gets a foundation the vision can stand on.</p>`
 },
 
 /* ── the data foundation ────────────────────────────────────────────────── */
