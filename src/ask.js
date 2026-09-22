@@ -1,23 +1,50 @@
 /* ============================================================================
    Answering.
 
-   Two paths, one interface:
+   RETRIEVAL DECIDES FIRST, ALWAYS. One question, two possible destinations, and
+   which one it takes is settled by the knowledge base before any model is
+   consulted:
 
-     • No LLM key  → retrieval over the knowledge base. Honest, offline, and
-       it either answers from a source or says it does not know.
+     • ABOVE the confidence floor → the briefing answers, from its own reviewed
+       text, verbatim. No network, no model, nothing to pay for, and the same
+       words every time. This is the path all 39 knowledge-base questions take,
+       on every build, whether or not an LLM is configured.
 
-     • LLM key set → the same retrieval runs first, and the top entries are
-       handed to the model as grounding. The model may only answer from that
-       grounding. This is the important part: adding a key makes Iris more
-       fluent, not more imaginative. The facts come from the same place either
-       way, which is why the deck behaves identically in a room with no network.
+     • BELOW it → nothing curated covers the question. With an LLM configured it
+       goes to the model, grounded in whatever partial matches retrieval found;
+       without one, Iris says plainly that she does not have it.
+
+   So an LLM does not make the deck's answers more fluent — it makes the deck
+   answer MORE QUESTIONS. Beyond the 39, not instead of them. See the long note
+   on the gate in answer(): this deliberately replaced an earlier arrangement
+   that let a model rephrase grounded answers, and the reasons matter.
 
    The default adapter targets the Anthropic Messages API. Point `endpoint` at
    your own proxy if you would rather the key never reached the browser — which,
    for anything customer-facing, you would.
+
+   ── the proxy contract ──────────────────────────────────────────────────────
+   With `endpoint` set and `apiKey` BLANK this posts a narrow body and no auth
+   header at all:
+
+       POST <endpoint>   { question, grounding, grounded }
+       →  the vendor's response body, unchanged
+
+   `endpoint` is expected to be RELATIVE ('/api/llm'). Same origin needs no CORS
+   and no preflight, and — the reason it is relative rather than short — nothing
+   bakes the hostname into the build, so the deck survives being moved or being
+   served from an ephemeral tunnel address that changes every restart.
+
+   The response is read exactly as the direct call's is, so a proxy that passes
+   the vendor's JSON through needs no client change; see _callLLM.
    ========================================================================== */
 
 import { search, CONFIDENCE_FLOOR, DONT_KNOW } from './knowledge.js';
+
+/** How long an open-ended answer may take before the local one takes over.
+    Reasoned about at the call site in _callLLM(); override per deployment with
+    `llm.timeoutMs`. */
+export const LLM_TIMEOUT_MS = 15000;
 
 const SYSTEM = `You are Iris, the presenter for Intelligent Airport — an airport PLATFORM built by
 MindGraph with DXC. You are speaking aloud to an airport executive during a live walkthrough.
@@ -93,21 +120,62 @@ export class Ask {
      the fourth here is the desk build with a key — the configuration least
      like the one that ships. Total field, one shape of path.
 
+     ── `via`, the provenance discriminator ───────────────────────────────
+     Four values, because the answer sheet has four honest things to say and
+     src/app.js has no other way to tell them apart. It is the only field that
+     carries provenance, so it carries all of it rather than half of it plus a
+     new key — the key SET of this return is pinned by tests/guards.test.mjs on
+     purpose, so that an addition has to be argued for.
+
+       'local'          retrieval answered, from the briefing's own text
+                        (also the DONT_KNOW reply, when there is no model)
+       'llm'            the model answered, drawing on partial matches that
+                        fell under the floor
+       'llm-unbriefed'  the model answered with nothing relevant to draw on
+       'local-fallback' the model was meant to answer and the transport failed
+
      @returns {Promise<{html:string, spoken:string, scene:string|null,
-     grounded:boolean, via:string}>} */
+     grounded:boolean, via:'local'|'llm'|'llm-unbriefed'|'local-fallback'}>} */
   async answer(question) {
     const hits = search(question, 3);
     const top = hits[0];
     const grounded = Boolean(top && top.score >= CONFIDENCE_FLOOR);
     const scene = grounded ? top.e.scene : null;
 
-    if (!this.hasLLM) {
-      if (!grounded) {
-        return {
-          html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
-          scene: null, grounded: false, via: 'local',
-        };
-      }
+    /* ── THE GATE: retrieval decides, and it decides FIRST ──────────────────
+       Above the confidence floor, the briefing answers. Not "the briefing is
+       handed to a model which then answers" — the briefing's own reviewed
+       sentences, verbatim, as they reach the screen on a build with no network
+       at all. The model is for what comes AFTER the 39 facts, not instead of
+       them.
+
+       ── this deliberately overrides an older intent, so do not restore it ──
+       The original design ran this branch only when no key was configured, and
+       let the model rephrase a grounded answer for fluency — "a key makes Iris
+       more fluent, not more imaginative". That trade was reasonable for a desk
+       build. It is wrong for this one, in two ways that only appeared once the
+       deck was deployed public with a proxy that is always reachable:
+
+         • What it costs. `hasLLM` is true whenever an endpoint is set, and
+           config.public.js sets one, so EVERY question took the model path —
+           measured at 78 proxy calls (39 × /api/llm, 39 × /api/tts) for the 39
+           questions the knowledge base answers outright. Required: zero. The
+           deck was cheaper with a broken proxy than a working one.
+
+         • What it costs that no invoice shows, and this is the real reason.
+           src/knowledge.js is 39 hand-written answers carrying rules the room
+           depends on: never quote a price, every percentage is an INDICATIVE
+           industry range validated per airport at baseline, it is a platform
+           and not a fixed list of modules. Those hold only because the text is
+           fixed. A paraphrase drops one silently and nothing on screen says so.
+           In front of an airport CFO or a regulator, an answer that always says
+           the same reviewed thing is worth far more than a fluent one.
+
+       So `grounded` is computed and then used ONLY as a gate — which is the
+       thing a reader notices and wonders about, hence this note. It is not also
+       handed to the model for polish, on purpose: polish is what would lose the
+       sentence that was polished away. */
+    if (grounded) {
       // Blend in a strong runner-up so related questions get a fuller answer.
       const second = hits[1];
       const extra = second && second.score >= top.score * 0.72 && second.e.id !== top.e.id
@@ -120,38 +188,64 @@ export class Ask {
       };
     }
 
+    /* Below the floor: nothing curated covers this, so there is nothing to
+       protect and the model is pure gain. With no endpoint and no key there is
+       no model either, and saying so is the honest end of it. */
+    if (!this.hasLLM) {
+      return {
+        html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
+        scene: null, grounded: false, via: 'local',
+      };
+    }
+
+    /* Partial grounding still travels. A question under the floor may still sit
+       near two or three entries, and the proxy's system prompt is built to use
+       them for the product tier and to decline when they do not cover it — so
+       withholding them would make the answer worse, not safer. Whether any
+       survived the filter is what separates "drew on related notes" from "had
+       nothing to draw on", which the answer sheet then labels differently. */
     const grounding = hits
       .filter(h => h.score >= CONFIDENCE_FLOOR * 0.6)
       .map(h => `--- ${h.e.id} ---\n${textOf(h.e.a)}`)
       .join('\n\n');
 
     try {
-      const html = await this._callLLM(question, grounding || '(nothing relevant found)');
+      /* `grounded` is false on every call that reaches here — the gate above
+         took every true one — and it is still sent because the proxy's wire
+         contract is {question, grounding, grounded} and the value is honest.
+         It tells the proxy "retrieval found nothing above the floor", which is
+         exactly the state its prompt should answer in. */
+      const html = await this._callLLM(question, grounding || '(nothing relevant found)', grounded);
       /* Model-generated: unknowable ahead of time, so nothing is pre-rendered
-         for it and this speaks through the live API or Web Speech exactly as
-         it always has. It is never the container's path — the image ships no
-         key, so hasLLM is false there and this branch is unreachable. */
-      return { html, spoken: spokenForm(html), scene, grounded, via: 'llm' };
+         for it and this speaks through the live TTS path or Web Speech. This is
+         now the ONLY thing that costs a round trip, which is the whole point:
+         it is text that did not exist until someone asked for it. `scene` is
+         null and `grounded` false structurally, not incidentally. */
+      return {
+        html, spoken: spokenForm(html),
+        scene, grounded, via: grounding ? 'llm' : 'llm-unbriefed',
+      };
     } catch (err) {
       console.warn('[ask] LLM failed, answering locally:', err?.message || err);
-      return grounded
-        ? {
-          html: top.e.a, spoken: spokenForm(top.e.a),
-          scene, grounded: true, via: 'local-fallback',
-        }
-        : {
-          html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
-          scene: null, grounded: false, via: 'local-fallback',
-        };
+      /* No grounded arm here any more: the gate already answered every question
+         the briefing covers, so a transport failure can only ever concern one
+         it does not. DONT_KNOW is the right answer to those with or without a
+         proxy, which is why an outage costs the open-ended answers and nothing
+         else. */
+      return {
+        html: DONT_KNOW, spoken: spokenForm(DONT_KNOW),
+        scene: null, grounded: false, via: 'local-fallback',
+      };
     }
   }
 
-  async _callLLM(question, grounding) {
+  async _callLLM(question, grounding, grounded = false) {
     const {
       endpoint = 'https://api.anthropic.com/v1/messages',
       apiKey,
       model = 'claude-sonnet-5',
       maxTokens = 700,
+      timeoutMs = LLM_TIMEOUT_MS,
       headers: extraHeaders = {},
     } = this.cfg.llm;
 
@@ -164,10 +258,20 @@ export class Ask {
       headers['anthropic-dangerous-direct-browser-access'] = 'true';
     }
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
+    /* ── two request shapes, one for each side of the key ─────────────────
+       WITH a key the browser is the API client, so it sends the vendor's own
+       Messages shape — system prompt, model, token cap and all.
+
+       WITHOUT one, `endpoint` is a proxy that holds the key server-side, and
+       the browser is no longer trusted with any of those fields: a page anyone
+       can open would otherwise be free to swap SYSTEM for something else, or
+       ask for a model and a token cap the operator is paying for. So the
+       keyless body is narrow on purpose — the question, its grounding, and
+       whether the grounding actually covered it — and the proxy composes
+       `system`, `model` and `max_tokens` itself, discarding whatever a client
+       sent. Anything the proxy would throw away is not worth sending. */
+    const body = apiKey
+      ? {
         model,
         max_tokens: maxTokens,
         system: SYSTEM,
@@ -175,15 +279,51 @@ export class Ask {
           role: 'user',
           content: `GROUNDING\n${grounding}\n\nQUESTION\n${question}`,
         }],
-      }),
-    });
-    if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      }
+      : { question, grounding, grounded };
 
-    const data = await res.json();
-    const text = Array.isArray(data.content)
-      ? data.content.filter(b => b.type === 'text').map(b => b.text).join('\n')
-      : (data.output_text || data.choices?.[0]?.message?.content || '');
-    return sanitise(text);
+    /* ── the deadline ───────────────────────────────────────────────────
+       A refused connection rejects at once; a proxy that ACCEPTS and then
+       hangs — a tunnel still up in front of a wedged backend, which is the
+       failure this deployment actually has — never rejects at all. Without a
+       deadline the Ask box sits on "Looking that up…" for the rest of the
+       meeting with a perfectly good local answer one catch block away. The
+       abort lands in answer()'s catch like any other transport failure, so
+       the timeout costs one wait and then degrades exactly as an outage does.
+
+       15 s, and not less: the round trip is a real non-streaming completion —
+       time to first token, then a couple of spoken paragraphs generated at
+       tens of tokens a second — so several seconds is SUCCESS, not a stall,
+       and a tighter deadline would spend the model's money and then throw the
+       answer away. Not more, either: this is dead air in front of a room, and
+       past about fifteen seconds the presenter has already moved on. */
+    const controller = new AbortController();
+    const timer = setTimeout(() => { try { controller.abort(); } catch {} }, timeoutMs);
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+      const data = await res.json();
+      const text = Array.isArray(data.content)
+        ? data.content.filter(b => b.type === 'text').map(b => b.text).join('\n')
+        : (data.output_text || data.choices?.[0]?.message?.content || '');
+      return sanitise(text);
+    } catch (err) {
+      // Name the deadline rather than letting an opaque AbortError reach the
+      // console — "LLM failed" with no reason is what makes this hard to read
+      // from the back of a room. The body read is inside the try on purpose:
+      // headers-then-hang aborts here too, not only a hang before the reply.
+      if (err?.name === 'AbortError') throw new Error(`LLM timed out after ${timeoutMs} ms`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 
