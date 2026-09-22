@@ -70,6 +70,14 @@ const SUITES = [
   ['cancel', () => import('./cancel.test.mjs')],
   ['offline', () => import('./offline.test.mjs')],
   ['degrade', () => import('./degrade.test.mjs')],
+  /* The PUBLIC build and the key-holding proxy. The only suite that serves the
+     deck over http:// rather than opening it from file://, because the target
+     it gates is the only one that is never opened from file:// in real life —
+     and because a relative /api/ endpoint under file:// is rejected by Chrome
+     before any counter can see it, which would make its central number zero for
+     the wrong reason. It builds with --public-config into a scratch tree of its
+     own and never writes the real dist/. */
+  ['proxy', () => import('./proxy.test.mjs')],
   ['avatar', () => import('./avatar.test.mjs')],
   ['integration', () => import('./integration.test.mjs')],
 ];
