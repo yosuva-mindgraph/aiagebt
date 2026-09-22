@@ -410,23 +410,29 @@ class App {
     const resume = wasPlaying
       ? `<button class="jump" data-resume="1">${dxcIcon('play', 14)}<span>Resume the walkthrough</span></button>` : '';
 
-    /* ── the provenance label, and why it is not a constant ────────────────
-       "grounded" is a claim about THIS answer — that what Iris just said came
-       out of the briefing rather than out of the model's own memory. It used
-       to be printed for every via==='llm' answer, including the ones where
-       retrieval found nothing above the confidence floor and the model was
-       handed "(nothing relevant found)". Those are exactly the answers where
-       the word matters, and exactly the ones where it was false: a label that
-       is always on carries no information and, worse, lends the briefing's
-       authority to a sentence the briefing never contained.
+    /* ── the provenance label: four answers, four different things to say ──
+       This line used to read "answered by Iris · grounded" for every model
+       answer and "answered from the briefing" for everything else. Both halves
+       were wrong in the same direction — they claimed the briefing's authority
+       for sentences it had not reviewed, and a label that is always on carries
+       no information at all. In front of an airport CFO that is the expensive
+       kind of wrong, because the briefing's answers are the ones carrying the
+       rules the room depends on.
 
-       ask.answer() already decides this and already returns it, so the label
-       reads the existing `grounded` rather than adding a field — the shape of
-       that return is pinned by tests/guards.test.mjs, deliberately, so that a
-       new key has to be argued for instead of appearing.                    */
-    const provenance = via === 'llm'
-      ? (grounded ? 'answered by Iris · grounded' : 'answered by Iris · not in the briefing')
-      : 'answered from the briefing';
+       The four states are genuinely different and the viewer is entitled to
+       tell them apart at a glance: a reviewed answer, an answer the model wrote
+       with some related briefing material to hand, an answer it wrote with
+       none, and a question nothing covers. src/ask.js already distinguishes
+       them in `via`, so this reads that rather than adding a field — the shape
+       of that return is pinned by tests/guards.test.mjs, deliberately, so an
+       addition has to be argued for. `grounded` separates the briefing's real
+       answer from its "I don't have that", which is the one distinction `via`
+       does not draw.                                                        */
+    const provenance =
+      via === 'llm' ? 'answered by Iris · related briefing notes'
+        : via === 'llm-unbriefed' ? 'answered by Iris · outside the briefing'
+          : grounded ? 'answered from the briefing'
+            : 'not covered by the briefing';
 
     this.el.ansBody.innerHTML = html + (jump || resume ? `
       <div class="ans-src">
