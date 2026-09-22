@@ -6,8 +6,9 @@
    F11. The fonts are already data URIs; this folds in the CSS, resolves the ES
    module graph into one classic <script>, and drops config.js in if it exists.
 
-       node build.js            → dist/index.html
-       node build.js --no-config  → omit config.js (safe to hand out)
+       node build.js            → dist/index.html (never contains config.js — safe to commit and hand out)
+                                  + dist/stand.html when config.js exists (keys baked in — gitignored)
+       node build.js --no-config  → skip dist/stand.html
 
    The module inliner is deliberately small: it understands the handful of
    import/export forms this repo actually uses, in dependency order. It is not a
@@ -70,7 +71,6 @@ function assertNoCollisions(flattened) {
 }
 
 function build({ withConfig = true } = {}) {
-  let html = read('index.html');
   const css = read('assets/fonts.css') + '\n' + read('src/styles.css');
   const flattened = MODULES.map(m => [m, flatten(read(m))]);
   assertNoCollisions(flattened);
@@ -79,16 +79,21 @@ function build({ withConfig = true } = {}) {
 
   const configJs = withConfig && exists('config.js') ? read('config.js') : '';
 
-  html = html
+  const assemble = cfg => read('index.html')
     .replace(/<link rel="stylesheet" href="assets\/fonts\.css">\s*\n?/, '')
     .replace(/<link rel="stylesheet" href="src\/styles\.css">/, `<style>\n${css}\n</style>`)
     .replace(/<script src="config\.js"[^>]*><\/script>/,
-      configJs ? `<script>\n${configJs}\n</script>` : '<script>window.AIB_CONFIG = window.AIB_CONFIG || {};</script>')
+      cfg ? `<script>\n${cfg}\n</script>` : '<script>window.AIB_CONFIG = window.AIB_CONFIG || {};</script>')
     .replace(/<script type="module" src="src\/app\.js"><\/script>/, `<script>\n${js}\n</script>`);
 
   fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
+
+  /* dist/index.html is tracked in git and handed out, so it NEVER carries config.js.
+     The keyed build for the stand machine is a separate, gitignored file. */
+  const html = assemble('');
   const out = path.join(ROOT, 'dist', 'index.html');
   fs.writeFileSync(out, html);
+  if (configJs) fs.writeFileSync(path.join(ROOT, 'dist', 'stand.html'), assemble(configJs));
 
   /* A Claude Artifact supplies its own <!doctype>/<head>/<body> and wraps what it
      is given, so the hosted preview needs the same page with that scaffolding
@@ -107,9 +112,9 @@ function build({ withConfig = true } = {}) {
 
   const kb = (read('src/knowledge.js').match(/^\s*id:\s*'/gm) || []).length;
   const scenes = (read('src/scenes.js').match(/^\s*id:\s*'/gm) || []).length;
-  console.log(`dist/index.html  ${(html.length / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`  ${scenes} scenes · ${kb} knowledge entries · config ${configJs ? 'INLINED' : 'omitted'}`);
-  if (configJs) console.log('  ⚠  a key is baked into this file — do not hand it out');
+  console.log(`dist/index.html  ${(html.length / 1024 / 1024).toFixed(2)} MB  (no config — safe to commit and hand out)`);
+  console.log(`  ${scenes} scenes · ${kb} knowledge entries`);
+  if (configJs) console.log('dist/stand.html  keys baked in — gitignored; open THIS one on the stand machine, never share it');
 }
 
 build({ withConfig: !process.argv.includes('--no-config') });

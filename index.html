@@ -20,6 +20,7 @@
     <div class="wordmark">Airport in a <span class="box">Box</span> <span class="by">MindGraph × DXC</span></div>
     <div id="sceneTitle">Airport in a Box</div>
     <div class="head-actions">
+      <div class="seg" id="voiceSeg" role="group" aria-label="Voice" hidden></div>
       <button class="btn" id="muteBtn" aria-pressed="true">🔊 Sound on</button>
       <button class="btn ghost" id="themeBtn" title="Switch light / dark">◐</button>
     </div>
@@ -60,6 +61,7 @@
 
   <div id="askbar">
     <button class="btn" id="micBtn" title="Ask out loud">🎤 Speak</button>
+    <button class="btn ghost" id="micCancel" title="Stop listening" hidden>✕ Cancel</button>
     <form id="askForm" autocomplete="off">
       <input id="askInput" type="text" placeholder="Ask AIRIS anything — the data, the AIRIS demo, the agents, how it lands…  (press / to focus)" aria-label="Ask a question">
       <button class="btn primary" type="submit">Ask</button>

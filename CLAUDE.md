@@ -21,8 +21,9 @@ open index.html                 # dev: loads src/*.js as ES modules straight fro
                                 #  or any static server, e.g. python3 -m http.server)
 cp config.example.js config.js  # optional keys (ElevenLabs voice, LLM). config.js is gitignored.
 
-node build.js                   # → dist/index.html, everything inlined (fonts, CSS, config.js)
-node build.js --no-config       # same, minus config.js — the only build safe to hand out
+node build.js                   # → dist/index.html, everything inlined, NEVER contains config.js (tracked, hand-out safe)
+                                #   + dist/stand.html with config.js baked in when it exists (gitignored — the stand opens this)
+node build.js --no-config       # skip dist/stand.html
 node build.js --artifact        # also writes dist/artifact.html (scaffolding stripped for Claude Artifact hosting)
 
 node shoot-cdp.js               # visual check, no dependencies: drives a local Chrome/Brave/Edge headless
@@ -43,8 +44,12 @@ It finds Chrome, Chromium, Brave or Edge under `/Applications` (`AIB_BROWSER` ov
 only Node 22+ for the built-in WebSocket. Retrieval can be unit-checked without a browser:
 `node -e "import('./src/knowledge.js').then(m => console.log(m.search('your question')))"`.
 
-`dist/index.html` is committed on purpose (it is the double-click deliverable). After any change
-under `src/`, `index.html` or `assets/`, rebuild and commit `dist/` too.
+`dist/index.html` is committed on purpose (it is the keyless double-click deliverable). After any
+change under `src/`, `index.html` or `assets/`, rebuild and commit `dist/` too. `dist/stand.html`
+is the same page with `config.js` inlined; it is gitignored and must stay that way. Before any
+commit run `grep -lE "sk_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9]|apiKey: *'[^']{8,}'" dist/*.html`; it
+must list only `stand.html` (the header names `xi-api-key` / `api-key` appear in every build and are
+not keys, which is why the pattern matches key shapes, not the word).
 
 ## Architecture
 
@@ -114,8 +119,13 @@ With an LLM configured, the same top hits (plus their `facts`) are passed as gro
 never imply a module ceiling, no client names the grounding does not contain, at most 70 words,
 warm with one light touch of humour). `Ask.provider` is `llm.provider`, else guessed from the
 endpoint or key prefix; OpenAI uses Chat Completions with `max_completion_tokens`, Anthropic uses
-Messages. `hasLLM` is true only with a key or a non-vendor endpoint (a proxy), so a blank config
-never makes a doomed network call. LLM output is run through `sanitise()` (allowlist: p, b, strong,
+Messages. `resolveEndpoint()` accepts a full route or an SDK-style base URL (Azure's
+`…/openai/v1` works; `/chat/completions` is appended) and adds `?api-version=` only when
+`llm.apiVersion` is set — Azure's v1 surface rejects it (verified live 22 Sep 2026). The OpenAI
+path sends both `Authorization: Bearer` and `api-key` headers, uses `max_completion_tokens`
+(`max_tokens` is rejected by gpt-5 models), and adds `reasoning_effort: minimal` for gpt-5 /
+o-series unless `llm.reasoningEffort` overrides it. `hasLLM` is true only with a key or a
+non-vendor endpoint (a proxy), so a blank config never makes a doomed network call. LLM output is run through `sanitise()` (allowlist: p, b, strong,
 em, i, ul, ol, li, br) and any failure or the 12 s timeout falls back to the local answer. The
 parser accepts Anthropic content blocks, `choices[0].message.content`, or `output_text`. `via` is
 `local`, `llm` or `local-fallback` and drives the label under the answer.
@@ -135,13 +145,25 @@ to animate. `src` must be one of the labels listed at the top of `docs/CONTENT-S
 ### Voice and avatar
 
 `Voice.say(text)` resolves when the line finishes regardless of backend. ElevenLabs is used whenever
-`elevenLabs.apiKey` is set (`voiceId` falls back to the premade default); it decodes to an `AudioContext` so real RMS reaches
+`elevenLabs.apiKey` is set (`voiceId` falls back to the premade default). For `eleven_v3` models the
+voice settings are reduced to stability snapped to 0 / 0.5 / 1, because v3 rejects the v2 knobs.
+Fetched clips are cached in memory and IndexedDB (`cachedClip`, keyed on model, voice, settings and
+text) so a looping stand pays ElevenLabs once per distinct line; `decodeAudioData` gets a copy
+because it consumes its buffer. `prefetch(text)` warms one line, `prewarm(lines)` walks the deck
+in the background after Start (skipped when muted or `elevenLabs.prewarm === false`), and the
+narration loop prefetches the next line while the current one plays. An aborted fetch (scene
+change) never falls back to the browser voice. Voices are personas (`elevenLabs.voices.{friday,jarvis}`);
+`Voice.setPersona(id)` switches, the header segment persists the choice under `aib-voice`, and the
+cache key includes the voice so switching back is free. Speech input: `createRecogniser(config, cbs)`
+returns a Scribe recogniser (MediaRecorder → `/v1/speech-to-text`, silence-stop, `cancel()`) when an
+ElevenLabs key exists, else Web Speech; every failure reaches `onError` with a spoken message. It it decodes to an `AudioContext` so real RMS reaches
 `Avatar.setLevel()`. Web Speech is the fallback and has a guard timeout because Chrome silently
 drops long utterances. `estimate(text)` (~153 wpm) drives lip-sync timing and timeouts when no
 real audio exists.
 
-`Avatar` is deliberately isolated behind `setState(s)`, `speak(text, durationMs)`,
-`stopSpeaking()` and `setLevel(rms)`. The planned production swap to met4citizen/TalkingHead
+`Avatar` is a canvas "holographic core" (aperture, rings, voice meter, particles; colours read
+from the CSS tokens each second so the theme toggle holds), deliberately isolated behind
+`setState(s)`, `speak(text, durationMs)`, `stopSpeaking()` and `setLevel(rms)`. The planned production swap to met4citizen/TalkingHead
 (see `docs/OSS-EVALUATION.md`) must touch only `avatar.js`; keep that interface intact and keep
 the canvas bust as the no-GPU fallback.
 

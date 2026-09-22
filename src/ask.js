@@ -29,8 +29,9 @@ built by MindGraph with DXC. You are speaking out loud to a visitor at a confere
 
 HARD RULES — never break these
 - Answer ONLY from the GROUNDING provided. It is everything you know. If it does not cover the question,
-  say so warmly in one sentence and suggest they ask the MindGraph and DXC team on the stand.
-  Never invent a fact, a figure, a customer name, a date or a price.
+  reply with the single word NOINFO first, then one warm sentence saying you don't have that and
+  suggesting they ask the MindGraph and DXC team on the stand. Never invent a fact, a figure, a
+  customer name, a date or a price.
 - Never quote a price or a licence cost. Pricing goes to the account team.
 - Any ROI, saving or percentage is an INDICATIVE industry range validated per airport at baseline —
   say so in a few words whenever you use one. Never present one as a guarantee.
@@ -39,7 +40,8 @@ HARD RULES — never break these
 - Do not name a client airport or airline unless the grounding itself names it.
 
 STYLE — this is spoken aloud, so keep it light
-- Short. Two to four short sentences, at most 70 words. Lead with the answer, then one reason.
+- SHORT. Hard limit 60 words. Two or three short sentences. Lead with the answer, then one reason. Stop there —
+  do not summarise, do not add a closing line. Fewer words is always better.
 - Warm, sweet and upbeat — a friendly guide who genuinely loves airports. One light, gentle touch of
   humour is welcome when it fits naturally; never at the expense of the visitor, an airport, or safety.
 - Plain words. No jargon unless the visitor used it first. No emoji. No exclamation marks in a row.
@@ -51,6 +53,23 @@ const DEFAULT_ENDPOINT = {
   openai: 'https://api.openai.com/v1/chat/completions',
   anthropic: 'https://api.anthropic.com/v1/messages',
 };
+
+/** Accept either a full route or an SDK-style base URL (…/openai/v1, …/v1). */
+function resolveEndpoint(l, provider) {
+  let url = String(l.endpoint || DEFAULT_ENDPOINT[provider]).replace(/\/+$/, '');
+  // Complete only a bare origin or an SDK-style base (…/v1, …/openai/v1). Anything with its own
+  // path — a proxy route, a Responses-API route — is used exactly as configured.
+  const origin = /^https?:\/\/[^/]+$/.test(url);
+  const base = /\/(openai\/)?v1$/.test(url);
+  if (provider === 'openai' && (origin || base)) url += origin ? '/v1/chat/completions' : '/chat/completions';
+  if (provider === 'anthropic' && (origin || base)) url += origin ? '/v1/messages' : '/messages';
+  // Azure's classic surface wants ?api-version=…; its v1 surface rejects it. Only sent when configured.
+  if (l.apiVersion) url += (url.includes('?') ? '&' : '?') + 'api-version=' + encodeURIComponent(l.apiVersion);
+  return url;
+}
+
+/** gpt-5 / o-series models take a reasoning budget; keep it out of a 70-word spoken answer. */
+const REASONING_MODEL = /^(gpt-5|o\d)/i;
 
 export class Ask {
   constructor(config = {}) { this.cfg = config; }
@@ -78,10 +97,11 @@ export class Ask {
     const scene = grounded ? top.e.scene : null;
     const visual = visualFor(hits, grounded);
 
-    if (!this.hasLLM) {
-      if (!grounded) return { html: DONT_KNOW, scene: null, grounded: false, via: 'local', visual };
-      return { html: withWink(top.e.a), scene, grounded: true, via: 'local', visual };
-    }
+    // Nothing in the briefing covers it: say so, locally, without a network round-trip.
+    // Handing an LLM loosely related grounding is how a confident wrong answer gets made.
+    if (!grounded) return { html: DONT_KNOW, scene: null, grounded: false, via: 'local', visual };
+
+    if (!this.hasLLM) return { html: withWink(top.e.a), scene, grounded: true, via: 'local', visual };
 
     const grounding = hits
       .filter(h => h.score >= CONFIDENCE_FLOOR * 0.6)
@@ -89,20 +109,19 @@ export class Ask {
       .join('\n\n');
 
     try {
-      const html = await this._callLLM(question, grounding || '(nothing relevant found)');
-      return { html, scene, grounded, via: 'llm', visual };
+      const { html, noinfo } = await this._callLLM(question, grounding);
+      if (noinfo) return { html, scene: null, grounded: false, via: 'llm', visual: visualFor(hits, false) };
+      return { html, scene, grounded: true, via: 'llm', visual };
     } catch (err) {
       console.warn('[ask] LLM failed, answering locally:', err?.message || err);
-      return grounded
-        ? { html: withWink(top.e.a), scene, grounded: true, via: 'local-fallback', visual }
-        : { html: DONT_KNOW, scene: null, grounded: false, via: 'local-fallback', visual };
+      return { html: withWink(top.e.a), scene, grounded: true, via: 'local-fallback', visual };
     }
   }
 
   async _callLLM(question, grounding) {
     const l = this.cfg.llm || {};
     const provider = this.provider;
-    const endpoint = l.endpoint || DEFAULT_ENDPOINT[provider];
+    const endpoint = resolveEndpoint(l, provider);
     const maxTokens = l.maxTokens || 260;
     const user = `GROUNDING\n${grounding}\n\nQUESTION\n${question}`;
     const headers = { 'Content-Type': 'application/json', ...(l.headers || {}) };
@@ -123,9 +142,13 @@ export class Ask {
         messages: [{ role: 'user', content: user }],
       };
     } else {
-      if (l.apiKey) headers['Authorization'] = `Bearer ${l.apiKey}`;
+      if (l.apiKey) {
+        headers['Authorization'] = `Bearer ${l.apiKey}`;   // OpenAI, and Azure's v1 surface
+        headers['api-key'] = l.apiKey;                     // Azure's classic surface; ignored elsewhere
+      }
+      const model = l.model || 'gpt-4o-mini';
       body = {
-        model: l.model || 'gpt-4o-mini',
+        model,
         // max_completion_tokens is accepted by every current OpenAI chat model;
         // max_tokens is rejected by the newer reasoning families.
         max_completion_tokens: maxTokens,
@@ -134,6 +157,8 @@ export class Ask {
           { role: 'user', content: user },
         ],
       };
+      const effort = l.reasoningEffort || (REASONING_MODEL.test(model) ? 'minimal' : '');
+      if (effort) body.reasoning_effort = effort;
     }
 
     const controller = new AbortController();
@@ -145,13 +170,17 @@ export class Ask {
     if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
 
     const data = await res.json();
-    const text = Array.isArray(data.content)
+    let text = Array.isArray(data.content)
       ? data.content.filter(b => b.type === 'text').map(b => b.text).join('\n')          // Anthropic
       : (data.choices?.[0]?.message?.content                                              // OpenAI chat
         || data.output_text                                                               // OpenAI responses / proxies
         || (Array.isArray(data.output) ? data.output.flatMap(o => o.content || []).filter(c => c.type === 'output_text').map(c => c.text).join('\n') : '')
         || '');
-    return sanitise(text);
+    // The model flags "not in the grounding" with a leading NOINFO; a plain-English refusal at the
+    // start of the reply counts too. Either way the answer sheet shows no figures for it.
+    const noinfo = /^\s*(?:<p>\s*)?(?:NOINFO\b|I (?:don.t|do not) have that|That (?:isn.t|is not) in what)/i.test(text);
+    text = text.replace(/^\s*(?:<p>\s*)?NOINFO[:.\s]*/i, m => /<p>/.test(m) ? '<p>' : '');
+    return { html: sanitise(text), noinfo };
   }
 }
 
@@ -213,7 +242,7 @@ function sanitise(input) {
   s = s.replace(/```[a-z]*\n?|```/g, '')
        .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
        .replace(/^\s*[-•]\s+(.+)$/gm, '<li>$1</li>');
-  if (/<li>/.test(s) && !/<ul>|<ol>/.test(s)) s = s.replace(/(<li>.*<\/li>\s*)+/s, m => `<ul>${m}</ul>`);
+  if (/<li>/.test(s) && !/<ul>|<ol>/.test(s)) s = s.replace(/((?:<li>.*?<\/li>\s*)+)/gs, m => `<ul>${m}</ul>`);
   const div = document.createElement('div');
   div.innerHTML = s;
   const ALLOWED = new Set(['P', 'B', 'STRONG', 'EM', 'I', 'UL', 'OL', 'LI', 'BR']);

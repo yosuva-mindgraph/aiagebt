@@ -44,7 +44,7 @@ class App {
       play: $('#playBtn'), back: $('#backBtn'), skip: $('#skipBtn'),
       mute: $('#muteBtn'), theme: $('#themeBtn'),
       answer: $('#answer'), ansBody: $('#ansBody'), ansFigs: $('#ansFigs'), ansQ: $('#ansQ'), ansClose: $('#ansClose'),
-      askForm: $('#askForm'), askInput: $('#askInput'), mic: $('#micBtn'),
+      askForm: $('#askForm'), askInput: $('#askInput'), mic: $('#micBtn'), micCancel: $('#micCancel'), voiceSeg: $('#voiceSeg'),
       state: $('#avatarState'), overlay: $('#overlay'),
     };
 
@@ -145,6 +145,8 @@ class App {
       this._setState('speaking');
       this.avatar.speak(text, estimate(text));
 
+      // generate the next line while this one plays, so a slow voice never leaves a gap
+      this.voice.prefetch(scene.lines[n + 1] ?? SCENES[this.i + 1]?.lines[0]);
       await this.voice.say(text);
       if (my !== this.token) return;
 
@@ -211,7 +213,7 @@ class App {
     this._caption('Ooh, good question. One second.');
 
     const my = ++this.token;
-    const { html, scene, via, visual } = await this.ask.answer(q);
+    const { html, scene, via, visual, grounded } = await this.ask.answer(q);
     if (my !== this.token) return;
 
     const jump = scene && scene !== SCENES[this.i].id
@@ -220,7 +222,8 @@ class App {
     const resume = wasPlaying
       ? `<button class="jump" data-resume="1">↩ Carry on with the tour</button>` : '';
 
-    const label = via === 'llm' ? 'AIRIS · grounded in the briefing'
+    const label = via === 'llm' && !grounded ? 'AIRIS · not in the briefing'
+      : via === 'llm' ? 'AIRIS · grounded in the briefing'
       : via === 'local-fallback' ? 'straight from the briefing (offline)'
       : 'straight from the briefing';
 
@@ -279,6 +282,37 @@ class App {
 
   _closeAnswer() { this.el.answer.classList.remove('open'); }
 
+  /* ── the voice switch ─────────────────────────────────────────────── */
+
+  _buildVoiceSwitch() {
+    const personas = this.voice.personas;
+    if (!this.voice.usingElevenLabs || personas.length < 2) { this.el.voiceSeg.hidden = true; return; }
+    let saved = null;
+    try { saved = localStorage.getItem('aib-voice'); } catch {}
+    if (saved && this.voice.setPersona(saved)) {} else saved = this.voice.persona;
+
+    this.el.voiceSeg.innerHTML = `<span class="lbl">voice</span>` + personas.map(p =>
+      `<button type="button" data-persona="${p.id}" aria-pressed="${p.id === saved}" title="${p.label} — ${p.gender || 'voice'}">${p.gender === 'male' ? '♂' : p.gender === 'female' ? '♀' : '•'} ${p.label}</button>`).join('');
+    this.el.voiceSeg.hidden = false;
+
+    this.el.voiceSeg.querySelectorAll('[data-persona]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.persona;
+      if (id === this.voice.persona || !this.voice.setPersona(id)) return;
+      try { localStorage.setItem('aib-voice', id); } catch {}
+      this.el.voiceSeg.querySelectorAll('[data-persona]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.persona === id)));
+      const p = personas.find(x => x.id === id);
+      // a one-line hello in the new voice, unless the walkthrough is mid-sentence
+      if (!this.playing) {
+        const hello = `${p.label} here. Ask me anything.`;
+        this._caption(hello);
+        this._setState('speaking');
+        this.avatar.speak(hello, estimate(hello));
+        const my = ++this.token;
+        this.voice.say(hello).then(() => { if (my === this.token) { this.avatar.stopSpeaking(); this._setState('idle'); } });
+      }
+    }));
+  }
+
   /* ── wiring ───────────────────────────────────────────────────────── */
 
   _wire() {
@@ -309,24 +343,43 @@ class App {
       try { localStorage.setItem('aib-theme', next); } catch {}
     });
 
-    // voice input
-    const rec = createRecogniser({
+    // voice input — ElevenLabs Scribe when a key is present, the browser's own recognition otherwise
+    const micIdle = () => {
+      this.el.mic.classList.remove('rec');
+      this.el.mic.textContent = '🎤 Speak';
+      this.el.micCancel.hidden = true;
+      if (!this.playing) this._setState('idle');
+    };
+    const rec = createRecogniser(CONFIG, {
       onResult: (text, final) => {
         this.el.askInput.value = text;
-        if (final) { this.el.mic.classList.remove('rec'); this.handleAsk(text); }
+        if (final) { micIdle(); if (text.trim()) this.handleAsk(text); }
       },
-      onEnd: () => { this.el.mic.classList.remove('rec'); if (!this.playing) this._setState('idle'); },
+      onStatus: msg => this._caption(msg),
+      onError: msg => { micIdle(); this._caption(msg); },
+      onEnd: () => micIdle(),
     });
-    if (!rec) this.el.mic.disabled = true, this.el.mic.title = 'Speech input is not available in this browser';
+    if (!rec) { this.el.mic.disabled = true; this.el.mic.title = 'Speech input is not available in this browser'; }
+    else { this.el.mic.title = rec.kind === 'scribe' ? 'Ask out loud — AIRIS listens through ElevenLabs' : 'Ask out loud'; this.el.mic.dataset.kind = rec.kind; }
     this.el.mic.addEventListener('click', () => {
       if (!rec) return;
       if (this.el.mic.classList.contains('rec')) { rec.stop(); return; }
       this.pause();
       this.el.mic.classList.add('rec');
+      this.el.mic.textContent = '● Listening… tap when done';
+      this.el.micCancel.hidden = false;
       this._setState('listening');
       this._caption('I’m listening — go ahead.');
-      try { rec.start(); } catch { this.el.mic.classList.remove('rec'); }
+      try { rec.start(); } catch (err) { micIdle(); this._caption('I couldn’t open the microphone — type it in and I’ll answer.'); }
     });
+    this.el.micCancel.addEventListener('click', () => {
+      if (rec?.cancel) rec.cancel(); else rec?.stop();
+      micIdle();
+      this._caption('Okay, cancelled.');
+    });
+
+    // voice switch — Friday / Jarvis — remembered on this machine
+    this._buildVoiceSwitch();
 
     // keyboard transport — ignored while typing
     addEventListener('keydown', e => {
@@ -340,14 +393,19 @@ class App {
     });
 
     // cold open — the click here is what unlocks audio autoplay
+    // Warm the voice cache for the whole deck once the visitor is in — the first
+    // tour of the day then has no generation gaps, and every later one is free.
+    const prewarm = () => this.voice.prewarm(SCENES.flatMap(s => s.lines));
     $('#startBtn').addEventListener('click', () => {
       this.el.overlay.hidden = true;
       this.render(0, { play: true });
+      prewarm();
     });
     $('#skipIntroBtn').addEventListener('click', () => {
       this.el.overlay.hidden = true;
       this.render(1, { play: false });
       this.el.askInput.focus();
+      prewarm();
     });
   }
 }
@@ -357,7 +415,7 @@ class App {
    zero on arrival, keeping its prefix and suffix. Non-numeric values are
    left alone. Honours prefers-reduced-motion.                            */
 
-const REDUCED = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const REDUCED = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
 
 function countUpAll(root) {
   root.querySelectorAll('[data-n]').forEach(countUp);
@@ -365,10 +423,12 @@ function countUpAll(root) {
 
 function countUp(el) {
   const raw = el.dataset.n || '';
-  const m = raw.match(/^([^\d]*)(\d[\d,]*)(\.\d+)?(.*)$/);
+  // "58", "~85%", "5.5M", "70+", "$13.6k" animate; "C120", "Oct 2025", "1990s", "23–24", "10:20" do not
+  const m = raw.match(/^([~≈$€£+]?)(\d[\d,]*)(\.\d+)?([%+kKMx×]?)$/);
   if (!m || REDUCED) { el.textContent = raw; return; }
   const [, pre, intPart, dec = '', post] = m;
   const target = parseFloat(intPart.replace(/,/g, '') + dec);
+  if (!dec && !post && !pre && target >= 1900 && target <= 2100) { el.textContent = raw; return; }   // a year
   const decimals = dec ? dec.length - 1 : 0;
   const grouped = intPart.includes(',');
   const t0 = performance.now();

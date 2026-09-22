@@ -1,4 +1,6 @@
 config.js
 node_modules/
 shots/
-# dist/index.html is committed on purpose — it is the thing you double-click
+dist/stand.html
+# dist/index.html is committed on purpose — it is the keyless file you hand out.
+# dist/stand.html is the same file with config.js baked in — never commit it.

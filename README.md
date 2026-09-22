@@ -8,7 +8,8 @@ Built to the pattern of the AgentRM marketing agent (scene stage · film strip �
 captions · ask bar), with the thing that one was missing: **a presenter with a face.**
 
 ```
-open dist/index.html           # one file, no server, no network
+open dist/index.html           # one file, no server, no network (keyless)
+open dist/stand.html           # the same file with your keys baked in — the stand machine opens this
 ```
 
 ---
@@ -65,7 +66,12 @@ in a room with no network.
 
 Browser `speechSynthesis` by default — no key, no network, works on a locked-down venue
 machine. With an ElevenLabs key configured it streams from ElevenLabs instead and the
-mouth follows real audio RMS rather than a text estimate.
+voice meter follows real audio RMS rather than a text estimate.
+
+**Speak** records in the page and transcribes through ElevenLabs Scribe when the key is
+present — it works in every browser, holds gold while it listens, stops on a pause or a tap,
+and has a Cancel beside it. Without a key it falls back to the browser's own recognition
+(Chrome only, needs Google's service), and any failure is said out loud rather than swallowed.
 
 ## Configuration
 
@@ -75,10 +81,20 @@ cp config.example.js config.js     # then fill in; config.js is gitignored
 
 Two blocks, both optional and independent:
 
-- `elevenLabs.apiKey` — the voice. A `voiceId` is optional; blank uses the default voice.
+- `elevenLabs.apiKey` — the voice. Two personas, **Friday** (female) and **Jarvis** (male),
+  each an ElevenLabs voice ID under `elevenLabs.voices`; a switch in the header picks one and
+  remembers it on that machine. The defaults are premade voices (Lily and George) with soft
+  settings: multilingual v2, stability 0.62, a little style, speed 0.93. Eleven v3 accepts
+  stability only as 0 / 0.5 / 1 and ignores the v2 knobs; the code snaps the value so a v3
+  build never silently falls back. Every distinct line is fetched **once**
+  and replayed from memory and IndexedDB after that, so a day of looping the deck costs
+  the characters of one run. The next line is generated while the current one plays, and
+  after Start the whole deck warms in the background (`prewarm: false` to turn that off), so
+  even the first tour has no gaps once the opening line is out.
 - `llm` — the brain. `provider: 'openai'` (default) or `'anthropic'`; `apiKey`; `model`
-  (`gpt-4o-mini` by default). Leave `endpoint` blank for the provider's own API, or point it
-  at your proxy and leave `apiKey` blank.
+  (an OpenAI model, or on Azure the deployment name). `endpoint` takes a full route, an
+  SDK-style base URL such as Azure's `…/openai/v1`, or your proxy; leave it blank for the
+  provider's own API. gpt-5 / o-series models get `reasoning_effort: minimal` automatically.
 
 Read the warning in that file: **a key in `config.js` is a key in the browser.** Fine on a
 laptop you control on a stand. For anything reachable from the internet, leave `apiKey`
@@ -87,10 +103,14 @@ blank and point `llm.endpoint` at a proxy that holds the key server-side.
 ## Building the single file
 
 ```bash
-node build.js                # → dist/index.html   (~0.9 MB, everything inlined)
-node build.js --no-config    # same, minus config.js — safe to hand out
+node build.js                # → dist/index.html  (~0.9 MB, everything inlined, NO keys — safe to commit and hand out)
+                             #   + dist/stand.html when config.js exists (keys baked in — gitignored; the stand machine opens this one)
+node build.js --no-config    # skip dist/stand.html
 node build.js --artifact     # also dist/artifact.html for Claude Artifact hosting
 ```
+
+The keyed file is deliberately a different name from the tracked one, so a build can never
+put a key into git by accident.
 
 Fonts are already data URIs; the build folds in the CSS and flattens the ES modules
 into one classic script. It refuses to build on a top-level name collision, because
@@ -122,7 +142,7 @@ src/
   styles.css        tokens, both themes. One rule: SKY is the platform's, GOLD is the human's
   scenes.js         the thirteen scenes — narration + stage + optional interaction
   knowledge.js      71 traceable entries, each with figures + a source label, the retrieval function, the sign-offs
-  avatar.js         AIRIS — canvas bust, visemes, blink, four states
+  avatar.js         AIRIS — holographic core on canvas, voice meter, four states
   voice.js          ElevenLabs → Web Speech fallback; plus speech input
   ask.js            retrieval, then a grounded LLM (OpenAI or Anthropic) if a key is present
   app.js            transport, narration loop, film strip, interruption handling, the figures panel
@@ -145,10 +165,12 @@ you. AIRIS's sign-off jokes are gold, because a smile is the human's. Nothing br
 and Midnight is the brand ground. Light is fully designed — not an inversion; Sky is
 too pale on paper, so the platform speaks in Royal there — and the toggle persists.
 
-**AIRIS is drawn, not filmed.** A half-convincing photoreal head reads as a failure; a
-confident stylised one reads as a choice. The name is from the source material —
+**AIRIS is a core, not a face.** A holographic iris — glowing aperture, rotating rings of
+ticks, arcs and brackets, a circular voice meter and a slow field of particles — in the
+style of a film AI's interface. The name is from the source material —
 *"like the iris of an eye, AIRIS enables an Airport to see and understand its operations"* —
-which is why the eye is the most detailed thing on the face and everything else is quieter.
+which is why the aperture is the centre of the design. Sky when it speaks, gold when it
+listens (with sonar pings), peach and spinning while it thinks.
 
 **She is short on purpose.** Every answer is capped near 70 words and every scene near
 four lines. The figures panel does the rest of the talking.

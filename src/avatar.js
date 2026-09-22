@@ -1,36 +1,29 @@
 /* ============================================================================
    AIRIS — the presenter.
 
-   A canvas bust, drawn rather than filmed. The name is not decoration: the
-   source briefing says "like an iris, AIRIS enables an airport to SEE and
-   understand its operations", so the eye is the thing this face is built
-   around and everything else is quieter than it.
+   A holographic core, not a face. The briefing says "like the iris of an eye,
+   AIRIS enables an airport to SEE and understand its operations", so the
+   centre of this is an aperture: a glowing iris with a ring of blades, inside
+   rotating rings of ticks, arcs and brackets, a circular voice-meter that
+   moves when AIRIS speaks, and a slow field of orbiting particles.
 
-   Deliberately stylised. A half-convincing photoreal head reads as a failure;
-   a confident drawn one reads as a choice. It is lit sky when the platform is
-   speaking and gold when it is the human's turn — the same rule the rest of
-   the page holds to.
+   It is lit sky when the platform is speaking or waiting, and gold when it is
+   the human's turn (listening) — the same rule the rest of the page holds to.
+   Thinking is peach, and the rings spin faster while it thinks.
 
    States: idle · speaking · listening · thinking
-   Lip-sync: visemes derived from the text being spoken, advanced on a clock
-   that matches the measured duration of the utterance, with an amplitude
-   jitter on top so it never looks metronomic. When a real audio buffer is
-   available (ElevenLabs), setLevel() drives the jaw from actual RMS instead.
+   Voice: when a real audio buffer is playing (ElevenLabs), setLevel() drives
+   the meter from actual RMS; otherwise an energy track derived from the text's
+   visemes is advanced on a clock that matches the utterance length.
+
+   Public surface (keep it — app.js and any future avatar swap rely on it):
+     setState(s) · speak(text, durationMs) · stopSpeaking() · setLevel(rms)
    ========================================================================== */
 
-/* Viseme set — mouth width, mouth height, roundness, teeth. Small on purpose:
-   beyond about eight shapes the eye stops reading individual phonemes anyway. */
-const VISEME = {
-  rest: { w: .42, h: .05, r: .30, t: 0 },
-  AA:   { w: .58, h: .40, r: .18, t: .3 },   // father, cat
-  E:    { w: .66, h: .22, r: .10, t: .6 },   // bed, they
-  I:    { w: .60, h: .13, r: .08, t: .7 },   // sit, meet
-  O:    { w: .38, h: .38, r: .85, t: .1 },   // go, off
-  U:    { w: .28, h: .26, r: .95, t: 0  },   // boot, book
-  FV:   { w: .52, h: .09, r: .15, t: .9 },   // f, v
-  MBP:  { w: .44, h: .01, r: .30, t: 0  },   // m, b, p — closed
-  L:    { w: .54, h: .24, r: .12, t: .5 },   // l, n, d, t
-  S:    { w: .56, h: .08, r: .10, t: .85 },  // s, z, sh, ch
+/* Viseme set, kept for the text-driven energy track. Open vowels carry the
+   most energy, closed consonants the least. */
+const VISEME_ENERGY = {
+  rest: 0.05, AA: 1.0, E: 0.75, I: 0.55, O: 0.9, U: 0.7, FV: 0.3, MBP: 0.1, L: 0.6, S: 0.35,
 };
 
 const CHAR_VISEME = {
@@ -38,29 +31,31 @@ const CHAR_VISEME = {
   m: 'MBP', b: 'MBP', p: 'MBP',
   f: 'FV', v: 'FV',
   s: 'S', z: 'S', c: 'S', x: 'S', j: 'S',
-  l: 'L', n: 'L', d: 'L', t: 'L', r: 'L', g: 'L', k: 'L', h: 'L', w: 'U', q: 'U',
+  l: 'L', n: 'L', d: 'L', t: 'L', r: 'L', k: 'L', g: 'L', h: 'L', w: 'U', q: 'U',
 };
 
-/** Turn a line of narration into a viseme track. */
+/** Text → a list of visemes, one per letter-ish, with rests at word gaps. */
 export function visemesFor(text) {
   const out = [];
-  const lower = (text || '').toLowerCase();
-  for (let i = 0; i < lower.length; i++) {
-    const ch = lower[i];
-    if (ch === ' ' || ch === '\n') { out.push('rest'); continue; }
-    if (!/[a-z]/.test(ch)) continue;
-    // digraphs the single-char map would get wrong
-    const two = lower.slice(i, i + 2);
-    if (two === 'sh' || two === 'ch') { out.push('S'); i++; continue; }
-    if (two === 'th') { out.push('L'); i++; continue; }
-    if (two === 'oo') { out.push('U'); i++; continue; }
-    if (two === 'ee') { out.push('I'); i++; continue; }
-    out.push(CHAR_VISEME[ch] || 'L');
+  for (const word of String(text || '').toLowerCase().split(/\s+/)) {
+    let last = null;
+    for (const ch of word) {
+      const v = CHAR_VISEME[ch];
+      if (!v) continue;
+      if (v !== last) out.push(v);
+      last = v;
+    }
+    out.push('rest');
   }
   return out.length ? out : ['rest'];
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;
+const TAU = Math.PI * 2;
+
+/* a cheap, stable pseudo-random per index — the particles and bars must not
+   re-roll every frame */
+const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
 export class Avatar {
   constructor(canvas, { name = 'AIRIS' } = {}) {
@@ -73,12 +68,24 @@ export class Avatar {
     this.trackDur = 0;
     this.level = null;          // external RMS 0..1, when real audio drives it
 
-    this.cur = { ...VISEME.rest };
-    this.blink = 0;
-    this.nextBlink = 900;
+    this.energy = 0;            // eased 0..1 — drives the meter, the glow and the core size
+    this.spin = 0;              // accumulated rotation, so speed changes never jump
+    this.pings = [];            // listening sonar rings (start times)
+    this.lastPing = 0;
+    this.sweepAt = 0;           // next idle scan sweep
+    this.particles = Array.from({ length: 48 }, (_, i) => ({
+      r: 0.29 + hash(i) * 0.19,             // orbit radius, as a fraction of S
+      a: hash(i + 100) * TAU,               // angle
+      s: (0.05 + hash(i + 200) * 0.12) * (hash(i + 300) > 0.5 ? 1 : -1),   // rad/s
+      z: 0.5 + hash(i + 400) * 1.5,         // size px
+      ph: hash(i + 500) * TAU,              // twinkle phase
+    }));
+
+    this.colors = null;
+    this.colorsAt = 0;
     this.t0 = performance.now();
     this.raf = null;
-    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
 
     this._resize = this._resize.bind(this);
     this._frame = this._frame.bind(this);
@@ -89,9 +96,12 @@ export class Avatar {
 
   destroy() { cancelAnimationFrame(this.raf); removeEventListener('resize', this._resize); }
 
-  setState(s) { this.state = s; }
+  setState(s) {
+    if (s === 'listening' && this.state !== 'listening') { this.pings.push(performance.now()); this.lastPing = performance.now(); }
+    this.state = s;
+  }
 
-  /** Start lip-syncing `text` over `durationMs`. */
+  /** Start "speaking" `text` over `durationMs` — the meter follows the text. */
   speak(text, durationMs) {
     this.track = visemesFor(text);
     this.trackStart = performance.now();
@@ -101,7 +111,7 @@ export class Avatar {
 
   stopSpeaking() { this.track = ['rest']; this.trackDur = 0; this.level = null; if (this.state === 'speaking') this.state = 'idle'; }
 
-  /** Optional: drive the jaw from real audio RMS (0..1). */
+  /** Optional: drive the meter from real audio RMS (0..1). */
   setLevel(v) { this.level = v; }
 
   _resize() {
@@ -110,324 +120,201 @@ export class Avatar {
     this.c.width = Math.max(1, Math.round(r.width * dpr));
     this.c.height = Math.max(1, Math.round(r.height * dpr));
     this.dpr = dpr;
+    this.w = r.width; this.h = r.height;
   }
 
-  _target() {
-    if (this.state !== 'speaking') return VISEME.rest;
-    if (this.level != null) {
-      // real audio: blend rest → open by amplitude
-      const a = Math.min(1, this.level * 2.2);
-      return { w: lerp(.42, .60, a), h: lerp(.04, .40, a), r: lerp(.30, .20, a), t: a * .5 };
+  /* brand tokens, re-read once a second so the theme toggle is honoured */
+  _palette(now) {
+    if (this.colors && now - this.colorsAt < 1000) return this.colors;
+    const cs = getComputedStyle(document.documentElement);
+    const v = n => cs.getPropertyValue(n).trim();
+    this.colors = { sky: v('--sky') || '#a1e6ff', gold: v('--gold') || '#ffae41', peach: v('--peach') || '#ffc982', royal: v('--royal') || '#004aac', ink3: v('--ink-3') || '#7b82a6', light: document.documentElement.dataset.theme === 'light' };
+    this.colorsAt = now;
+    return this.colors;
+  }
+
+  _energyTarget(now) {
+    const t = (now - this.t0) / 1000;
+    if (this.state === 'speaking') {
+      if (this.level != null) return Math.min(1, this.level * 2.4);
+      const el = now - this.trackStart;
+      if (el > this.trackDur) return 0.08;
+      const i = Math.min(this.track.length - 1, Math.floor(el / this.trackDur * this.track.length));
+      const e = VISEME_ENERGY[this.track[i]] ?? 0.3;
+      return e * (0.8 + 0.2 * Math.sin(el / 53));            // never metronomic
     }
-    const el = performance.now() - this.trackStart;
-    if (el > this.trackDur) return VISEME.rest;
-    const i = Math.min(this.track.length - 1, Math.floor(el / this.trackDur * this.track.length));
-    const v = VISEME[this.track[i]] || VISEME.rest;
-    // a little life so it is never metronomic
-    const j = 1 + Math.sin(el / 47) * .10;
-    return { w: v.w, h: v.h * j, r: v.r, t: v.t };
+    if (this.state === 'thinking') return 0.32 + 0.12 * Math.sin(t * 5.5);
+    if (this.state === 'listening') return 0.22 + 0.06 * Math.sin(t * 2.2);
+    return 0.10 + 0.04 * Math.sin(t * 1.1);                   // breathing
   }
 
   _frame(now) {
     this.raf = requestAnimationFrame(this._frame);
-    const ctx = this.ctx, W = this.c.width, H = this.c.height;
+    const ctx = this.ctx;
+    const W = this.w || this.c.width, H = this.h || this.c.height;
+    const S = Math.min(W, H) * 0.9;                            // leave room for the state label at the foot
+    const cx = W / 2, cy = H * 0.47;
     const t = (now - this.t0) / 1000;
+    const dt = Math.min(0.05, (now - (this._last || now)) / 1000); this._last = now;
+    const P = this._palette(now);
+    const accent = this.state === 'listening' ? P.gold : this.state === 'thinking' ? P.peach : P.sky;
+    const faint = P.light ? 0.55 : 1;                        // light theme needs a touch less glow
 
-    // ease toward the target mouth
-    const tgt = this._target();
-    const k = this.reduced ? 1 : .34;
-    for (const key of ['w', 'h', 'r', 't']) this.cur[key] = lerp(this.cur[key], tgt[key], k);
+    // ease the energy; spin speed depends on state
+    const k = this.reduced ? 1 : 0.28;
+    this.energy = lerp(this.energy, this._energyTarget(now), k);
+    const speed = this.reduced ? 0 : this.state === 'thinking' ? 3.2 : this.state === 'speaking' ? 1.25 : 1;
+    this.spin += dt * speed;
+    const E = this.energy;
 
-    // blink clock
-    if (!this.reduced) {
-      if (now - this.t0 > this.nextBlink) {
-        this.blink = 1;
-        this.nextBlink = now - this.t0 + 2200 + Math.random() * 3600;
-      }
-      this.blink = Math.max(0, this.blink - .16);
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = 'round';
+
+    // ── ambient glow ──────────────────────────────────────────────────
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 0.55);
+    glow.addColorStop(0, rgba(accent, (0.16 + E * 0.16) * faint));
+    glow.addColorStop(0.45, rgba(P.royal, 0.10 * faint));
+    glow.addColorStop(1, rgba(P.royal, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // ── polar grid, very faint ────────────────────────────────────────
+    ctx.strokeStyle = rgba(P.ink3, 0.10);
+    ctx.lineWidth = 1;
+    for (const r of [0.20, 0.35, 0.48]) { ctx.beginPath(); ctx.arc(cx, cy, S * r, 0, TAU); ctx.stroke(); }
+    for (let i = 0; i < 8; i++) {
+      const a = i * TAU / 8;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * S * 0.20, cy + Math.sin(a) * S * 0.20);
+      ctx.lineTo(cx + Math.cos(a) * S * 0.48, cy + Math.sin(a) * S * 0.48); ctx.stroke();
     }
 
-    ctx.clearRect(0, 0, W, H);
-    ctx.save();
-    // unit space: 0..1 on the short side, centred
-    const S = Math.min(W, H);
-    ctx.translate((W - S) / 2, (H - S) / 2);
-    ctx.scale(S, S);
-
-    const speaking = this.state === 'speaking';
-    const listening = this.state === 'listening';
-    const thinking = this.state === 'thinking';
-
-    const css = getComputedStyle(document.documentElement);
-    const SKY = css.getPropertyValue('--sky').trim() || '#a1e6ff';
-    const GOLD = css.getPropertyValue('--gold').trim() || '#ffae41';
-    const ROYAL = css.getPropertyValue('--royal').trim() || '#004aac';
-    const INK3 = css.getPropertyValue('--ink-3').trim() || '#7b82a6';
-    const hue = listening ? GOLD : SKY;
-
-    // Frame it like a portrait, not a diagram: the head fills the panel and
-    // the shoulders run off the bottom corners. Everything below is authored
-    // in a comfortable 0..1 space and then cropped in by this one transform.
-    const ZOOM = 1.34;
-    ctx.translate(.5, .50); ctx.scale(ZOOM, ZOOM); ctx.translate(-.5, -.5);
-
-    // idle sway — small, so it reads as alive rather than animated
-    const sway = this.reduced ? 0 : Math.sin(t * .62) * .006 + (speaking ? Math.sin(t * 3.1) * .0022 : 0);
-    const bob = this.reduced ? 0 : Math.sin(t * .48) * .005;
-    ctx.translate(sway, bob);
-
-    /* ── volumetric ground glow ─────────────────────────────────────── */
-    const glow = ctx.createRadialGradient(.5, .46, .04, .5, .46, .48);
-    glow.addColorStop(0, this._alpha(hue, speaking ? .26 : .16));
-    glow.addColorStop(.55, this._alpha(ROYAL, .14));
-    glow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, 1, 1);
-
-    /* ── shoulders ──────────────────────────────────────────────────────
-       Deliberately wider than the frame and flat across the top: a dome
-       reads as a pedestal, shoulders read as a person. The trapezius line
-       leaves frame at the sides rather than curving back in.             */
-    ctx.beginPath();
-    ctx.moveTo(-.10, 1.05);
-    ctx.bezierCurveTo(-.02, .800, .19, .712, .375, .690);
-    ctx.lineTo(.625, .690);
-    ctx.bezierCurveTo(.81, .712, 1.02, .800, 1.10, 1.05);
-    ctx.closePath();
-    const sg = ctx.createLinearGradient(0, .68, 0, 1.05);
-    sg.addColorStop(0, this._alpha(hue, .30));
-    sg.addColorStop(.5, this._alpha(ROYAL, .22));
-    sg.addColorStop(1, this._alpha(ROYAL, .06));
-    ctx.fillStyle = sg; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .42); ctx.lineWidth = .0034; ctx.stroke();
-
-    // collar — one line, but it is what stops the bust reading as a blob
-    ctx.beginPath();
-    ctx.moveTo(.370, .692);
-    ctx.quadraticCurveTo(.5, .790, .630, .692);
-    ctx.strokeStyle = this._alpha(hue, .50); ctx.lineWidth = .0030; ctx.stroke();
-
-    /* ── neck ──────────────────────────────────────────────────────────
-       The junction is where a drawn bust usually falls apart: a flat slab
-       between two lit shapes reads as pasted on. So it is a gradient that
-       starts at the jaw and dissolves into the shoulder, with the sides
-       shaded rather than outlined.                                        */
-    const ng = ctx.createLinearGradient(0, .560, 0, .760);
-    ng.addColorStop(0, this._alpha('#05070f', .55));
-    ng.addColorStop(.45, this._alpha(hue, .18));
-    ng.addColorStop(1, this._alpha(hue, .015));
-    ctx.beginPath();
-    ctx.moveTo(.450, .560);
-    ctx.bezierCurveTo(.444, .660, .430, .700, .414, .760);
-    ctx.lineTo(.586, .760);
-    ctx.bezierCurveTo(.570, .700, .556, .660, .550, .560);
-    ctx.closePath();
-    ctx.fillStyle = ng; ctx.fill();
-
-    // sterno line — one asymmetric mark stops the neck reading as a tube
-    ctx.beginPath();
-    ctx.moveTo(.470, .600); ctx.quadraticCurveTo(.484, .672, .506, .722);
-    ctx.strokeStyle = this._alpha(hue, .20); ctx.lineWidth = .0022; ctx.stroke();
-
-    /* ── head ───────────────────────────────────────────────────────── */
-    const cx = .5, cy = .385, rx = .150, ry = .215;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - ry);
-    // temple → cheekbone → jaw → chin, and back. The jaw is narrow and the
-    // chin short; a wide jaw is what makes a drawn face read as a mask.
-    ctx.bezierCurveTo(cx + rx * .98, cy - ry * .92, cx + rx * 1.02, cy + ry * .22, cx + rx * .78, cy + ry * .58);
-    ctx.bezierCurveTo(cx + rx * .56, cy + ry * .93, cx + rx * .26, cy + ry * 1.04, cx, cy + ry * 1.04);
-    ctx.bezierCurveTo(cx - rx * .26, cy + ry * 1.04, cx - rx * .56, cy + ry * .93, cx - rx * .78, cy + ry * .58);
-    ctx.bezierCurveTo(cx - rx * 1.02, cy + ry * .22, cx - rx * .98, cy - ry * .92, cx, cy - ry);
-    ctx.closePath();
-    const hg = ctx.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry);
-    hg.addColorStop(0, this._alpha(hue, .30));
-    hg.addColorStop(.52, this._alpha(ROYAL, .20));
-    hg.addColorStop(1, this._alpha(hue, .10));
-    ctx.fillStyle = hg; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .62); ctx.lineWidth = .004; ctx.stroke();
-
-    // rim light, left — the light source is the console in front of her
-    ctx.save(); ctx.clip();
-    const rim = ctx.createLinearGradient(cx - rx, 0, cx - rx * .1, 0);
-    rim.addColorStop(0, this._alpha(hue, .50));
-    rim.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = rim; ctx.fillRect(0, 0, 1, 1);
-
-    // scanlines — the reason the stylisation reads as deliberate
-    if (!this.reduced) {
-      ctx.globalAlpha = .13;
-      ctx.strokeStyle = hue; ctx.lineWidth = .0016;
-      const off = (t * .012) % .012;
-      for (let y = cy - ry - off; y < cy + ry; y += .012) {
-        ctx.beginPath(); ctx.moveTo(cx - rx, y); ctx.lineTo(cx + rx, y); ctx.stroke();
+    // ── idle scan sweep — a slow radar sector every few seconds ───────
+    if (this.state === 'idle' && !this.reduced) {
+      if (now > this.sweepAt) this.sweepAt = now + 4200 + hash(Math.floor(now / 1000)) * 3000;
+      const since = 4200 - (this.sweepAt - now);
+      if (since >= 0 && since < 1800) {
+        const a = -Math.PI / 2 + (since / 1800) * TAU;
+        const g = ctx.createConicGradient ? ctx.createConicGradient(a, cx, cy) : null;
+        if (g) {
+          g.addColorStop(0, rgba(accent, 0.16)); g.addColorStop(0.12, rgba(accent, 0)); g.addColorStop(1, rgba(accent, 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, S * 0.48, 0, TAU); ctx.fill();
+        }
       }
-      ctx.globalAlpha = 1;
+    }
+
+    // ── outer tick ring ───────────────────────────────────────────────
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(this.spin * 0.05);
+    ctx.strokeStyle = rgba(accent, 0.55); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, S * 0.455, 0, TAU); ctx.stroke();
+    for (let i = 0; i < 72; i++) {
+      const a = i * TAU / 72, long = i % 6 === 0;
+      const r0 = S * (long ? 0.425 : 0.44), r1 = S * 0.455;
+      ctx.strokeStyle = rgba(accent, long ? 0.8 : 0.35); ctx.lineWidth = long ? 1.5 : 1;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.stroke();
     }
     ctx.restore();
 
-    /* ── hair ───────────────────────────────────────────────────────────
-       Swept, not a cap band. The asymmetry is the whole job: a symmetrical
-       arc across the crown reads as a bald cap however it is shaded.     */
-    ctx.beginPath();
-    ctx.moveTo(cx - rx * 1.06, cy + ry * .12);
-    ctx.bezierCurveTo(cx - rx * 1.10, cy - ry * .95, cx - rx * .30, cy - ry * 1.22, cx + rx * .42, cy - ry * 1.06);
-    ctx.bezierCurveTo(cx + rx * 1.02, cy - ry * .92, cx + rx * 1.10, cy - ry * .10, cx + rx * 1.02, cy + ry * .16);
-    // the hairline, swept across the brow from the right part
-    ctx.bezierCurveTo(cx + rx * .88, cy - ry * .48, cx + rx * .30, cy - ry * .60, cx - rx * .18, cy - ry * .50);
-    ctx.bezierCurveTo(cx - rx * .62, cy - ry * .42, cx - rx * .90, cy - ry * .20, cx - rx * 1.06, cy + ry * .12);
-    ctx.closePath();
-    const hair = ctx.createLinearGradient(cx - rx, cy - ry, cx + rx, cy);
-    hair.addColorStop(0, this._alpha(hue, .50));
-    hair.addColorStop(.55, this._alpha(ROYAL, .46));
-    hair.addColorStop(1, this._alpha(hue, .30));
-    ctx.fillStyle = hair; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .40); ctx.lineWidth = .0026; ctx.stroke();
+    // ── arc ring, counter-rotating ────────────────────────────────────
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(-this.spin * 0.22);
+    ctx.lineWidth = 3;
+    for (const [start, len, al] of [[0, 1.25, 0.9], [1.9, 0.7, 0.55], [3.3, 1.9, 0.75], [5.7, 0.35, 0.45]]) {
+      ctx.strokeStyle = rgba(accent, al);
+      ctx.beginPath(); ctx.arc(0, 0, S * 0.395, start, start + len); ctx.stroke();
+    }
+    ctx.restore();
 
-    /* ── brows ──────────────────────────────────────────────────────── */
-    const browLift = speaking ? Math.sin(t * 1.9) * .006 : (thinking ? .010 : 0);
-    ctx.strokeStyle = this._alpha(hue, .66); ctx.lineWidth = .0048; ctx.lineCap = 'round';
-    for (const s of [-1, 1]) {
-      const ex = cx + s * .058;
+    // ── dashed ring + four brackets ───────────────────────────────────
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(this.spin * 0.11);
+    ctx.setLineDash([2, 6]); ctx.lineWidth = 1; ctx.strokeStyle = rgba(accent, 0.5);
+    ctx.beginPath(); ctx.arc(0, 0, S * 0.335, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 2; ctx.strokeStyle = rgba(accent, 0.85);
+    for (let i = 0; i < 4; i++) {
+      const a = i * TAU / 4 + Math.PI / 4;
+      ctx.beginPath(); ctx.arc(0, 0, S * 0.335, a - 0.16, a + 0.16); ctx.stroke();
+    }
+    ctx.restore();
+
+    // ── the voice meter: 64 radial bars around the core ───────────────
+    const N = 64, r0 = S * 0.215;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(-Math.PI / 2);
+    for (let i = 0; i < N; i++) {
+      const a = i * TAU / N;
+      const wave = 0.5 + 0.5 * Math.sin(t * 9 + i * 0.55) * Math.sin(t * 2.3 + i * 0.13);
+      const rnd = 0.55 + 0.45 * hash(i + 700);
+      const len = S * (0.012 + E * 0.075 * wave * rnd);
+      ctx.strokeStyle = rgba(accent, 0.25 + E * 0.6);
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * (r0 + len), Math.sin(a) * (r0 + len)); ctx.stroke();
+    }
+    ctx.restore();
+
+    // ── the core: aperture blades, orb, pupil ─────────────────────────
+    const R = S * 0.15 * (1 + E * 0.08 + 0.015 * Math.sin(t * 1.3));
+    ctx.save(); ctx.translate(cx, cy);
+    ctx.shadowColor = rgba(accent, 0.9); ctx.shadowBlur = (18 + E * 30) * faint;
+    const orb = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+    orb.addColorStop(0, rgba('#ffffff', 0.95));
+    orb.addColorStop(0.18, rgba(accent, 0.95));
+    orb.addColorStop(0.55, rgba(accent, 0.35));
+    orb.addColorStop(1, rgba(accent, 0.04));
+    ctx.fillStyle = orb; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // twelve blades, rotating slowly, opening with energy
+    ctx.rotate(this.spin * 0.35);
+    ctx.strokeStyle = rgba(accent, 0.9); ctx.lineWidth = 1.5;
+    const open = 0.55 + E * 0.35;
+    for (let i = 0; i < 12; i++) {
+      const a = i * TAU / 12;
       ctx.beginPath();
-      ctx.moveTo(ex - s * .038, cy - .050 - browLift + (thinking && s < 0 ? -.007 : 0));
-      ctx.quadraticCurveTo(ex, cy - .062 - browLift, ex + s * .036, cy - .049 - browLift);
+      ctx.moveTo(Math.cos(a) * R * open, Math.sin(a) * R * open);
+      ctx.lineTo(Math.cos(a + 0.45) * R * 1.02, Math.sin(a + 0.45) * R * 1.02);
       ctx.stroke();
     }
-
-    /* ── eyes — the iris is the point of the whole design ───────────── */
-    const open = 1 - Math.min(1, this.blink);
-    for (const s of [-1, 1]) {
-      const ex = cx + s * .058, ey = cy - .008;
-      const ew = .040, eh = .0195 * open;
-
-      // socket
-      ctx.beginPath(); ctx.ellipse(ex, ey, ew, .022, 0, 0, Math.PI * 2);
-      ctx.fillStyle = this._alpha(ROYAL, .34); ctx.fill();
-
-      if (eh > .002) {
-        ctx.save();
-        ctx.beginPath(); ctx.ellipse(ex, ey, ew, eh, 0, 0, Math.PI * 2); ctx.clip();
-        ctx.fillStyle = this._alpha('#dff2ff', .07); ctx.fillRect(0, 0, 1, 1);
-
-        // gaze — slightly toward the viewer, drifting when thinking
-        const gx = thinking ? Math.sin(t * .7) * .012 : Math.sin(t * .33) * .004;
-        const gy = thinking ? -.006 : Math.cos(t * .29) * .002;
-
-        // iris rings
-        const ir = listening ? .0182 : .0168;
-        const ig = ctx.createRadialGradient(ex + gx, ey + gy, .001, ex + gx, ey + gy, ir);
-        ig.addColorStop(0, this._alpha('#ffffff', .95));
-        ig.addColorStop(.30, hue);
-        ig.addColorStop(1, this._alpha(ROYAL, .95));
-        ctx.beginPath(); ctx.arc(ex + gx, ey + gy, ir, 0, Math.PI * 2);
-        ctx.fillStyle = ig; ctx.fill();
-
-        // the aperture — concentric, because that is what an iris is
-        ctx.strokeStyle = this._alpha('#0a0c18', .55); ctx.lineWidth = .0014;
-        for (let k = 1; k <= 3; k++) {
-          ctx.beginPath(); ctx.arc(ex + gx, ey + gy, ir * (k / 4.2), 0, Math.PI * 2); ctx.stroke();
-        }
-        // pupil
-        ctx.beginPath(); ctx.arc(ex + gx, ey + gy, ir * .40, 0, Math.PI * 2);
-        ctx.fillStyle = '#05070f'; ctx.fill();
-        // catchlight
-        ctx.beginPath(); ctx.arc(ex + gx - .005, ey + gy - .005, .0035, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
-        ctx.restore();
-      }
-
-      // lid line
-      ctx.beginPath(); ctx.ellipse(ex, ey, ew, Math.max(.002, eh), 0, Math.PI, Math.PI * 2);
-      ctx.strokeStyle = this._alpha(hue, .70); ctx.lineWidth = .0032; ctx.stroke();
-    }
-
-    /* ── nose ───────────────────────────────────────────────────────── */
-    ctx.beginPath();
-    ctx.moveTo(cx - .004, cy + .010);
-    ctx.quadraticCurveTo(cx - .018, cy + .062, cx + .002, cy + .072);
-    ctx.strokeStyle = this._alpha(hue, .42); ctx.lineWidth = .0032; ctx.stroke();
-
-    /* ── mouth ──────────────────────────────────────────────────────── */
-    const m = this.cur;
-    const mx = cx, my = cy + .134;
-    const mw = m.w * .115, mh = Math.max(.002, m.h * .075);
-
-    // upper lip — drawn even when the mouth is shut, so the face still has a
-    // mouth at rest rather than a gap where one should be
-    ctx.beginPath();
-    ctx.moveTo(mx - mw * 1.10, my - .001);
-    ctx.quadraticCurveTo(mx - mw * .45, my - .010, mx, my - .004);
-    ctx.quadraticCurveTo(mx + mw * .45, my - .010, mx + mw * 1.10, my - .001);
-    ctx.strokeStyle = this._alpha(hue, .62); ctx.lineWidth = .0030; ctx.lineCap = 'round';
-    ctx.stroke();
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(mx - mw, my);
-    ctx.quadraticCurveTo(mx, my - mh * (1 - m.r * .55), mx + mw, my);
-    ctx.quadraticCurveTo(mx, my + mh * (1 + m.r * .35), mx - mw, my);
-    ctx.closePath();
-    const mg = ctx.createLinearGradient(0, my - mh, 0, my + mh);
-    mg.addColorStop(0, this._alpha('#1b0d12', .95));
-    mg.addColorStop(1, this._alpha('#3a1420', .85));
-    ctx.fillStyle = mg; ctx.fill();
-    ctx.strokeStyle = this._alpha(hue, .78); ctx.lineWidth = .0032; ctx.stroke();
-
-    // teeth, when the shape calls for them
-    if (m.t > .18 && mh > .008) {
-      ctx.clip();
-      ctx.fillStyle = this._alpha('#e8f6ff', .60 * m.t);
-      ctx.fillRect(mx - mw, my - mh * .95, mw * 2, mh * .55);
-    }
+    ctx.rotate(-this.spin * 0.35);
+    // inner ring and pupil
+    ctx.strokeStyle = rgba('#ffffff', 0.55); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.5, 0, TAU); ctx.stroke();
+    ctx.fillStyle = rgba(P.light ? P.royal : '#0a0c18', 0.9);
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.22 * (1 - E * 0.3), 0, TAU); ctx.fill();
+    ctx.fillStyle = rgba('#ffffff', 0.9);
+    ctx.beginPath(); ctx.arc(-R * 0.08, -R * 0.08, R * 0.06, 0, TAU); ctx.fill();
     ctx.restore();
 
-    // lower lip catch-light — reads the jaw opening at a glance
-    ctx.beginPath();
-    ctx.moveTo(mx - mw * .82, my + mh * (1 + m.r * .35) * .62);
-    ctx.quadraticCurveTo(mx, my + mh * (1 + m.r * .35) + .010, mx + mw * .82, my + mh * (1 + m.r * .35) * .62);
-    ctx.strokeStyle = this._alpha(hue, .34); ctx.lineWidth = .0024; ctx.stroke();
-
-    /* ── listening ring ─────────────────────────────────────────────── */
-    if (listening && !this.reduced) {
-      const p = (t * .8) % 1;
-      ctx.beginPath(); ctx.arc(cx, cy, .30 + p * .16, 0, Math.PI * 2);
-      ctx.strokeStyle = this._alpha(GOLD, (1 - p) * .40);
-      ctx.lineWidth = .0035; ctx.stroke();
+    // ── particles ─────────────────────────────────────────────────────
+    const pspeed = this.reduced ? 0 : this.state === 'thinking' ? 4 : 1;
+    for (const p of this.particles) {
+      p.a += p.s * dt * pspeed;
+      const wobble = 1 + 0.015 * Math.sin(t * 0.7 + p.ph);
+      const x = cx + Math.cos(p.a) * S * p.r * wobble, y = cy + Math.sin(p.a) * S * p.r * wobble;
+      const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 1.7 + p.ph));
+      ctx.fillStyle = rgba(accent, tw * 0.8);
+      ctx.beginPath(); ctx.arc(x, y, p.z, 0, TAU); ctx.fill();
     }
 
-    /* ── thinking: a slow arc, not three bouncing dots ──────────────── */
-    if (thinking && !this.reduced) {
-      const a0 = t * 1.6;
-      ctx.beginPath(); ctx.arc(cx, cy, .285, a0, a0 + 1.05);
-      ctx.strokeStyle = this._alpha(hue, .70); ctx.lineWidth = .0045; ctx.lineCap = 'round'; ctx.stroke();
+    // ── listening: sonar pings from the core outward ──────────────────
+    if (this.state === 'listening' && !this.reduced && now - this.lastPing > 1500) { this.pings.push(now); this.lastPing = now; }
+    this.pings = this.pings.filter(p0 => now - p0 < 1700);
+    for (const p0 of this.pings) {
+      const q = (now - p0) / 1700;
+      ctx.strokeStyle = rgba(P.gold, (1 - q) * 0.6); ctx.lineWidth = 2 - q;
+      ctx.beginPath(); ctx.arc(cx, cy, S * (0.15 + q * 0.34), 0, TAU); ctx.stroke();
     }
-
-    /* ── speaking: waveform under the bust ──────────────────────────── */
-    if (speaking && !this.reduced) {
-      ctx.beginPath();
-      const n = 44, y0 = .905;
-      for (let i = 0; i <= n; i++) {
-        const x = .20 + (i / n) * .60;
-        const env = Math.sin((i / n) * Math.PI);
-        const amp = (this.level != null ? this.level : (.35 + this.cur.h * 1.5));
-        const y = y0 + Math.sin(i * .62 + t * 11) * .020 * env * amp;
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      }
-      ctx.strokeStyle = this._alpha(hue, .55); ctx.lineWidth = .0028; ctx.stroke();
-    }
-
-    ctx.restore();
   }
+}
 
-  _alpha(color, a) {
-    const c = (color || '').trim();
-    if (c.startsWith('#')) {
-      const h = c.length === 4
-        ? c.slice(1).split('').map(x => parseInt(x + x, 16))
-        : [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
-      return `rgba(${h[0]},${h[1]},${h[2]},${a})`;
-    }
-    return c;
+/* ── colour helper: hex (#rgb / #rrggbb) or rgb() → rgba() with alpha ──── */
+function rgba(color, a) {
+  const c = String(color).trim();
+  const m = c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (m) {
+    let h = m[1]; if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    const n = parseInt(h, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`;
   }
+  const rgb = c.match(/rgba?\(([^)]+)\)/);
+  if (rgb) { const [r, g, b] = rgb[1].split(',').map(s => parseFloat(s)); return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a))})`; }
+  return c;
 }

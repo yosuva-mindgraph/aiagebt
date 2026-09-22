@@ -770,3 +770,32 @@ header {
 }
 .sys.more { color: var(--ink-3); border-style: dashed; }
 .clock.done { color: var(--gold); }
+
+/* ── voice switch (header) ────────────────────────────────────────────── */
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--slab); }
+.seg[hidden] { display: none; }
+.seg button {
+  font: inherit; font-size: 12px; font-weight: 500; cursor: pointer;
+  color: var(--ink-2); background: transparent; border: 0; padding: 7px 11px;
+  transition: color .16s var(--e), background .16s var(--e);
+}
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { color: var(--abyss); background: var(--sky); font-weight: 600; }
+.seg .lbl {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); padding: 0 8px 0 10px; align-self: center;
+}
+
+/* ── the microphone: holds gold while listening, with a cancel beside it ─ */
+#micBtn.rec {
+  color: #17110a; background: var(--gold); border-color: var(--gold); font-weight: 600;
+  animation: micpulse 1.4s ease-in-out infinite;
+}
+@keyframes micpulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 55%, transparent); }
+  50% { box-shadow: 0 0 0 7px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { #micBtn.rec { animation: none; } }
+#micCancel { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+#micCancel[hidden] { display: none; }

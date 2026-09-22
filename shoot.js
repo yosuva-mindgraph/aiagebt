@@ -53,8 +53,8 @@ const argScene = (() => {
     // cold open
     await page.screenshot({ path: path.join(OUT, `${size.name}-00-open.png`) });
 
-    // start, but silence the voice so the run is fast and deterministic
-    await page.evaluate(() => { window.speechSynthesis && (window.speechSynthesis.speak = () => {}); });
+    // start, muted, so the run is fast, deterministic and never bills ElevenLabs (prewarm skips when muted)
+    await page.evaluate(() => { window.app.voice.setMuted(true); });
     await page.click('#skipIntroBtn');
     await page.waitForTimeout(300);
 
