@@ -112,7 +112,7 @@ function build({ withConfig = true } = {}) {
   if (process.argv.includes('--cloud')) {
     const cc = cloudConfig();
     if (!cc) { console.error('--cloud needs a readable config.js to copy the voice and model settings from'); process.exit(1); }
-    if (/sk_[A-Za-z0-9]{20,}|apiKey/.test(cc)) { console.error('refusing: a key would have reached the cloud build'); process.exit(1); }
+    if (/sk_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9]|"apiKey": *"[^"]{8,}"/.test(cc)) { console.error('refusing: a key would have reached the cloud build'); process.exit(1); }
     fs.mkdirSync(path.join(ROOT, 'dist', 'cloud'), { recursive: true });
     fs.writeFileSync(path.join(ROOT, 'dist', 'cloud', 'index.html'), assemble(cc));
     console.log('dist/cloud/index.html  no keys — voice and brain via /api/* (functions/), access code required');

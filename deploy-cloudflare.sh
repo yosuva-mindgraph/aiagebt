@@ -9,11 +9,12 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 PROJECT="${AIB_CF_PROJECT:-airis-thinking-airport}"
-W="npx --yes wrangler@4"
+W="npx --yes wrangler@4.136.1"
 
 [ -f config.js ] || { echo "config.js is missing — the deploy copies voice/model settings and secrets from it"; exit 1; }
 node build.js --cloud >/dev/null
-grep -qE "sk_[A-Za-z0-9]{20,}|apiKey" dist/cloud/index.html && { echo "refusing: a key is in dist/cloud/index.html"; exit 1; }
+# key SHAPES only — the word apiKey is an identifier in the page's own code
+grep -qE "sk_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9]|apiKey: *'[^']{8,}'|\"apiKey\": *\"[^\"]{8,}\"" dist/cloud/index.html && { echo "refusing: a key is in dist/cloud/index.html"; exit 1; }
 
 $W pages project list 2>/dev/null | grep -q "^│ $PROJECT " || $W pages project create "$PROJECT" --production-branch main >/dev/null
 
@@ -22,7 +23,7 @@ secret() { node -e "const w={};new Function('window',require('fs').readFileSync(
 secret "c.elevenLabs.apiKey" ELEVEN_KEY
 secret "c.llm.apiKey"        AZURE_KEY
 secret "c.llm.endpoint"      AZURE_ENDPOINT
-PASS="${AIB_PASSCODE:-$(LC_ALL=C tr -dc 'A-HJ-NP-Z2-9' </dev/urandom | head -c 8)}"
+PASS="${AIB_PASSCODE:-$(python3 -c "import secrets; a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; print(''.join(secrets.choice(a) for _ in range(8)))")}"
 printf '%s' "$PASS" | $W pages secret put AIB_PASSCODE --project-name "$PROJECT" >/dev/null
 
 OUT="$($W pages deploy dist/cloud --project-name "$PROJECT" --branch main --commit-dirty=true 2>&1 | tee /dev/stderr)"
