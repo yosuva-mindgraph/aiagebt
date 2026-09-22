@@ -15,9 +15,29 @@
    The default adapter targets the Anthropic Messages API. Point `endpoint` at
    your own proxy if you would rather the key never reached the browser — which,
    for anything customer-facing, you would.
+
+   ── the proxy contract ──────────────────────────────────────────────────────
+   With `endpoint` set and `apiKey` BLANK this posts a narrow body and no auth
+   header at all:
+
+       POST <endpoint>   { question, grounding, grounded }
+       →  the vendor's response body, unchanged
+
+   `endpoint` is expected to be RELATIVE ('/api/llm'). Same origin needs no CORS
+   and no preflight, and — the reason it is relative rather than short — nothing
+   bakes the hostname into the build, so the deck survives being moved or being
+   served from an ephemeral tunnel address that changes every restart.
+
+   The response is read exactly as the direct call's is, so a proxy that passes
+   the vendor's JSON through needs no client change; see _callLLM.
    ========================================================================== */
 
 import { search, CONFIDENCE_FLOOR, DONT_KNOW } from './knowledge.js';
+
+/** How long an open-ended answer may take before the local one takes over.
+    Reasoned about at the call site in _callLLM(); override per deployment with
+    `llm.timeoutMs`. */
+export const LLM_TIMEOUT_MS = 15000;
 
 const SYSTEM = `You are Iris, the presenter for Intelligent Airport — an airport PLATFORM built by
 MindGraph with DXC. You are speaking aloud to an airport executive during a live walkthrough.
@@ -126,7 +146,7 @@ export class Ask {
       .join('\n\n');
 
     try {
-      const html = await this._callLLM(question, grounding || '(nothing relevant found)');
+      const html = await this._callLLM(question, grounding || '(nothing relevant found)', grounded);
       /* Model-generated: unknowable ahead of time, so nothing is pre-rendered
          for it and this speaks through the live API or Web Speech exactly as
          it always has. It is never the container's path — the image ships no
@@ -146,12 +166,13 @@ export class Ask {
     }
   }
 
-  async _callLLM(question, grounding) {
+  async _callLLM(question, grounding, grounded = false) {
     const {
       endpoint = 'https://api.anthropic.com/v1/messages',
       apiKey,
       model = 'claude-sonnet-5',
       maxTokens = 700,
+      timeoutMs = LLM_TIMEOUT_MS,
       headers: extraHeaders = {},
     } = this.cfg.llm;
 
@@ -164,10 +185,20 @@ export class Ask {
       headers['anthropic-dangerous-direct-browser-access'] = 'true';
     }
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
+    /* ── two request shapes, one for each side of the key ─────────────────
+       WITH a key the browser is the API client, so it sends the vendor's own
+       Messages shape — system prompt, model, token cap and all.
+
+       WITHOUT one, `endpoint` is a proxy that holds the key server-side, and
+       the browser is no longer trusted with any of those fields: a page anyone
+       can open would otherwise be free to swap SYSTEM for something else, or
+       ask for a model and a token cap the operator is paying for. So the
+       keyless body is narrow on purpose — the question, its grounding, and
+       whether the grounding actually covered it — and the proxy composes
+       `system`, `model` and `max_tokens` itself, discarding whatever a client
+       sent. Anything the proxy would throw away is not worth sending. */
+    const body = apiKey
+      ? {
         model,
         max_tokens: maxTokens,
         system: SYSTEM,
@@ -175,15 +206,51 @@ export class Ask {
           role: 'user',
           content: `GROUNDING\n${grounding}\n\nQUESTION\n${question}`,
         }],
-      }),
-    });
-    if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      }
+      : { question, grounding, grounded };
 
-    const data = await res.json();
-    const text = Array.isArray(data.content)
-      ? data.content.filter(b => b.type === 'text').map(b => b.text).join('\n')
-      : (data.output_text || data.choices?.[0]?.message?.content || '');
-    return sanitise(text);
+    /* ── the deadline ───────────────────────────────────────────────────
+       A refused connection rejects at once; a proxy that ACCEPTS and then
+       hangs — a tunnel still up in front of a wedged backend, which is the
+       failure this deployment actually has — never rejects at all. Without a
+       deadline the Ask box sits on "Looking that up…" for the rest of the
+       meeting with a perfectly good local answer one catch block away. The
+       abort lands in answer()'s catch like any other transport failure, so
+       the timeout costs one wait and then degrades exactly as an outage does.
+
+       15 s, and not less: the round trip is a real non-streaming completion —
+       time to first token, then a couple of spoken paragraphs generated at
+       tens of tokens a second — so several seconds is SUCCESS, not a stall,
+       and a tighter deadline would spend the model's money and then throw the
+       answer away. Not more, either: this is dead air in front of a room, and
+       past about fifteen seconds the presenter has already moved on. */
+    const controller = new AbortController();
+    const timer = setTimeout(() => { try { controller.abort(); } catch {} }, timeoutMs);
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+      const data = await res.json();
+      const text = Array.isArray(data.content)
+        ? data.content.filter(b => b.type === 'text').map(b => b.text).join('\n')
+        : (data.output_text || data.choices?.[0]?.message?.content || '');
+      return sanitise(text);
+    } catch (err) {
+      // Name the deadline rather than letting an opaque AbortError reach the
+      // console — "LLM failed" with no reason is what makes this hard to read
+      // from the back of a room. The body read is inside the try on purpose:
+      // headers-then-hang aborts here too, not only a hang before the reply.
+      if (err?.name === 'AbortError') throw new Error(`LLM timed out after ${timeoutMs} ms`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 

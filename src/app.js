@@ -377,7 +377,7 @@ class App {
     this._caption('Let me take that.');
 
     const my = ++this.token;
-    const { html, spoken, scene, via } = await this.ask.answer(q);
+    const { html, spoken, scene, grounded, via } = await this.ask.answer(q);
     if (my !== this.token) return;
 
     /* An answer names a scene to offer as a jump, and knowledge.js holds 38 of
@@ -410,9 +410,27 @@ class App {
     const resume = wasPlaying
       ? `<button class="jump" data-resume="1">${dxcIcon('play', 14)}<span>Resume the walkthrough</span></button>` : '';
 
+    /* ── the provenance label, and why it is not a constant ────────────────
+       "grounded" is a claim about THIS answer — that what Iris just said came
+       out of the briefing rather than out of the model's own memory. It used
+       to be printed for every via==='llm' answer, including the ones where
+       retrieval found nothing above the confidence floor and the model was
+       handed "(nothing relevant found)". Those are exactly the answers where
+       the word matters, and exactly the ones where it was false: a label that
+       is always on carries no information and, worse, lends the briefing's
+       authority to a sentence the briefing never contained.
+
+       ask.answer() already decides this and already returns it, so the label
+       reads the existing `grounded` rather than adding a field — the shape of
+       that return is pinned by tests/guards.test.mjs, deliberately, so that a
+       new key has to be argued for instead of appearing.                    */
+    const provenance = via === 'llm'
+      ? (grounded ? 'answered by Iris · grounded' : 'answered by Iris · not in the briefing')
+      : 'answered from the briefing';
+
     this.el.ansBody.innerHTML = html + (jump || resume ? `
       <div class="ans-src">
-        <span class="lbl">${dxcIcon('checklist', 13)}${via === 'llm' ? 'answered by Iris · grounded' : 'answered from the briefing'}</span>
+        <span class="lbl">${dxcIcon('checklist', 13)}${provenance}</span>
         ${jump}${resume}
       </div>` : '');
 

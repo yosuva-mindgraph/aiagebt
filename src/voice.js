@@ -10,12 +10,22 @@
         a published artifact all get, and it is why they stopped sounding
         robotic. Checked FIRST, always — a clip on disk beats a round trip.
 
-     1. ElevenLabs — used whenever CONFIG.elevenLabs.apiKey is set AND the page
-        is served from a host that is allowed to reach api.elevenlabs.io.
-        Fetches MP3, plays it through an AudioContext, and feeds real RMS to the
-        avatar so the jaw follows actual speech rather than a text estimate.
-        This is now the path for text nobody pre-rendered — chiefly an LLM
-        answer, which is written at the moment it is asked.
+     1. LIVE ElevenLabs — for text nobody pre-rendered, which is chiefly an LLM
+        answer, written at the moment it is asked. Fetches MP3, plays it through
+        an AudioContext, and feeds real RMS to the avatar so the jaw follows
+        actual speech rather than a text estimate. Reached two ways:
+
+          1a. CONFIG.elevenLabs.endpoint — a same-origin proxy holding the key
+              server-side. POST {text}; it answers ElevenLabs' /with-timestamps
+              JSON unmodified, so nothing below the fetch can tell the
+              difference. This is what anything public should use, and it is
+              the only one of the two that leaves no key in the page.
+          1b. CONFIG.elevenLabs.apiKey + voiceId — the key in the browser,
+              calling api.elevenlabs.io directly. A laptop on a stand, not the
+              internet.
+
+        An endpoint wins over a key when both are set: there is no reason to
+        send a credential the proxy already holds.
 
      2. Web Speech (speechSynthesis) — the fallback. No key, no network, works
         offline. The avatar lip-syncs from the text instead.
@@ -60,6 +70,11 @@
    and the key takes over. That is a property of the preview, not of the build.
    ========================================================================== */
 
+/** How long a live TTS fetch may hang before the line goes to Web Speech.
+    Reasoned about at the call site in synthesize(); override with
+    `elevenLabs.timeoutMs`. */
+export const TTS_TIMEOUT_MS = 12000;
+
 export class Voice {
   constructor(config = {}) {
     this.cfg = config;
@@ -82,8 +97,27 @@ export class Voice {
     }
   }
 
+  /** Is there an ElevenLabs KEY IN THIS BROWSER? Narrow on purpose — see below. */
   get usingElevenLabs() {
     return Boolean(this.cfg?.elevenLabs?.apiKey && this.cfg?.elevenLabs?.voiceId);
+  }
+
+  /* ── why this is a SECOND getter and not a wider first one ───────────────
+     Both answer "can this build reach ElevenLabs", and they are still not the
+     same question. usingElevenLabs means `a key is sitting in this page`, and
+     that is the fact the deliverable is checked against: tests/degrade and
+     tests/voice both assert it is FALSE on dist/index.html, which is how the
+     build proves it shipped no credential. Widen it to cover a proxy and that
+     assertion stops meaning anything — it would read false-for-no-key and
+     true-for-no-key-but-a-URL, so a key leaking into the build would no longer
+     be distinguishable from the safe configuration.
+
+     The proxy is the opposite arrangement: the key exists, deliberately, and
+     deliberately not here. So it gets its own name. */
+
+  /** Is a same-origin TTS proxy configured — a key somewhere else, not here? */
+  get usingTTSProxy() {
+    return Boolean(this.cfg?.elevenLabs?.endpoint);
   }
 
   /** How many pre-rendered clips this build carries. 0 on a build with none. */
@@ -211,7 +245,8 @@ export class Voice {
     const baked = await this.prerendered(text);
     if (baked) return baked;
 
-    if (!this.usingElevenLabs) {
+    const viaProxy = this.usingTTSProxy;
+    if (!viaProxy && !this.usingElevenLabs) {
       // Keyless is the normal artifact case, not a fault — say it once per
       // Voice rather than once per line, or the console fills with it. It now
       // means "this text was not pre-rendered EITHER", which on a voiced build
@@ -223,24 +258,49 @@ export class Voice {
       return null;
     }
 
-    const { apiKey, voiceId, modelId = 'eleven_turbo_v2_5', stability = 0.42, similarity = 0.80 } =
-      this.cfg.elevenLabs;
+    const {
+      endpoint, apiKey, voiceId, modelId = 'eleven_turbo_v2_5',
+      stability = 0.42, similarity = 0.80, timeoutMs = TTS_TIMEOUT_MS,
+    } = this.cfg.elevenLabs;
 
     const controller = new AbortController();
     // Registering the abort HERE, not only at playback, is what lets stop()
     // interrupt a line that is still in flight.
     const inflight = { cancel: () => { try { controller.abort(); } catch {} } };
     this.current = inflight;
+    /* A deadline on the same abort. A refused connection rejects at once; a
+       proxy that accepts and then WEDGES never rejects, and an unresolved
+       synthesize() leaves say() awaiting forever — Iris stuck on "speaking"
+       with nothing coming out and no way back but a reload. Aborting lands in
+       the catch below, which already returns null, so a wedged proxy costs one
+       wait and then speaks the line with Web Speech like any other failure.
+       Shorter than the answer's own deadline because this is text that ALREADY
+       exists: nothing is being written, only read aloud. */
+    const timer = setTimeout(() => { try { controller.abort(); } catch {} }, timeoutMs);
 
     try {
+      /* ── proxy first, then the direct keyed call ──────────────────────────
+         Same response shape either way: the proxy is expected to hand back
+         ElevenLabs' /with-timestamps JSON unmodified, so everything below this
+         fetch is indifferent to which one ran. `endpoint` is relative
+         ('/api/tts'), so no key, no CORS, and no hostname baked into a build
+         that gets served from a different address every time it restarts.
+
+         The voice, the model and the voice settings are the proxy's to choose,
+         not a public page's — the operator pays for them. So the proxy body is
+         the text and nothing else, and voiceId is not even in the URL. */
       const res = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}` +
-        `/with-timestamps?output_format=mp3_44100_128`,
+        viaProxy
+          ? endpoint
+          : `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}` +
+            `/with-timestamps?output_format=mp3_44100_128`,
         {
           method: 'POST',
           signal: controller.signal,
-          headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          headers: viaProxy
+            ? { 'Content-Type': 'application/json' }
+            : { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify(viaProxy ? { text } : {
             text,
             model_id: modelId,
             voice_settings: { stability, similarity_boost: similarity, use_speaker_boost: true },
@@ -272,9 +332,14 @@ export class Voice {
         durationMs: Math.round(audioBuffer.duration * 1000),
       };
     } catch (err) {
-      console.warn('[voice] ElevenLabs failed, falling back to Web Speech:', err?.message || err);
+      /* An abort is either stop() interrupting a line — routine — or the
+         deadline above. Both end the same way; naming the deadline is what
+         stops a wedged proxy reading as a user cancel in the console. */
+      const why = err?.name === 'AbortError' ? `aborted (deadline ${timeoutMs} ms, or stopped)` : (err?.message || err);
+      console.warn('[voice] ElevenLabs failed, falling back to Web Speech:', why);
       return null;
     } finally {
+      clearTimeout(timer);
       if (this.current === inflight) this.current = null;
     }
   }
