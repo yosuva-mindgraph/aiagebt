@@ -47,6 +47,7 @@ import {
   publicEndpoints, PUBLIC_CONFIG_FILE, FAKE_ENV,
 } from './lib/proxy-fixtures.mjs';
 import { KB } from '../src/knowledge.js';
+import { SUB_FLOOR, pin } from './lib/probes.mjs';
 import { SCENES } from '../src/scenes.js';
 import { LLM_TIMEOUT_MS } from '../src/ask.js';
 import { TTS_TIMEOUT_MS } from '../src/voice.js';
@@ -105,6 +106,11 @@ export async function run(t) {
     t.ok(false, '§0.1 the shared fixtures still satisfy their real consumers in src/', err.message);
     return;                       // every check below would be testing a lie
   }
+
+  /* §4 drives the deadlines with an OFF-BOOK question, because the retrieval
+     gate means a knowledge-base one never reaches either route. Confirm the
+     probe still lands where §4 needs it before §4 blames a deadline for it. */
+  await pin(t, '§0.2');
 
   /* ── §1 NO KEY REACHES THE BROWSER ────────────────────────────────────── */
 
@@ -365,7 +371,10 @@ export async function run(t) {
       await ready(w.page, BUDGET.canvas);
       await w.page.evaluate(() => { window.AIB_CONFIG.llm.timeoutMs = 1200; });
       const t0 = Date.now();
-      const r = await ask(w.page, kbQuestions()[0].q);
+      /* An OFF-BOOK question. A knowledge-base one never reaches the proxy at
+         all now — the gate in src/ask.js answers it locally — so the old probe
+         measured 56 ms of retrieval and called it a deadline firing. */
+      const r = await ask(w.page, SUB_FLOOR);
       const took = Date.now() - t0;
       t.ok(!r.timeout && took >= 1100 && took < 9000,
         '§4.3 a wedged /api/llm gives up at the configured deadline and answers locally',
@@ -379,22 +388,30 @@ export async function run(t) {
        await pending forever: Iris reads 'speaking', nothing comes out, and
        there is no recovery but a page reload. Verify that exact scenario ends. */
     {
-      /* ONLY /api/tts is wedged, and /api/llm must SUCCEED. That is not a
-         convenience — it is the only arrangement that reaches the TTS deadline
-         at all. voice.js checks the pre-rendered clips first, so a locally
-         answered question is spoken from the payload and never touches the
-         network; only a MODEL-written answer is text nobody rendered. Wedging
-         both routes makes the LLM time out, the answer fall back locally, and a
-         baked clip play — which is what this check measured before the per-route
-         modes existed: 5.5 s of audio at 12× read as a 1.5 s deadline firing. */
+      /* TWO conditions, and BOTH are required to reach the TTS deadline at all.
+         voice.js checks the pre-rendered clips first, so only a MODEL-WRITTEN
+         answer is text nobody rendered. So:
+
+           · only /api/tts is wedged, and /api/llm must SUCCEED — wedge both and
+             the LLM times out, the answer falls back locally, and a baked clip
+             plays. That is what this measured before the per-route modes
+             existed: 5.5 s of audio at 12× read as a 1.5 s deadline firing.
+           · the question must be OFF-BOOK. Since the retrieval gate landed, a
+             knowledge-base question is answered locally and never reaches
+             either route, so even a succeeding /api/llm would not produce
+             model-written text. That is what caught this the second time —
+             0 calls to /api/tts, with the control below saying so.
+
+         The control is not decoration: it is the only thing standing between
+         this check and a third way of passing while measuring a clip. */
       const w = await open({ modes: { llm: 'ok', tts: 'wedged' } });
       await ready(w.page, BUDGET.canvas);
       await w.page.evaluate(() => { window.AIB_CONFIG.elevenLabs.timeoutMs = 1500; });
 
       const ttsBefore = w.calls.filter(c => c.path === tts).length;
-      const outcome = await w.page.evaluate(async () => {
+      const outcome = await w.page.evaluate(async Q => {
         const stateOf = () => window.app.el.state.dataset.state;
-        window.app.handleAsk('what is the intelligent airport platform');
+        window.app.handleAsk(Q);
         let sawSpeaking = false;
         const t0 = Date.now();
         // 25 s is far longer than 1500 ms and far longer than the 12 s default;
@@ -407,7 +424,7 @@ export async function run(t) {
           await new Promise(r => setTimeout(r, 50));
         }
         return { recovered: false, ms: Date.now() - t0, state: stateOf(), sawSpeaking };
-      });
+      }, SUB_FLOOR);
 
       /* The check on the check: if /api/tts was never called, `recovered` above
          is a clip playing and proves nothing. */
