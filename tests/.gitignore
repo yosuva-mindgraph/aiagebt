@@ -1,0 +1,5 @@
+# The proxy suite's scratch tree: a symlink farm plus a dist/ of its own, so a
+# --public-config build never writes the real dist/ that every other suite
+# reads. Created and removed by tests/lib/proxy-fixtures.mjs; ignored here so a
+# suite interrupted mid-run cannot leave an untracked 16 MB artifact behind.
+.tmp/

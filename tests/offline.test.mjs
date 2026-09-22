@@ -24,6 +24,8 @@
    ========================================================================== */
 
 import { launch, openPage, ready, BUDGET } from './lib/harness.mjs';
+import { KB, DONT_KNOW } from '../src/knowledge.js';
+import { GROUNDED } from './lib/probes.mjs';
 
 async function exercise(page, budget, { hasTransport = true } = {}) {
   if (hasTransport) {
@@ -33,16 +35,48 @@ async function exercise(page, budget, { hasTransport = true } = {}) {
       { timeout: budget.deck, polling: 100 }).catch(() => {});
   }
   // the other half of the product: a question, answered
-  return page.evaluate(async () => {
-    window.app.handleAsk('What does the governance layer actually enforce?');
+  const got = await page.evaluate(async q => {
+    window.app.handleAsk(q);
     for (let i = 0; i < 150; i++) {
       const html = document.querySelector('#ansBody').innerHTML;
       if (html && !/Looking that up/.test(html)) {
-        return { answered: true, via: /grounded/.test(html) ? 'llm' : 'briefing', len: html.length, scene: window.app.i };
+        return { answered: true, html, len: html.length, scene: window.app.i };
       }
       await new Promise(r => setTimeout(r, 100));
     }
     return { answered: false, scene: window.app.i };
+  }, GROUNDED);
+  return { ...got, via: fromBriefing(got.html) ? 'briefing' : 'model' };
+}
+
+/* ── how "answered from the briefing" is decided, and why not by the label ──
+   This used to read `/grounded/.test(html) ? 'llm' : 'briefing'`, matching the
+   word in the old provenance label "answered by Iris · grounded".
+
+   src/app.js now writes four labels and NONE of them contains that word:
+   "related briefing notes", "outside the briefing", "answered from the
+   briefing", "not covered by the briefing". So the positive branch became
+   unreachable, `via` was the constant 'briefing', and the assertion below — the
+   one check in this suite that says the offline deck answers from its own
+   knowledge base rather than a model — became trivially true. It passed. It
+   would have gone on passing for a build whose provenance labelling was
+   entirely broken, which is exactly the class of false pass this repo keeps
+   finding (PR-DRAFT.md §12.3, and twice in tests/proxy.test.mjs).
+
+   Matching the new labels instead would only reset the same trap: it is still a
+   private copy of a string that lives in src/app.js. So this asks the question
+   the check is actually about — is this the briefing's own reviewed text? — of
+   the one place that can answer it, src/knowledge.js. A model's paraphrase does
+   not contain an entry verbatim; the briefing's answer is an entry verbatim.
+   Nothing to drift, and §4 below proves it still discriminates.               */
+const norm = s => String(s).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+export function fromBriefing(html) {
+  const text = norm(html);
+  if (!text) return false;
+  return KB.some(e => {
+    const want = norm(e.a).slice(0, 60);
+    return want.length >= 40 && text.includes(want);
   });
 }
 
@@ -79,7 +113,7 @@ async function checkTarget(t, browser, target, budget, label) {
 
   t.ok(ask.answered && ask.via === 'briefing',
     `${label}: the question is answered from the offline briefing, not a model`,
-    JSON.stringify(ask));
+    `via=${ask.via} · ${ask.len} B · scene ${ask.scene}`);
 
   t.eq(errors, [], `${label}: no page errors with the network unplugged`);
   await page.context().close();
@@ -101,8 +135,24 @@ export async function run(t) {
     t.ok(external.length === 0,
       'dist/artifact.html: ZERO network requests',
       external.length ? external.slice(0, 5).join(' , ') : `${requests.length} request(s), all local`);
-    t.ok(ask.answered, 'dist/artifact.html: still answers questions', JSON.stringify(ask));
+    t.ok(ask.answered && ask.via === 'briefing',
+      'dist/artifact.html: still answers questions, from the briefing',
+      `via=${ask.via} · ${ask.len} B`);
     t.eq(errors, [], 'dist/artifact.html: no page errors');
+
+    /* ── §4 the control: fromBriefing() can still say NO ──────────────────
+       The check it backs asserts a constant ('briefing') on every target, so
+       if the classifier ever became unconditionally true the three assertions
+       above would go green for a deck answering from anywhere at all. That is
+       precisely how the /grounded/ heuristic this replaced managed to pass
+       while discriminating nothing. Two directions, both asserted. */
+    const modelish = '<p>Rollout is usually phased by terminal over 18 to 24 months.</p>';
+    t.ok(!fromBriefing(modelish),
+      'control: fromBriefing() REJECTS a plausible model answer — it is not always true',
+      JSON.stringify(modelish.slice(0, 54)));
+    t.ok(fromBriefing(KB[0].a) && !fromBriefing(DONT_KNOW) && !fromBriefing(''),
+      'control: …and ACCEPTS a knowledge-base entry, while DONT_KNOW is not one',
+      `KB[0]=${fromBriefing(KB[0].a)} · DONT_KNOW=${fromBriefing(DONT_KNOW)} · empty=${fromBriefing('')}`);
 
     /* The fonts are the classic leak: a @font-face with an https src looks fine
        on every machine that has ever been online. Assert they are data URIs. */
