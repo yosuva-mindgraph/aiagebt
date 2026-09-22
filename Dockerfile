@@ -3,11 +3,33 @@
 # Airport in a Box — the deck, as a container you can put on a VM.
 #
 # Serves dist/index.html (the CANVAS build) over nginx. Static files only: no
-# node in the final image, no node_modules, no source, no proxy, no API.
+# node in the final image, no node_modules, no source.
 #
 # Two stages. The first builds the deck FROM SOURCE so the image is reproducible
 # from this repo; the second is nginx plus one HTML file. Nothing from stage one
 # survives into stage two except the artifact it generated.
+#
+# ── THIS IMAGE STILL HOLDS NO CREDENTIAL, BUT IT IS NO LONGER OFFLINE ──────
+# It used to be true that this image made no network requests at all. It is
+# not any more, and the distinction is worth being precise about because the
+# security property people care about is unchanged while the behaviour is not.
+#
+# The deck is now built with `--public-config`, which inlines two RELATIVE
+# endpoints — /api/tts and /api/llm — and no key. nginx routes /api/ to a
+# SEPARATE container, aib-proxy, which holds the ElevenLabs and Anthropic keys
+# server-side and publishes no host port. So:
+#
+#   unchanged — no API key in this image, in any layer, in the artifact, or in
+#               the page. Guards 0-3 below still enforce that, and guard 3 is
+#               now the primary one rather than a backstop (see its note).
+#   changed   — the browser does issue same-origin requests to /api/. The
+#               "zero requests after the document" property belonged to the
+#               --no-config build and no longer describes this one.
+#
+# Nothing about that makes the proxy a dependency: --require-voice still forces
+# the pre-rendered speech into the artifact, so a proxy that is down or absent
+# costs the live voice and the LLM answers, never the walkthrough. Deployment
+# is docs/DEPLOY-PROXY.md.
 # ============================================================================
 
 
@@ -31,6 +53,27 @@
 # only sees what .dockerignore let through.
 #
 # alpine, not node: this stage runs `test` and nothing else.
+#
+# ── what this stage checks, and why there are now two checks ───────────────
+# config.js was the only secret-bearing file this repo had while the deck was
+# the only thing in it. It is not any more: the companion proxy (proxy/, which
+# holds the ElevenLabs and Anthropic keys server-side) is configured the way
+# services are configured, from a .env — and a .env is exactly the file people
+# copy next to the code, forget, and ship.
+#
+# Note that proxy/ is deliberately NOT in .dockerignore, and that is what makes
+# the .env check a real guard rather than a decorative one. If proxy/ were
+# excluded, /ctx could not contain proxy/.env even in principle, and the check
+# below would be incapable of ever failing — the precise mistake this file
+# already made once with the `[ -e config.js ]` test inside the builder, and
+# the reason that test was moved here. A guard that cannot fail is worse than
+# no guard, because it is quoted as assurance. Before you add proxy/ to
+# .dockerignore to trim the context upload, understand that you are deleting
+# this check by making it unreachable.
+#
+# The builder stage's allowlist means nothing under proxy/ can reach the build
+# tree regardless, so letting it into the CONTEXT costs an upload and buys a
+# guard that can actually fire.
 FROM alpine:3.22 AS context-audit
 COPY . /ctx
 RUN if [ -e /ctx/config.js ]; then \
@@ -44,8 +87,41 @@ RUN if [ -e /ctx/config.js ]; then \
       echo 'this by deleting the check.'; \
       echo ''; \
       exit 1; \
-    fi \
- && echo 'context audit: no config.js in the build context' > /audit-ok
+    fi
+
+# The .env check is a SEPARATE RUN rather than another `&&` on the one above,
+# and that is about the error message. BuildKit echoes the entire failing RUN
+# instruction before it prints the output — so chaining both checks into one
+# step means whichever fires, the operator first gets a wall of the other
+# check's echo lines, with the two sentences that matter buried in it. One
+# check per step keeps a failure legible. The extra layer is free: this whole
+# stage is discarded, only /audit-ok crosses into the builder.
+RUN FOUND="$(find /ctx \( -name '.env' -o -name '.env.*' \) \
+      ! -name '.env.example' ! -name '.env.sample' ! -name '.env.template' \
+      -type f 2>/dev/null)"; \
+    if [ -n "$FOUND" ]; then \
+      echo ''; \
+      echo 'REFUSING TO BUILD: a .env file is in the Docker build context.'; \
+      echo ''; \
+      echo "$FOUND"; \
+      echo ''; \
+      echo 'The aib-proxy takes its ElevenLabs and Anthropic keys from a .env. That'; \
+      echo 'file is how the keys are held SERVER-SIDE, which is the entire point of'; \
+      echo 'the proxy — so a copy of it inside a build context is a copy of both keys'; \
+      echo 'one COPY away from an image layer, and image layers are forever.'; \
+      echo ''; \
+      echo 'Fix: add the file to .dockerignore. Pass secrets at RUN time with'; \
+      echo '--env-file instead; see docs/DEPLOY-PROXY.md. Do not work around this by'; \
+      echo 'deleting the check.'; \
+      echo ''; \
+      echo 'NOTE: .env.example / .env.sample / .env.template are allowed through on'; \
+      echo 'purpose. They are keyless by convention and are how the required variable'; \
+      echo 'names get documented. Failing on them would make this guard fire on every'; \
+      echo 'correct build, and a guard that cries wolf is one somebody deletes.'; \
+      echo ''; \
+      exit 1; \
+    fi; \
+    echo 'context audit: no config.js and no .env in the build context' > /audit-ok
 
 
 # ── stage 1: build the deck ────────────────────────────────────────────────
@@ -82,7 +158,21 @@ COPY --from=context-audit /audit-ok /audit-ok
 # precisely because it is structural: there is no code path to fail open. If you
 # ever change this to `COPY . .` for convenience, you are removing a guard and
 # putting the key's safety entirely on .dockerignore.
-COPY index.html build.js ./
+#
+# config.public.js is on this line and config.js is not, which looks like an
+# inconsistency and is the opposite of one. They are opposite files: config.js
+# is gitignored because it HOLDS a credential; config.public.js is tracked
+# because it holds the statement that there is no credential in this page, ask
+# the server instead. It is two relative endpoints and nothing else, it has to
+# be here for `--public-config` below to have anything to inline, and build.js
+# refuses to build if it ever stops being secret-free
+# (assertPublicConfigClean() — the content check that stands in for the
+# location-based fences, none of which can apply to a tracked file that must
+# enter the context by design).
+#
+# If you add a file to the repo that build.js needs, it goes on one of these
+# three lines or it is simply not there — the allowlist is not a convenience.
+COPY index.html build.js config.public.js ./
 COPY src/ ./src/
 COPY assets/ ./assets/
 
@@ -113,7 +203,27 @@ COPY assets/ ./assets/
 #
 # If this line fails for you, the fix is in the error — usually:
 #   node tools/prerender-voice.mjs --scope all      (on a machine with a key)
-RUN node build.js --no-config --require-voice
+#
+# `--public-config` is the THIRD flag and the newest. It inlines
+# config.public.js — two relative endpoints, /api/tts and /api/llm, and no
+# credential of any kind — so the deck in this image can reach a live voice and
+# a live LLM through the aib-proxy sitting behind nginx's /api/ location, with
+# the keys held server-side in that other container. See docs/DEPLOY-PROXY.md.
+#
+# It does NOT weaken anything above, and the two flags are not in tension:
+# --no-config still says the key never goes in, and --public-config says what
+# goes in instead. build.js gives --public-config precedence over a config.js
+# so the pairing is belt-and-braces rather than a contradiction to resolve.
+#
+# The pre-rendered speech stays REQUIRED even though a live voice is now
+# reachable, and that is deliberate. The proxy is an enhancement layered on top
+# of a deck that must still work without it: if the proxy is down, or slow, or
+# rate-limited by ElevenLabs mid-demo, src/voice.js falls through to the baked
+# clips and the walkthrough is unaffected. Drop --require-voice because "there
+# is a live voice now" and you have quietly made a demo in front of a client
+# depend on a second container and a third-party API being healthy at that
+# moment. That is the trade this image was built to not make.
+RUN node build.js --no-config --public-config --require-voice
 
 # GUARD 3 — inspect the OUTPUT, not the inputs.
 #
@@ -122,6 +232,29 @@ RUN node build.js --no-config --require-voice
 # therefore the one guard that stays valid no matter how the stages above are
 # refactored. Matches the ElevenLabs prefix (sk_ + >=16 chars) and the Anthropic
 # one (sk-ant-).
+#
+# ── THIS GUARD'S STANDING CHANGED WITH --public-config. READ THIS. ─────────
+# It used to be the backstop: the last of four checks on a build that passed
+# `--no-config`, whose config block was therefore EMPTY
+# (`window.AIB_CONFIG = window.AIB_CONFIG || {};` — the literal build.js emits
+# when it has no config to inline). Grepping an empty block for a key was
+# checking something that could only be non-empty if guards 0-2 had all failed
+# at once. It was, in honest terms, redundant.
+#
+# It is not redundant any more. The artifact now carries a POPULATED config
+# block, spliced from a real file, at the same seam where the key would have
+# gone. So there is once again a place in the shipped page where a credential
+# can plausibly sit, and this grep is the only check in this file that looks at
+# it. Guards 0-2 cannot: guard 0 audits the context for config.js (a different
+# file), guard 1's allowlist deliberately LETS config.public.js through
+# (it must, or there is nothing to inline), and guard 2's --no-config is about
+# config.js as well. Every location-based fence is, by design, open on this
+# path. This grep and build.js's assertPublicConfigClean() are what replaced
+# them — one reading the source, one reading the artifact.
+#
+# Which makes this the primary guard rather than the backstop, and means the
+# usual reason for deleting a check ("guard 1 already makes this impossible")
+# is now false. Do not remove it.
 #
 # The length bound is deliberate: config.example.js documents the field as
 # `// sk_...`, and a bare `sk_` match would fail the build on a comment.

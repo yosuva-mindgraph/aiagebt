@@ -18,6 +18,47 @@
 # Two independent guards, because one typo here would be silent.
 config.js
 
+# ── 1b. config.public.js IS DELIBERATELY NOT LISTED HERE ────────────────────
+# Stated as a rule rather than left as an omission, because the next person to
+# read rule 1 will reasonably wonder why one config file is fenced out and the
+# other is not, and "they both look like config" is a good enough reason to
+# "fix" it. Adding it would break the image build outright — see the Dockerfile
+# COPY allowlist, which names it.
+#
+# They are opposite files. config.js HOLDS a credential; config.public.js holds
+# two relative endpoints (/api/tts, /api/llm) and the statement that there is no
+# credential in this page — ask the server instead. It is tracked in git for the
+# same reason, and it has to reach the builder or `--public-config` has nothing
+# to inline.
+#
+# Which means every fence in rule 1 is structurally unavailable for it: it
+# cannot be gitignored, cannot be kept out of the context, and cannot be left
+# off the allowlist. Its guard is therefore a CONTENT check instead of a
+# location one — build.js refuses to build if the file ever contains anything
+# key-shaped or any populated credential field. If you are about to put a key
+# in it "just to test something", that is the check you will hit, and it is
+# right.
+
+# ── 1c. .env — the proxy's secrets, and why they are not excluded here ──────
+# Also deliberately absent, and for the opposite reason to 1b.
+#
+# The aib-proxy keeps the ElevenLabs and Anthropic keys in a .env. Excluding
+# `.env` here would hide it from the context — and from the Dockerfile's
+# context-audit stage, whose whole job is to fail when a secret is sitting in
+# the context. The guard would still technically fire on a regression of this
+# line, but the everyday signal — "your proxy's keys are in the deck's build
+# context, move them" — would be gone, and that signal is the useful one.
+#
+# So the .env check is left able to fire, and the correct place for the proxy's
+# env file is OUTSIDE this repo entirely: /srv/aib-proxy/aib-proxy.env, passed
+# at run time with --env-file. docs/DEPLOY-PROXY.md is the procedure. If the
+# audit stage ever fails on a .env, do not add a line here — move the file.
+#
+# proxy/ itself is not excluded either, for the same reason: exclude the
+# directory and nothing under it can ever reach /ctx, which would make the .env
+# check incapable of failing. The Dockerfile says at length why a guard that
+# cannot fail is worse than no guard; this is that rule applied.
+
 # ── 2. dist/ — deliberately excluded, and this is load-bearing ──────────────
 # dist/index.html IS committed in this repo (it is the thing you double-click).
 # Keeping it out of the context means the image PHYSICALLY CANNOT be assembled

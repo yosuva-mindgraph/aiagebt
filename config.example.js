@@ -13,10 +13,25 @@
    dev tools and take it. For that, leave apiKey blank and point `endpoint` at a
    small proxy of your own that holds the key server-side. See README.
 
+   That proxy now EXISTS, and so does the config for it, so the advice above is
+   no longer something you have to implement yourself:
+
+       config.public.js            tracked, keyless — two relative endpoints,
+                                   /api/tts and /api/llm, and nothing else
+       node build.js --public-config
+                                   inlines it instead of this file
+       docs/DEPLOY-PROXY.md        how to run the pair
+
+   Which makes THIS file the one you use for a machine you control, and
+   config.public.js the one you use for anything with a public URL. Do not put a
+   key in config.public.js to test something — it is tracked in git and inlined
+   into a public page, and build.js refuses to build if you try.
+
    This file is inlined into EVERY build target, so that warning follows the
-   built files out of the door. `node build.js` prints `config INLINED` when it
-   has baked a key in; `node build.js --no-config` is how you produce something
-   safe to hand over.
+   built files out of the door. `node build.js` prints
+   `config INLINED (config.js — WITH KEY)` when it has baked a key in;
+   `node build.js --no-config` is how you produce something safe to hand over,
+   and `--public-config` is how you produce something safe to PUBLISH.
    ========================================================================== */
 
 window.AIB_CONFIG = {

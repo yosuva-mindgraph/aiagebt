@@ -88,6 +88,88 @@ server {
     location = / {
     }
 
+    # ── the proxy: /api/ ───────────────────────────────────────────────────
+    # Only reached by a deck built with `node build.js --public-config`, which
+    # inlines config.public.js and points the ElevenLabs and Anthropic call
+    # sites at /api/tts and /api/llm. Every other build has no config at all
+    # (or a key in the page) and never issues a request that lands here, so
+    # this location is inert in the image the booth and the emailed file are
+    # cut from. It costs those builds nothing to carry it.
+    #
+    # WHY SAME-ORIGIN RATHER THAN A HOSTNAME. The deck is published through a
+    # Cloudflare quick tunnel whose hostname is regenerated on every restart,
+    # and the tunnel terminates on THIS nginx. So a relative /api/ path is the
+    # only form that survives the hostname changing — and because it is
+    # same-origin it needs no CORS preflight on the proxy and no new inbound
+    # port on the VM (the Azure NSG allows 80 and nothing else). The proxy is
+    # reachable only from inside the docker network; it publishes no host port.
+    #
+    # NOTE THE ABSENCE OF A TRAILING SLASH after 8091, and do not add one.
+    # `proxy_pass http://host:8091;` (no URI part) forwards the ORIGINAL request
+    # URI untouched: /api/llm arrives at the proxy as /api/llm. Write
+    # `.../8091/` instead and nginx switches to the replace-the-matched-prefix
+    # behaviour — /api/llm arrives as /llm, every route 404s, and nothing in
+    # either config looks wrong. Same rule applies to the variable below: it
+    # holds a bare scheme://host:port and no path.
+    #
+    # WHY A VARIABLE AND A RESOLVER, instead of naming aib-proxy literally.
+    # With a literal hostname nginx resolves the upstream ONCE, AT CONFIG LOAD,
+    # and treats a failure as fatal: `host not found in upstream "aib-proxy"`,
+    # master process exits, container dies, restart loop. That makes the deck
+    # unable to BOOT whenever the proxy is not already running — so a restart
+    # in the wrong order, or a proxy that is being rebuilt, takes down a deck
+    # that does not otherwise need the proxy to work at all. That is backwards:
+    # the whole design is that /api/ is an ENHANCEMENT (config.public.js
+    # explains the fallbacks — pre-rendered speech, local knowledge base), so
+    # its absence must cost the live voice and never the walkthrough.
+    #
+    # Putting the upstream in a variable defers resolution to request time.
+    # nginx then starts regardless, and a missing proxy is a 502 on /api/ while
+    # / still serves the deck. 127.0.0.11 is docker's embedded DNS, which
+    # exists on a user-defined network (see docs/DEPLOY-PROXY.md — the default
+    # bridge has no name resolution, which is one of the reasons the network is
+    # not optional). If it is unreachable the failure is still a 502, not a
+    # dead container.
+    #
+    # The variable is named aib_api_upstream rather than something short
+    # because this file is run through envsubst by the stock entrypoint before
+    # nginx ever sees it: envsubst replaces $NAME for every NAME present in the
+    # environment, so a plainly-named $upstream or $backend would be silently
+    # blanked by an unrelated env var and leave `proxy_pass ;`. A prefixed name
+    # cannot collide by accident.
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $aib_api_upstream http://aib-proxy:8091;
+
+    location /api/ {
+        # Prefix locations are matched longest-first regardless of order, so
+        # this beats the `location /` 404 below without depending on position.
+        proxy_pass $aib_api_upstream;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # TTS is the long pole: a full narration line can take several seconds
+        # to synthesise, and the default 60s proxy_read_timeout would cut a
+        # slow one off mid-render. These are generous rather than tuned; the
+        # proxy is expected to enforce its own limits.
+        proxy_connect_timeout 5s;
+        proxy_send_timeout    60s;
+        proxy_read_timeout    120s;
+
+        # Audio comes back as a single body the player needs whole; buffering
+        # it here keeps a slow client from holding a proxy worker open.
+        proxy_buffering on;
+
+        # Never cache an API response at this tier. The deck's own /index.html
+        # revalidation story (above) is about one static document; these are
+        # per-question responses and must not be shared between visitors.
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
     # No SPA fallback, and that is correct, not lazy: the deck has no router. It
     # does not touch pushState, hash routing or a service worker — it is one
     # document that swaps scenes in the DOM. So there is no such thing as a deep
@@ -97,23 +179,48 @@ server {
         return 404;
     }
 
-    # ── OPTIONAL: enforce the zero-egress property at the browser ───────────
-    # This build makes no network requests at all. The ElevenLabs and Anthropic
-    # call sites are compiled in, but both are guarded on a key arriving from
-    # config.js, and config.js is excluded from the image (see .dockerignore),
-    # so window.AIB_CONFIG is {} and neither path is ever taken. Verified with
-    # Playwright against this container: zero requests after the document.
+    # ── OPTIONAL: constrain egress at the browser ──────────────────────────
+    # READ THE connect-src VALUE BEFORE YOU UNCOMMENT EITHER OF THESE. There
+    # are now two builds this server can be holding, they want DIFFERENT
+    # policies, and the wrong one fails as a console error rather than as
+    # anything that looks like a misconfiguration.
     #
-    # The CSP below would make that a rule the browser enforces rather than a
-    # property that happens to hold — `connect-src 'none'` means a key baked in
-    # by accident could not phone home even if the code tried.
+    #   (a) the DEFAULT image — `node build.js --no-config --require-voice`.
+    #       Makes no network requests at all. The ElevenLabs and Anthropic call
+    #       sites are compiled in, but both are guarded on a key arriving from
+    #       config.js, and config.js is excluded from the image (see
+    #       .dockerignore), so window.AIB_CONFIG is {} and neither path is ever
+    #       taken. Verified with Playwright against this container: zero
+    #       requests after the document. For this build `connect-src 'none'`
+    #       is exactly right — it turns a property that happens to hold into a
+    #       rule the browser enforces, so a key baked in by accident could not
+    #       phone home even if the code tried.
     #
-    # It is commented out rather than on because it is a behaviour change, not a
-    # hardening freebie: switch this on and you have also decided the deck may
-    # never call a voice API from this container. If someone later wants a real
-    # ElevenLabs voice here, this line is what will break, and it will break as
-    # a console error rather than an obvious misconfiguration. Turn it on when
-    # you have decided that; don't inherit it by default.
+    #   (b) the PUBLIC image — `--public-config`, the one this file's /api/
+    #       location exists for. It has no key either, but it DOES make
+    #       requests: same-origin POSTs to /api/tts and /api/llm.
+    #       `connect-src 'none'` BLOCKS BOTH. The deck would still load and
+    #       still narrate off the pre-rendered speech, so the page looks
+    #       healthy; only the live voice and the LLM answers quietly stop
+    #       working, with a CSP violation in a console nobody has open. That
+    #       is the trap this comment exists to defuse, and it is the reason
+    #       the old single line here is now two.
     #
+    #       `'self'` is the right value and it is not a weakening: relative
+    #       endpoints are the whole point of config.public.js, so 'self' permits
+    #       precisely the two calls the deck is supposed to make and still
+    #       denies every third-party host. A key leaked into the artifact could
+    #       reach our own proxy and nowhere else.
+    #
+    # Both stay commented out for the same reason as before: this is a
+    # behaviour change, not a hardening freebie. Uncomment the ONE that matches
+    # the build you put in the image, and treat it as part of that decision
+    # rather than as a default to inherit.
+    #
+    # (a) default / air-gapped image — deck may talk to nothing:
     # add_header Content-Security-Policy "default-src 'self' data: blob:; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self'; connect-src 'none'; frame-ancestors 'self'" always;
+    #
+    # (b) public image built with --public-config — deck may talk to its OWN
+    #     origin only, which is what reaches /api/ and the aib-proxy behind it:
+    # add_header Content-Security-Policy "default-src 'self' data: blob:; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self'; connect-src 'self'; frame-ancestors 'self'" always;
 }
