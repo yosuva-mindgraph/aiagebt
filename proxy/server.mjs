@@ -5,8 +5,8 @@
    The deck is a static HTML file. build.js inlines config verbatim, so every
    value in the client config is a value in View Source — and the deck is
    deployed public and unauthenticated. This service exists so the browser
-   never holds a key: it binds loopback only, reads the three secrets from the
-   environment at startup, and offers exactly two endpoints the page may call.
+   never holds a key: it reads the three secrets from the environment at
+   startup and offers exactly two endpoints the page may call.
 
        POST /api/llm   { question, grounding, grounded }  -> Anthropic body, verbatim
        POST /api/tts   { text }                           -> ElevenLabs body, verbatim
@@ -25,6 +25,28 @@
    incident. The client sends a question and its retrieval grounding. Nothing
    else it sends can change who Iris is or which model answers.
 
+   ── WHERE IT LISTENS, AND WHY 0.0.0.0 IN THE CONTAINER IS NOT A MISTAKE ───
+   BIND_ADDR defaults to 127.0.0.1, so a bare `node proxy/server.mjs` on a
+   laptop is loopback-only and cannot be reached from the network. The CONTAINER
+   sets it to 0.0.0.0 on purpose, and that is the SAFER of the two options here
+   despite reading like the looser one:
+
+     · On a user-defined bridge network with NO published port, an unpublished
+       container port has no route from any of the host's external interfaces.
+       Docker's network namespace enforces that — it is not a matter of what
+       happens to be listening or forwarding. 0.0.0.0 there means "every
+       interface this container has", and this container's only interface is
+       the private bridge that nginx is also on.
+     · Binding 127.0.0.1 in the container instead would force --network host,
+       which puts the service directly on the HOST's network stack. That looks
+       stricter and is weaker: the only thing then keeping it off the internet
+       is that nothing happens to forward to it. Bigger blast radius, and nginx
+       could not resolve `aib-proxy` by container name either.
+
+   So: 0.0.0.0 inside a namespace with no route in, rather than 127.0.0.1 on a
+   stack that has one. Do not "fix" this to 127.0.0.1 without also changing how
+   the container is run — see proxy/README.md.
+
    ── SECRETS ───────────────────────────────────────────────────────────────
    Never logged, never echoed in an error body, never baked into the image.
    They arrive at runtime (docker run --env-file) and every string this process
@@ -35,21 +57,36 @@
 
 import http from 'node:http';
 
-const HOST = '127.0.0.1';          // loopback only; publish no host port
+/* Loopback by default — see the header. The container overrides this to
+   0.0.0.0 and publishes no port. Never publish one: the whole safety argument
+   is that the port has no route in from outside the bridge network. */
+const HOST = String(process.env.BIND_ADDR || '').trim() || '127.0.0.1';
 const PORT = 8091;
 const MAX_BODY = 64 * 1024;        // a question and its grounding, generously
 const LLM_TIMEOUT_MS = 30_000;
 const TTS_TIMEOUT_MS = 60_000;
 
-/* Pinned. A long answer is spoken, and spokenForm() truncates at 1200 chars —
-   700 tokens yields roughly 2800, so a long answer gets cut mid-sentence on
-   the way to the voice. 350 keeps spoken ≈ displayed. Thinking is DISABLED
-   deliberately: on claude-sonnet-5 adaptive thinking is on when the field is
-   omitted, and max_tokens caps thinking + text together, so the budget this
-   number is chosen for would be eaten before Iris said a word. */
-const MODEL = 'claude-sonnet-5';
+const MODEL = 'claude-sonnet-5';   // pinned; a client-supplied `model` is discarded
+
+/* 350, not 700. The answer is SPOKEN, and spokenForm() in src/ask.js truncates
+   at 1200 characters — 700 tokens yields roughly 2800, so a long answer is cut
+   mid-sentence on its way to the voice while the answer sheet shows all of it.
+   350 keeps spoken ≈ displayed. */
 const MAX_TOKENS = 350;
-const EFFORT = 'low';              // short, scoped, latency-sensitive: a spoken answer
+
+/* thinking: DISABLED — do not delete this as an unnecessary field.
+   On claude-sonnet-5 adaptive thinking is ON when the field is omitted, and
+   max_tokens caps thinking AND text together. Omit this and the 350 above is
+   spent reasoning before Iris says a word: the failure presents in the room as
+   "Iris went quiet", or as an answer that stops mid-sentence, with nothing in
+   the logs to point at. It is the single least obvious line in this file.
+
+   effort: low — a short, scoped, grounded answer read aloud is exactly what
+   Sonnet 5's low setting is for. UNVERIFIED against the live API (no key was
+   available when this was written); it is a documented GA parameter, and if
+   answers read thin it is a one-word change to 'medium'. */
+const THINKING = { type: 'disabled' };
+const EFFORT = 'low';
 
 /* The voice settings tools/prerender-voice.mjs renders with. A live answer and
    a pre-rendered clip have to sound like the same person. */
@@ -226,7 +263,7 @@ async function handleLlm(body, res) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      thinking: { type: 'disabled' },
+      thinking: THINKING,
       output_config: { effort: EFFORT },
       system: SYSTEM,
       messages: [{ role: 'user', content: `GROUNDING\n${grounding}${note}\n\nQUESTION\n${question}` }],
@@ -279,6 +316,10 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   log(`proxy listening on http://${HOST}:${PORT}  (model ${MODEL}, voice ${ELEVENLABS_VOICE_ID})`);
+  if (HOST !== '127.0.0.1') {
+    log(`  bound to ${HOST} via BIND_ADDR — safe ONLY where the port is unpublished and the`);
+    log(`  network is private (container on a user-defined bridge). See proxy/README.md.`);
+  }
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
