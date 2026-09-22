@@ -254,6 +254,25 @@ export async function run(t) {
         ? `${qCalls} call(s) — ${Object.entries(byPath).map(([p, n]) => `${n}× ${p}`).join(', ')}`
         : '0');
 
+    /* §2.4 THE OTHER HALF OF THE SAME PROPERTY, and the one an invoice does not
+       show. src/knowledge.js is 39 hand-written answers carrying rules the room
+       depends on — never quote a price, every percentage is an indicative
+       industry range validated per airport, it is a platform and not a fixed
+       list of modules. If a reachable proxy means those questions are answered
+       by the model INSTEAD of from the briefing, the curated text stops being
+       what the audience sees, and the guarantee the knowledge base exists to
+       give stops being a guarantee. Measured by asking whether the briefing's
+       own words survived to the answer sheet. */
+    const norm = s => String(s).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const fromBriefing = answers.filter(([id, , r]) => {
+      const entry = KB.find(e => e.id === id);
+      const want = norm(entry.a).slice(0, 60);
+      return want && norm(r.html || '').includes(want);
+    });
+    t.ok(fromBriefing.length === answers.length,
+      '§2.4 …and each of the 39 answers is still the BRIEFING\'s curated text, not the model\'s paraphrase',
+      `${fromBriefing.length}/${answers.length} showed the knowledge-base answer`);
+
     d.release();
     await d.ctx.close();
 
