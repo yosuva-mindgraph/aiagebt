@@ -839,6 +839,12 @@ header {
 }
 #accessCode:focus { border-color: var(--gold); outline: none; }
 
+/* ── AIRIS coordination bar (replaces the numeric clock) ─────────────── */
+.airis-bar { margin: 4px 0 2px; }
+.airis-bar .track { display: block; height: 10px; border-radius: 5px; background: var(--rule); overflow: hidden; }
+.airis-bar .fill { display: block; height: 100%; width: 0%; border-radius: 5px; background: linear-gradient(90deg, var(--royal), var(--sky)); transition: width .12s linear; }
+.card.done .airis-bar .fill { background: linear-gradient(90deg, var(--gold), var(--peach)); }
+
 </style>
 <script>document.documentElement.dataset.theme = localStorage.getItem('aib-theme') || 'dark';</script>
 <div id="shell">
@@ -2178,10 +2184,6 @@ const card = (title, body, foot, chip) => `
     <p>${body}</p>
     ${foot ? `<div class="roi">${foot}</div>` : ''}
   </div>`;
-
-/* a big number that counts up when the scene arrives (app.js reads data-n) */
-const metric = (n, l, human) => `
-  <div class="metric"><div class="n${human ? ' human' : ''}" data-n="${n}">${n}</div><div class="l">${l}</div></div>`;
 const SCENES = [
 
 /* 1 ──────────────────────────────────────────────────────────────────────── */
@@ -2192,7 +2194,7 @@ const SCENES = [
   lines: [
     "Hi, I'm AIRIS. This is Thinking Airport — the intelligence platform MindGraph and DXC put on top of an airport.",
     "In one line: all of your airport's data in one governed place, and then anything you like built on top of it.",
-    "Here's the tour: the data, the model, asking it questions, building on it, watching it run, and how it lands. About ten minutes — and you can stop me any time."
+    "Here's the tour: the data, the model, asking it questions, building on it, watching it run, and how it lands. A few minutes — and you can stop me any time."
   ],
   html: () => `
     <p class="eyebrow">Airport vertical · MindGraph × DXC · Confidential</p>
@@ -2201,19 +2203,16 @@ const SCENES = [
       building management, the sensor estate. Thinking Airport replaces none of it. It reads every
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
-    <div class="metrics">
-      ${metric('0', 'Systems replaced', true)}
-      ${metric('∞', 'Things you can build', true)}
-    </div>
+    <div class="gate" style="margin-top:6px">Nothing you own is replaced. There is no ceiling on what you can build.</div>
 
-    <h2>The tour, in six stops</h2>
+    <h2>The tour</h2>
     <div class="tour">
-      <button class="stop" data-goto="data"><span class="si">🗄️</span><span class="sn">01 · data</span><span class="st">Every source, one model</span></button>
-      <button class="stop" data-goto="model"><span class="si">🏗️</span><span class="sn">02 · model</span><span class="st">The airport, modelled</span></button>
-      <button class="stop" data-goto="ask"><span class="si">💬</span><span class="sn">03 · ask</span><span class="st">Ask it anything</span></button>
-      <button class="stop" data-goto="build"><span class="si">🧩</span><span class="sn">04 · build</span><span class="st">Boards, apps, workflows, agents</span></button>
-      <button class="stop" data-goto="live"><span class="si">⚡</span><span class="sn">05 · live</span><span class="st">Watch it run — 83 seconds</span></button>
-      <button class="stop human" data-goto="deploy"><span class="si">🛫</span><span class="sn">06 · landing</span><span class="st">How it lands in your airport</span></button>
+      <button class="stop" data-goto="data"><span class="si">🗄️</span><span class="sn">data</span><span class="st">Every source, one model</span></button>
+      <button class="stop" data-goto="model"><span class="si">🏗️</span><span class="sn">model</span><span class="st">The airport, modelled</span></button>
+      <button class="stop" data-goto="ask"><span class="si">💬</span><span class="sn">ask</span><span class="st">Ask it anything</span></button>
+      <button class="stop" data-goto="build"><span class="si">🧩</span><span class="sn">build</span><span class="st">Boards, apps, workflows, agents</span></button>
+      <button class="stop" data-goto="live"><span class="si">⚡</span><span class="sn">live</span><span class="st">Watch it run, live</span></button>
+      <button class="stop human" data-goto="deploy"><span class="si">🛫</span><span class="sn">landing</span><span class="st">How it lands in your airport</span></button>
     </div>
     <div class="gate">One governed pipeline. Every question, every board, every workflow and every
       agent resolves through it — so access, masking and audit are the same everywhere.</div>`,
@@ -2242,7 +2241,7 @@ const SCENES = [
       <button data-goto="model"><span>🏗&nbsp;&nbsp;The airport, modelled</span><span class="arrow">→</span></button>
       <button data-goto="ask"><span>💬&nbsp;&nbsp;Ask it anything</span><span class="arrow">→</span></button>
       <button data-goto="build"><span>🧩&nbsp;&nbsp;Build anything on it</span><span class="arrow">→</span></button>
-      <button data-goto="airis"><span>⚡&nbsp;&nbsp;One disruption, 83 seconds — the AIRIS demo</span><span class="arrow">→</span></button>
+      <button data-goto="airis"><span>⚡&nbsp;&nbsp;One disruption, end to end — the AIRIS demo</span><span class="arrow">→</span></button>
       <button data-goto="agents"><span>🤖&nbsp;&nbsp;Agents, governed</span><span class="arrow">→</span></button>
       <button data-goto="governance"><span>🛡&nbsp;&nbsp;Governance, risk and compliance</span><span class="arrow">→</span></button>
       <button data-goto="deploy"><span>🛫&nbsp;&nbsp;How it would land in my airport</span><span class="arrow">→</span></button>
@@ -2258,7 +2257,7 @@ const SCENES = [
 {
   id: 'proposition',
   title: 'The proposition',
-  eyebrow: '01 · the proposition',
+  eyebrow: 'the proposition',
   lines: [
     "The proposition in one sentence: we don't replace a single system you own.",
     "Thinking Airport sits on top. It reads every source, unifies the data into one model, and puts AI, prediction and automation over it.",
@@ -2266,11 +2265,11 @@ const SCENES = [
     "And every lever lands on a number a CFO recognises: cost out, capex deferred, revenue up, risk removed."
   ],
   html: () => `
-    <p class="eyebrow">01 · the proposition</p>
+    <p class="eyebrow">the proposition</p>
     <h1>Sits on top of everything.<br>Replaces none of it.</h1>
     <p class="lede">Source systems untouched. Read — and written only where you allow it — through
       APIs and the service bus. <strong>No replacement, no downtime</strong>, value added incrementally.
-      Of the three ways into an airport this is the fastest ROI and the lowest disruption.</p>
+      Of the ways into an airport this is the fastest ROI and the lowest disruption.</p>
 
     <h2>What it plugs into</h2>
     <div class="estate">
@@ -2287,7 +2286,7 @@ const SCENES = [
       <span>gRPC</span><span>RPA — where there is no API at all</span>
     </div>
 
-    <h2>The four levers everything is measured against</h2>
+    <h2>The levers everything is measured against</h2>
     <div class="grid g4">
       ${card('Cost out', 'Utilities, maintenance, labour — the fastest and most visible payback on the P&amp;L.')}
       ${card('Capex deferred', 'Sweat the stands, belts and terminal you already own instead of building more.')}
@@ -2303,23 +2302,23 @@ const SCENES = [
 {
   id: 'data',
   title: 'All the data',
-  eyebrow: '02 · the data fabric',
+  eyebrow: 'the data fabric',
   lines: [
     "Everything else rests on this, so one moment here.",
-    "Twenty-one source feeds land in one canonical model: fifty-nine entities and two hundred and four KPIs, each defined exactly once.",
+    "Every source feed lands in one canonical model — the airport's entities and its KPIs, each defined exactly once.",
     "That 'once' is the whole trick. On-time performance means the same thing in a dashboard, a workflow and a regulator's report.",
     "Around it sit the catalog, lineage, a business glossary — and a governed SQL explorer for the people who like to write their own."
   ],
   html: () => `
-    <p class="eyebrow">02 · the data fabric · one governed model</p>
+    <p class="eyebrow">the data fabric · one governed model</p>
     <h1>Every source, one model,<br>one definition of the truth.</h1>
 
     <div class="pipeline">
-      <div class="stage-step"><div class="sn">Sources</div><div class="sv" data-n="21">21</div><div class="sd">mapped feeds — AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data</div></div>
+      <div class="stage-step"><div class="sn">Sources</div><div class="sv">Every feed</div><div class="sd">AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data — mapped into the same place</div></div>
       <div class="arrow-r">→</div>
-      <div class="stage-step"><div class="sn">Canonical model</div><div class="sv" data-n="59">59</div><div class="sd">entities — the airport described once, independent of the system it came from</div></div>
+      <div class="stage-step"><div class="sn">Canonical model</div><div class="sv">One model</div><div class="sd">the airport described once, independent of the system it came from</div></div>
       <div class="arrow-r">→</div>
-      <div class="stage-step"><div class="sn">Governed KPIs</div><div class="sv" data-n="204">204</div><div class="sd">measures defined once and reused by every board, workflow, agent and answer</div></div>
+      <div class="stage-step"><div class="sn">Governed KPIs</div><div class="sv">Defined once</div><div class="sd">measures reused by every board, workflow, agent and answer</div></div>
     </div>
 
     <h2>What sits around it</h2>
@@ -2340,18 +2339,18 @@ const SCENES = [
 {
   id: 'model',
   title: 'The airport, modelled',
-  eyebrow: '03 · the operating model',
+  eyebrow: 'the operating model',
   lines: [
     "On top of the data sits the airport itself, modelled the way you actually run it.",
-    "Five control centres — operations, the tower, emergency, network and security — plus business domains like energy, ESG and facilities, and the apps already built on it.",
+    "The control centres — operations, the tower, emergency, network and security — plus business domains like energy, ESG and facilities, and the apps already built on it.",
     "Now the sentence to remember: adding a domain is metadata, not code. Name it, point it at an entity, and it arrives with a working dashboard.",
     "So I won't give you a fixed list of use cases. The list is however many your airport has."
   ],
   html: () => `
-    <p class="eyebrow">03 · the operating model</p>
+    <p class="eyebrow">the operating model</p>
     <h1>The airport, modelled<br>the way you run it.</h1>
 
-    <h2>Five control centres</h2>
+    <h2>The control centres</h2>
     <div class="grid g3">
       ${card('AOCC', 'Airport Operations Control Centre — day-to-day flight, baggage, passenger and resource operations.', 'Flight / FIDS · Cargo · Baggage · Retail · Airline · Passenger · Ticketing / DCS · Vehicle / Landside · Feedback')}
       ${card('ATC', 'Air Traffic Control Tower — runway and airspace movements: tower, ground and approach.', 'Runway movements · Tower watch · Airspace feed')}
@@ -2385,7 +2384,7 @@ const SCENES = [
 {
   id: 'ask',
   title: 'Ask it anything',
-  eyebrow: '04 · the assistant',
+  eyebrow: 'the assistant',
   lines: [
     "First thing the model buys you: the end of the report queue.",
     "Anyone asks a question in plain language and gets the answer, with a chart, in seconds — across every source at once.",
@@ -2393,7 +2392,7 @@ const SCENES = [
     "And when it doesn't know, it says so. In a room full of operators, that's the most important habit it has."
   ],
   html: () => `
-    <p class="eyebrow">04 · the assistant · governed natural language</p>
+    <p class="eyebrow">the assistant · governed natural language</p>
     <h1>Ask in plain language.<br>Get the number, and its source.</h1>
 
     <div class="screen">
@@ -2436,21 +2435,21 @@ const SCENES = [
 {
   id: 'build',
   title: 'Build anything on it',
-  eyebrow: '05 · the build surfaces',
+  eyebrow: 'the build surfaces',
   lines: [
     "Now the part that makes it a platform, not a product.",
-    "Four things get built on the model, by the people who need them: dashboards, applications, workflows and agents.",
+    "Dashboards, applications, workflows and agents all get built on the model — by the people who need them.",
     "My favourite trigger is the one everyone forgets — fire when an expected event doesn't arrive. A silent feed is a fault.",
-    "The twentieth dashboard costs what the second one did. That's what unbounded actually means."
+    "The next dashboard costs what the first one did. That's what unbounded actually means."
   ],
   html: () => `
-    <p class="eyebrow">05 · the build surfaces</p>
+    <p class="eyebrow">the build surfaces</p>
     <h1>Boards, apps, workflows, agents.<br>Built by the people who need them.</h1>
 
     <div class="grid g2">
-      ${card('Dashboards — endless', 'A canvas of tiles over any governed measure, in any combination, saved and shared. Publish a board to an audience — a partner, an executive, a regulator — with its own access scope. There is no fixed set, and the twentieth costs what the second did.', 'Every tile resolves through the governed pipeline. A board cannot show a number its viewer is not allowed to see.')}
+      ${card('Dashboards — endless', 'A canvas of tiles over any governed measure, in any combination, saved and shared. Publish a board to an audience — a partner, an executive, a regulator — with its own access scope. There is no fixed set, and the next one costs what the first did.', 'Every tile resolves through the governed pipeline. A board cannot show a number its viewer is not allowed to see.')}
       ${card('Applications — described, then generated', 'Describe the application you want on your data and it is generated against the canonical model, from a component library: hero, navbar, KPI, chart, data table, timeline, filter bar, search, status badge, flight board, map, gallery, form. Then edited by hand where you want it precise.', 'Generated apps inherit the same scopes and audit as everything else — they are not a side door to the data.')}
-      ${card('Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Twelve playbooks come with it — three seeded and switched off so a fresh install has something real to turn on, nine more in the library. Examples, not the ceiling.')}
+      ${card('Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Playbooks come with it — some seeded and switched off so a fresh install has something real to turn on, more in the library. Examples, not the ceiling.')}
       ${card('Agents — registered, not improvised', 'Purpose-built agents over the same data scope, each with a risk tier, a declared tool set, evaluations and guardrails. A catalog, a run history, and a topology view of which agent calls what.', 'Shipped today: Airport Hub Analyst, Ops Analyst, Baggage Analyst, Retail Analyst, Data Steward, Compliance Explainer.')}
     </div>
 
@@ -2459,7 +2458,7 @@ const SCENES = [
       <div class="before"><b>Everyone builds this</b>Alert when a number goes past a threshold. Useful, and it is the first thing every monitoring tool does.</div>
       <div class="after"><b>This one catches the outage</b>Fire when an <b>expected event does not arrive</b> — a heartbeat on a silent feed. A dashboard reading zero and a dashboard reading nothing look identical until something asks the question.</div>
     </div>
-    <div class="note">Three forecast models are registered alongside — delay prediction, passenger-flow
+    <div class="note">Forecast models are registered alongside — delay prediction, passenger-flow
       forecasting and baggage anomaly detection — in the same catalog, under the same provenance
       rules. They are locked for now and marked "coming soon"; I'd rather tell you that than pretend.</div>`
 },
@@ -2469,18 +2468,18 @@ const SCENES = [
   id: 'live',
   title: 'Watch it work — live',
   flag: 'live',
-  eyebrow: '06 · one workflow, end to end',
+  eyebrow: 'one workflow, end to end',
   lines: [
     "Let me stop describing it and run one.",
-    "A shipped playbook: a security queue has been over target for two minutes. Every step you'll see is a node you can swap.",
-    "The event fires. It queries the model, asks an agent to explain, opens one alert — not forty — and tells the right people.",
+    "A shipped playbook: a security queue has been over its wait-time target for too long. Every step you'll see is a node you can swap.",
+    "The event fires. It queries the model, asks an agent to explain, opens a single alert — not a flood — and tells the right people.",
     "Then it stops, because the last step is a human. The machine watches, explains and drafts. A person makes the call."
   ],
   html: () => `
-    <p class="eyebrow">06 · one workflow, end to end</p>
+    <p class="eyebrow">one workflow, end to end</p>
     <h1>Trigger, query, agent, alert,<br>notify — then a human.</h1>
     <p class="lede">A shipped playbook: <strong>a security queue has been over the airport's wait-time
-      target for two minutes.</strong> Every stage below is a node — swap any one and it is a
+      target for too long.</strong> Every stage below is a node — swap any one and it is a
       different workflow.</p>
 
     <div class="run">
@@ -2492,7 +2491,7 @@ const SCENES = [
         </div>
         <div class="screen-body">
           <ol class="steps" id="runSteps">
-            <li data-s="0"><span class="sk">trigger</span><span class="sb">Live event — security queue over target for 2 min</span></li>
+            <li data-s="0"><span class="sk">trigger</span><span class="sb">Live event — security queue over its wait-time target</span></li>
             <li data-s="1"><span class="sk">query</span><span class="sb">Canonical query — PaxQueue, PaxProcessPoint, PaxLineCount · masking and row policy applied</span></li>
             <li data-s="2"><span class="sk">agent</span><span class="sb">Ops Analyst explains it — under its own governed data scope</span></li>
             <li data-s="3"><span class="sk">branch</span><span class="sb">Above threshold? → true</span></li>
@@ -2506,14 +2505,14 @@ const SCENES = [
       <div class="run-side">
         <div class="card">
           <h3>Every node is swappable</h3>
-          <p style="margin-bottom:10px">The same seven-stage shape runs a baggage SLA watch, a cargo
+          <p style="margin-bottom:10px">The same shape runs a baggage SLA watch, a cargo
             dwell breach, a non-aero revenue dip, an IT availability alert or an emergency activation.
             Only the nodes differ.</p>
           <div class="estate">
             <span>manual</span><span>schedule / cron</span><span>threshold</span><span>webhook</span>
             <span>live event</span><span>on another flow's failure</span><span>missing event</span>
           </div>
-          <div class="roi" style="margin-top:12px"><b>Twelve playbooks</b>
+          <div class="roi" style="margin-top:12px"><b>Playbooks</b>
             Seeded, switched off: Flight OTP &amp; delay · Baggage mishandling &amp; first-bag SLA ·
             Security screening &amp; breach. In the library: Airline OTP &amp; cancellations · Cargo dwell
             &amp; throughput · Customer complaint &amp; ASQ · Emergency response · IT availability &amp; SLA ·
@@ -2567,57 +2566,48 @@ const SCENES = [
 /* 9 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'airis',
-  title: 'One disruption, 83 seconds',
+  title: 'One disruption, end to end',
   flag: 'live',
-  eyebrow: '07 · the AIRIS demo',
+  eyebrow: 'the AIRIS demo',
   lines: [
     "Now a little about me at full scale — the AIRIS demo DXC built. One routine disruption, end to end.",
-    "A gate change moves a hundred and eighty-seven passengers between terminals. Done by hand, that's five to fifteen minutes of calls and emails across five teams.",
-    "AIRIS orchestrates seventeen systems — AODB, A-CDM, the event bus, FIDS, wayfinding, baggage — and coordinates the whole response in eighty-three seconds.",
-    "Ops gets three options, not a wall of alerts. The passenger gets a map in eighteen seconds. Security gets a fifteen-minute head start. One event, understood once."
+    "A gate change moves a full flight of passengers between terminals. Done by hand, that's long minutes of calls and emails across every team.",
+    "AIRIS orchestrates every connected system — AODB, A-CDM, the event bus, FIDS, wayfinding, baggage — and coordinates the whole response in seconds, not minutes.",
+    "Ops gets ranked options, not a wall of alerts. The passenger gets a map straight away. Security gets a head start. One event, understood once."
   ],
   html: () => `
-    <p class="eyebrow">07 · the AIRIS demo · AI Real-Time Integrated Solution</p>
-    <h1>One event. Seventeen systems.<br>Eighty-three seconds.</h1>
-    <p class="lede">A gate change moves <strong>187 passengers</strong> from T3-14 to NT-103 after a
-      four-minute delay. Handled by hand, it ripples across five stakeholder groups for 5 to 15 minutes
-      of calls, emails and manual updates. AIRIS coordinates the same event in <strong>83 seconds</strong>,
-      with every stakeholder seeing the update built for their role.</p>
+    <p class="eyebrow">the AIRIS demo · AI Real-Time Integrated Solution</p>
+    <h1>One event. Every system.<br>Seconds, not minutes.</h1>
+    <p class="lede">A gate change moves <strong>a full flight of passengers</strong> to another terminal
+      after a short delay. Handled by hand, it ripples across every stakeholder group in calls, emails
+      and manual updates. AIRIS coordinates the same event <strong>in seconds</strong>, with every
+      stakeholder seeing the update built for their role.</p>
 
     <div class="airis">
       <div class="card">
-        <div class="clock"><span id="airisClock">0</span><small>SEC · COORDINATION</small></div>
-        <div class="airis-status" id="airisStatus">● gate change detected · manual baseline 5–15 min</div>
+        <div class="airis-bar"><span class="track"><span class="fill" id="airisFill"></span></span></div>
+        <div class="airis-status" id="airisStatus">● gate change detected · waiting</div>
         <div class="syslist" id="airisSys">
           <div class="sys">AODB</div><div class="sys">A-CDM</div><div class="sys">Event bus</div>
           <div class="sys">FIDS</div><div class="sys">Digital wayfinding</div><div class="sys">Baggage — BHS</div>
-          <div class="sys more">+ 11 more systems</div>
+          <div class="sys more">…and every other system on the estate</div>
         </div>
         <button class="btn primary" id="airisBtn" style="margin-top:14px;width:100%">▸ Run the disruption</button>
       </div>
 
       <div class="personas" id="airisPersonas">
         <div class="persona"><div class="who">APOC · operations</div><div class="what">Three response options with impact analysis — not a wall of alerts.</div><div class="lands">Resolved in seconds, not phone calls.</div></div>
-        <div class="persona"><div class="who">Passenger</div><div class="what">An 18-second notification with a map to the new gate.</div><div class="lands">Confusion prevented before it starts.</div></div>
-        <div class="persona"><div class="who">Security</div><div class="what">A predictive surge alert 15 minutes before it happens.</div><div class="lands">A lane opens proactively — no queue ever builds.</div></div>
+        <div class="persona"><div class="who">Passenger</div><div class="what">An instant notification with a map to the new gate.</div><div class="lands">Confusion prevented before it starts.</div></div>
+        <div class="persona"><div class="who">Security</div><div class="what">A predictive surge alert well before it happens.</div><div class="lands">A lane opens proactively — no queue ever builds.</div></div>
         <div class="persona"><div class="who">Airline</div><div class="what">Full context for crew positioning and network impact.</div><div class="lands">A collaborative decision, not a unilateral one.</div></div>
         <div class="persona"><div class="who">CFO · finance</div><div class="what">Cost avoidance quantified per incident.</div><div class="lands">A measurable business case, not an operational narrative.</div></div>
       </div>
     </div>
 
-    <div class="metrics">
-      ${metric('83', 'seconds, demonstrated')}
-      ${metric('17', 'systems orchestrated')}
-      ${metric('187', 'passengers moved')}
-      ${metric('18', 'seconds to notify')}
-      ${metric('15', 'minute head start', true)}
-      ${metric('80–90%', 'faster than manual', true)}
-    </div>
-    <div class="note">Timings are from DXC's AIRIS demonstration against a manual baseline of 5–15
-      minutes and 6–15 touchpoints (IATA). Any cost figure around it is illustrative, modelled on
-      industry benchmarks, and is replaced by an airport's own incident data.</div>`,
+    <div class="note">Drawn from DXC's AIRIS demonstration. Any cost figure around it is illustrative,
+      modelled on industry benchmarks, and is replaced by an airport's own incident data.</div>`,
   enter(ctx) {
-    const clock = ctx.root.querySelector('#airisClock');
+    const fill = ctx.root.querySelector('#airisFill');
     const status = ctx.root.querySelector('#airisStatus');
     const btn = ctx.root.querySelector('#airisBtn');
     const systems = [...ctx.root.querySelectorAll('#airisSys .sys')];
@@ -2628,26 +2618,26 @@ const SCENES = [
     const clear = () => { timers.forEach(clearTimeout); timers = []; cancelAnimationFrame(raf); };
     const reset = () => {
       clear();
-      clock.textContent = '0'; clock.parentElement.classList.remove('done');
-      status.textContent = '● gate change detected · manual baseline 5–15 min';
+      fill.style.width = '0%'; const cardEl = fill.closest('.card'); cardEl.classList.remove('done'); cardEl.dataset.done = '';
+      status.textContent = '● gate change detected · waiting';
       systems.forEach(s => s.classList.remove('lit'));
       personas.forEach(p => p.classList.remove('lit'));
       btn.disabled = false; btn.textContent = '▸ Run the disruption';
     };
 
-    const DUR = 6200;   // 83 "seconds" compressed into six real ones
+    const DUR = 6200;   // the whole coordination, compressed into a few real seconds
     const run = () => {
       reset();
       btn.disabled = true; btn.textContent = 'Coordinating…';
-      status.textContent = '● AIRIS coordinating · 17 systems';
+      status.textContent = '● AIRIS coordinating · every system';
       const t0 = performance.now();
       const tick = now => {
         const p = Math.min(1, (now - t0) / DUR);
-        clock.textContent = String(Math.round(83 * p));
+        fill.style.width = `${Math.round(p * 100)}%`;
         if (p < 1) raf = requestAnimationFrame(tick);
         else {
-          clock.parentElement.classList.add('done');
-          status.textContent = '● coordinated · every stakeholder updated · 83 s';
+          const cardEl = fill.closest('.card'); cardEl.classList.add('done'); cardEl.dataset.done = '1';
+          status.textContent = '● coordinated · every stakeholder updated';
           btn.disabled = false; btn.textContent = '↻ Run it again';
         }
       };
@@ -2657,7 +2647,7 @@ const SCENES = [
     };
 
     btn.addEventListener('click', run);
-    ctx.onLine(2, run);            // fires as the narration reaches "AIRIS orchestrates seventeen systems"
+    ctx.onLine(2, run);            // fires as the narration reaches "AIRIS orchestrates every connected system"
     ctx.onLeave(clear);
   }
 },
@@ -2666,15 +2656,15 @@ const SCENES = [
 {
   id: 'agents',
   title: 'Agents, governed',
-  eyebrow: '08 · the agents',
+  eyebrow: 'the agents',
   lines: [
     "A word on the agents, because this is where most AI platforms quietly stop being auditable.",
     "An agent here is a registered object, not a prompt someone pasted: a purpose, a risk tier, declared tools, its own data scope, evals and guardrails.",
-    "Six ship today — an airport analyst, ops, baggage, retail, a data steward and a compliance explainer. You register your own the same way.",
+    "Shipped today: an airport analyst, ops, baggage and retail analysts, a data steward and a compliance explainer. You register your own the same way.",
     "And anything irreversible waits in one approvals inbox for a person. That's the shape of the thing, not a setting."
   ],
   html: () => `
-    <p class="eyebrow">08 · the agents · registered, scoped, evaluated</p>
+    <p class="eyebrow">the agents · registered, scoped, evaluated</p>
     <h1>An agent is an object,<br>not a prompt somebody pasted.</h1>
 
     <div class="grid g3">
@@ -2704,15 +2694,15 @@ const SCENES = [
 {
   id: 'governance',
   title: 'Governance, risk & compliance',
-  eyebrow: '09 · GRC',
+  eyebrow: 'GRC',
   lines: [
-    "Most platforms sell governance as a module you buy later. Here it's one of the five things in the navigation — and it governs the platform, too.",
+    "Most platforms sell governance as a module you buy later. Here it's part of the navigation itself — and it governs the platform, too.",
     "The obligation register carries what you're actually held to: the ICAO annexes, your emergency plan, ESG, personal data — and now AI governance.",
     "The risk register scores both sides: runway incursion and baggage SLA, right next to data-access scope and unapproved AI extraction.",
     "Why it matters: the question that kills AI pilots is never 'is it clever'. It's 'show me who saw what, and why the model said that'. This answers both."
   ],
   html: () => `
-    <p class="eyebrow">09 · governance, risks &amp; compliance</p>
+    <p class="eyebrow">governance, risks &amp; compliance</p>
     <h1>Governs the airport —<br>and governs itself.</h1>
 
     <h2>Obligations tracked</h2>
@@ -2734,7 +2724,7 @@ const SCENES = [
       <div class="card">
         <div class="card-head"><h3>The platform itself</h3><span class="chip live">self-governing</span></div>
         <p>Data access scope · personal-data exposure · unapproved AI extraction · engine dependency ·
-          audit gap. The platform carries its own risks in the same register, scored on the same 5×5
+          audit gap. The platform carries its own risks in the same register, scored on the same
           scale — because a tool that cannot be audited is a risk to the airport that bought it.</p>
       </div>
     </div>
@@ -2754,31 +2744,31 @@ const SCENES = [
 {
   id: 'deploy',
   title: 'How it lands',
-  eyebrow: '10 · delivery',
+  eyebrow: 'delivery',
   lines: [
     "So how does it actually land in your airport?",
-    "About eighty-five percent already exists and is proven. The other fifteen is your brand, your maps, your rules, your workflows. You're funding a tailoring, not a build.",
-    "Three ways in: greenfield, brownfield in phases, or the intelligent layer — where nothing you own moves. That last one is the fastest return.",
+    "Most of what you'd deploy already exists and is proven. The rest is your brand, your maps, your rules, your workflows. You're funding a tailoring, not a build.",
+    "Ways in: greenfield, brownfield in phases, or the intelligent layer — where nothing you own moves. That last one is the fastest return.",
     "And it runs anywhere: cloud, on-prem, hybrid, or fully air-gapped. If a feed drops, the board keeps the last known picture and tells you how old it is."
   ],
   html: () => `
-    <p class="eyebrow">10 · delivery &amp; engagement</p>
+    <p class="eyebrow">delivery &amp; engagement</p>
     <h1>Built once.<br>Tailored per airport.</h1>
 
     <h2>Effort to go live</h2>
     <div class="bars" style="margin-top:4px">
-      <div class="bar"><span>Pre-built &amp; proven</span><span class="track"><span class="fill" style="width:85%"></span></span><span class="v">~85%</span></div>
-      <div class="bar"><span>Tailored to you</span><span class="track"><span class="fill" style="width:15%;background:linear-gradient(90deg,var(--gold),var(--peach))"></span></span><span class="v">~15%</span></div>
+      <div class="bar"><span>Pre-built &amp; proven</span><span class="track"><span class="fill" style="width:85%"></span></span><span class="v">most</span></div>
+      <div class="bar"><span>Tailored to you</span><span class="track"><span class="fill" style="width:15%;background:linear-gradient(90deg,var(--gold),var(--peach))"></span></span><span class="v">the rest</span></div>
     </div>
-    <p class="lede" style="margin-top:14px">The tailored fifteen is brand and UX, terminal and zone maps,
+    <p class="lede" style="margin-top:14px">The tailored part is brand and UX, terminal and zone maps,
       local regulations, language and currency, ops workflows and SLAs, and data migration. Everything
       else is reused as-is.</p>
 
-    <h2>Three ways in</h2>
+    <h2>Ways in</h2>
     <div class="grid g3">
-      ${card('01 · Greenfield', '<b style="color:var(--ink)">Fits</b> a new airport or terminal, no entrenched systems, moving off paper.<br><br><b style="color:var(--ink)">How</b> deploy the full pre-built platform on the reference architecture; configure brand, zones, workflows.', 'Fastest route to modern. Main risk is change management — mitigated with proven blueprints and adoption support.')}
-      ${card('02 · Brownfield', '<b style="color:var(--ink)">Fits</b> ageing or unsupported systems, high licence cost, a consolidation mandate.<br><br><b style="color:var(--ink)">How</b> assess and map the estate, deploy in parallel behind an integration bridge, migrate and validate, cut over module by module.', 'Phased, never big-bang. Risk is migration and cutover — mitigated by parallel run and rollback at every reversible step.')}
-      ${card('03 · Intelligent layer', '<b style="color:var(--ink)">Fits</b> systems that work and must stay, heavy prior investment, a low-disruption or regulatory constraint on the core.<br><br><b style="color:var(--ink)">How</b> connect via API and ESB adapters, normalise into the canonical model, add AI, analytics and orchestration on top.', 'Fastest ROI and lowest disruption of the three. Risk is source-system API access — mitigated by the adapter library and a validation layer.')}
+      ${card('Greenfield', '<b style="color:var(--ink)">Fits</b> a new airport or terminal, no entrenched systems, moving off paper.<br><br><b style="color:var(--ink)">How</b> deploy the full pre-built platform on the reference architecture; configure brand, zones, workflows.', 'Fastest route to modern. Main risk is change management — mitigated with proven blueprints and adoption support.')}
+      ${card('Brownfield', '<b style="color:var(--ink)">Fits</b> ageing or unsupported systems, high licence cost, a consolidation mandate.<br><br><b style="color:var(--ink)">How</b> assess and map the estate, deploy in parallel behind an integration bridge, migrate and validate, cut over module by module.', 'Phased, never big-bang. Risk is migration and cutover — mitigated by parallel run and rollback at every reversible step.')}
+      ${card('Intelligent layer', '<b style="color:var(--ink)">Fits</b> systems that work and must stay, heavy prior investment, a low-disruption or regulatory constraint on the core.<br><br><b style="color:var(--ink)">How</b> connect via API and ESB adapters, normalise into the canonical model, add AI, analytics and orchestration on top.', 'Fastest ROI and lowest disruption of the three. Risk is source-system API access — mitigated by the adapter library and a validation layer.')}
     </div>
 
     <h2>Where it runs</h2>
@@ -2789,40 +2779,33 @@ const SCENES = [
     </div>
 
     <h2>The track record behind it</h2>
-    <div class="metrics">
-      ${metric('15', 'Services in production')}
-      ${metric('5', 'Airports live')}
-      ${metric('12', 'AI systems')}
-      ${metric('70+', 'Dashboards')}
-      ${metric('16+', 'Automation bots', true)}
-      ${metric('8', 'Departments unified', true)}
-    </div>
-    <div class="note">Security paperwork down ~80% and fully offline-capable in restricted zones;
-      complaint response ~25% faster with a ~35% CX uplift across five airports; zero paper contracts
-      and four content platforms collapsed into one. The home-to-gate passenger ecosystem took the
-      IDC Future Enterprise Award 2023.</div>`
+    <div class="grid g3">
+      ${card('In production', 'Services live across several airports, AI systems, dashboards and automation bots — running today, not on a roadmap.')}
+      ${card('Measured outcomes', 'Security paperwork sharply reduced and fully offline-capable in restricted zones; faster complaint response with a measurable CX uplift; paper contracts gone.')}
+      ${card('Recognised', 'The home-to-gate passenger ecosystem took the IDC Future Enterprise Award.')}
+    </div>`
 },
 
 /* 13 ─────────────────────────────────────────────────────────────────────── */
 {
   id: 'talk',
   title: "Let's talk",
-  eyebrow: '11 · next',
+  eyebrow: 'next',
   lines: [
     "That's the tour — thank you for staying with me.",
     "If you take one thing: airports don't have a systems problem. They have a coordination problem, and a data problem underneath it. Solve the second and the first falls out.",
-    "The shortest honest next step is small: three real feeds, a fortnight, and your own people building on it. Ask me anything — I'm still here."
+    "The shortest honest next step is small: a few real feeds, a short trial, and your own people building on it. Ask me anything — I'm still here."
   ],
   html: () => `
-    <p class="eyebrow">11 · next</p>
-    <h1>Point it at three feeds.<br>Judge it in a fortnight.</h1>
+    <p class="eyebrow">next</p>
+    <h1>Point it at a few feeds.<br>Judge it on evidence.</h1>
     <p class="lede">The fastest way to test everything I've said is not a workshop. It's a small,
       contained piece of your real estate, mapped into the canonical model, with a board, a workflow
       and an agent built on top of it by your own people.</p>
     <div class="grid g3">
-      ${card('1 · Baseline', 'A short assessment against your own systems, incident volume and cost data. Every indicative range in this walkthrough gets replaced by your number.')}
-      ${card('2 · Three feeds, mapped', 'Two or three real sources into the canonical model. Then your team builds a board, a workflow and an agent on it — without us.')}
-      ${card('3 · Scale on evidence', 'What gets built next is decided by what the first one proved, not by what was on the original slide.')}
+      ${card('Baseline', 'A short assessment against your own systems, incident volume and cost data. Every indicative range in this walkthrough gets replaced by your number.')}
+      ${card('A few feeds, mapped', 'A few real sources into the canonical model. Then your team builds a board, a workflow and an agent on it — without us.')}
+      ${card('Scale on evidence', 'What gets built next is decided by what the first one proved, not by what was on the original slide.')}
     </div>
 
     <h2>Questions I get asked most</h2>

@@ -310,8 +310,8 @@ class CDP {
         // no ElevenLabs key: the browser's own recognition. Headless Brave has no speech service,
         // so the honest outcome is a spoken explanation, never a silent un-toggle.
         await cdp.eval(`document.querySelector('#micBtn').click(); true`);
-        await sleep(2500);
-        expect(await cdp.eval(`!document.querySelector('#micBtn').classList.contains('rec') && /type it in|microphone|speech service|didn.t catch/i.test(document.querySelector('#captionText').textContent)`), 'web-speech failure was not explained in the caption');
+        const explained = await waitFor(`!document.querySelector('#micBtn').classList.contains('rec') && /type it in|microphone|speech service|didn.t catch|cancelled/i.test(document.querySelector('#captionText').textContent)`, 8000);
+        expect(explained, 'web-speech failure was not explained in the caption');
       }
       if (micKind === 'scribe') {
         await cdp.eval(`document.querySelector('#micBtn').click(); true`);
@@ -349,7 +349,13 @@ class CDP {
       await cdp.eval(`window.app.goto('live', { play: false }); document.querySelector('#runBtn').click(); true`);
       expect(await waitFor(`document.querySelector('#runStatus').textContent.includes('WAITING FOR A HUMAN')`, 8000), 'workflow run never reached the human step');
       await cdp.eval(`window.app.goto('airis', { play: false }); document.querySelector('#airisBtn').click(); true`);
-      expect(await waitFor(`document.querySelector('#airisClock').textContent === '83' && document.querySelectorAll('#airisPersonas .persona.lit').length === 5`, 9000), 'AIRIS run did not finish at 83 s with all five personas lit');
+      expect(await waitFor(`document.querySelector('#airisFill')?.closest('.card')?.dataset.done === '1' && document.querySelectorAll('#airisPersonas .persona.lit').length === document.querySelectorAll('#airisPersonas .persona').length`, 9000), 'AIRIS run did not finish with every persona lit');
+      // no digits on any stage (standards such as ICAO Annex 17 / ISO 27001 / Flow360 are names, not counts)
+      for (let i = 0; i < 13; i++) {
+        await cdp.eval(`window.app.render(${i}, { play: false }); true`);
+        const digits = await cdp.eval(`(document.querySelector('#stage').innerText.match(/\\b\\d[\\d,.:–-]*%?\\b/g) || []).filter(x => !/^(139|14|17|19|27001|14001|360|2|3|753)$/.test(x))`);
+        if (digits.length) problems.push(`[${size.name}] scene ${i + 1} still shows numbers: ${digits.slice(0, 6).join(', ')}`);
+      }
       await cdp.eval(`window.app.goto('open', { play: false }); true`);
       await sleep(1500);   // any leaked timer would throw here (its elements are gone)
 

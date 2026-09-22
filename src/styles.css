@@ -828,3 +828,9 @@ header {
   background: var(--slab); color: var(--ink); border: 1px solid var(--rule); border-radius: 7px; padding: 11px 14px;
 }
 #accessCode:focus { border-color: var(--gold); outline: none; }
+
+/* ── AIRIS coordination bar (replaces the numeric clock) ─────────────── */
+.airis-bar { margin: 4px 0 2px; }
+.airis-bar .track { display: block; height: 10px; border-radius: 5px; background: var(--rule); overflow: hidden; }
+.airis-bar .fill { display: block; height: 100%; width: 0%; border-radius: 5px; background: linear-gradient(90deg, var(--royal), var(--sky)); transition: width .12s linear; }
+.card.done .airis-bar .fill { background: linear-gradient(90deg, var(--gold), var(--peach)); }

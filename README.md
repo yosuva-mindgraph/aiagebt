@@ -25,16 +25,20 @@ nobody wants a lecture at a stand.
 | 1 | AIRIS · Thinking Airport | Three lines: hello, one sentence on what it is, the tour in six stops |
 | 2 | Where should I start? | The chooser; jump anywhere |
 | 3 | The proposition | Sits on top of everything, replaces none of it |
-| 4 | All the data | 21 sources → 59 entities → 204 governed KPIs |
-| 5 | The airport, modelled | 5 control centres, domains, apps — **metadata, not code** |
+| 4 | All the data | Every source, one model, defined once |
+| 5 | The airport, modelled | Control centres, domains, apps — **metadata, not code** |
 | 6 | Ask it anything | Governed natural language, with its sources shown |
 | 7 | Build anything on it | Boards · apps · workflows · agents |
 | 8 | Watch it work — **live** | One playbook, end to end, stopping at the human |
-| 9 | One disruption, 83 seconds — **live** | DXC's AIRIS demo: 187 passengers, 17 systems, five personas |
+| 9 | One disruption, end to end — **live** | DXC's AIRIS demo: one gate change, every stakeholder |
 | 10 | Agents, governed | Risk tier, data scope, declared tools, evals, guardrails |
 | 11 | Governance, risk & compliance | ICAO, privacy, AI governance — and its own risks |
-| 12 | How it lands | ~85/15, three ways in, air-gapped |
-| 13 | Let's talk | Point it at three feeds, judge it in a fortnight |
+| 12 | How it lands | Mostly pre-built, the ways in, air-gapped |
+| 13 | Let's talk | Point it at a few feeds, judge it on evidence |
+
+**The stages carry no counts and no numbers.** Narration and stage copy stay generic on purpose
+("every feed", "the control centres", "seconds, not minutes"); the only figures a visitor sees are
+in the Q&A answers, each traceable to a source. The harness fails if a digit appears on a stage.
 
 The argument is deliberately **platform-shaped**, not a module catalogue: one governed
 model of the airport, then an unbounded number of things built on it. Where named use

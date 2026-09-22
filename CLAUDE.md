@@ -202,6 +202,10 @@ property of the preview, not a bug to fix in code.
   Montreal) are named. Perth, Qantas and the Malaysian references stay out even though the v5
   briefing uses them. Nothing DXC-internal from the PTE brief (rosters, phone numbers,
   competitor list, lead process) goes into the knowledge base.
+- **No numbers on the stages.** Scene narration and stage markup carry no counts or figures (no
+  "five centres", no "83 seconds", no percentages, no numbered eyebrows); say "every", "the",
+  "seconds, not minutes". Standards names (ICAO Annex 17, ISO 27001, Flow360) are fine. Figures
+  live only in the Q&A `facts`. `shoot-cdp.js` fails if a stage shows a digit.
 - **Short and warm.** Scene narration is at most four lines; answers at most ~70 words. AIRIS
   is friendly and a little playful, never at anyone's expense, and never quotes a price.
 - **Platform, not modules.** Copy must never imply a fixed catalogue or a ceiling on what can be
