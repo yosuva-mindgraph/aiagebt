@@ -171,6 +171,8 @@ class CDP {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: size.width, height: size.height, deviceScaleFactor: 1, mobile: false });
     await goto(URL_);
 
+    if (process.env.AIB_PASS) await cdp.eval(`localStorage.setItem('aib-pass', ${JSON.stringify(process.env.AIB_PASS)}); true`);
+
     // cold open
     await cdp.shot(path.join(OUT, `${size.name}-00-open.png`));
 

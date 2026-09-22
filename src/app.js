@@ -408,16 +408,36 @@ class App {
       if (e.key === '/') { e.preventDefault(); this.el.askInput.focus(); }
     });
 
+    // hosted deployments ask for an access code once; it rides along to the proxy
+    const access = $('#accessRow'), accessInput = $('#accessCode');
+    if (CONFIG.access?.required && access) {
+      access.hidden = false;
+      try { accessInput.value = localStorage.getItem('aib-pass') || ''; } catch {}
+    }
+    const saveAccess = () => {
+      if (!CONFIG.access?.required || !accessInput) return;
+      const v = accessInput.value.trim();
+      try { if (v) localStorage.setItem('aib-pass', v); } catch {}
+    };
+    let toldUnauthorised = false;
+    addEventListener('aib:unauthorised', () => {
+      if (toldUnauthorised) return; toldUnauthorised = true;
+      try { localStorage.removeItem('aib-pass'); } catch {}
+      this._caption('That access code isn’t right, so the voices and the AI brain are off. Reload the page and enter it again.');
+    });
+
     // cold open — the click here is what unlocks audio autoplay
     // Warm the voice cache for the whole deck once the visitor is in — the first
     // tour of the day then has no generation gaps, and every later one is free.
     const prewarm = () => this.voice.prewarm(SCENES.flatMap(s => s.lines));
     $('#startBtn').addEventListener('click', () => {
+      saveAccess();
       this.el.overlay.hidden = true;
       this.render(0, { play: true });
       prewarm();
     });
     $('#skipIntroBtn').addEventListener('click', () => {
+      saveAccess();
       this.el.overlay.hidden = true;
       this.render(1, { play: false });
       this.el.askInput.focus();

@@ -9,6 +9,7 @@
        node build.js            → dist/index.html (never contains config.js — safe to commit and hand out)
                                   + dist/stand.html when config.js exists (keys baked in — gitignored)
        node build.js --no-config  → skip dist/stand.html
+       node build.js --cloud      → + dist/cloud/index.html: no keys, proxies under /api (Cloudflare Pages)
 
    The module inliner is deliberately small: it understands the handful of
    import/export forms this repo actually uses, in dependency order. It is not a
@@ -79,6 +80,20 @@ function build({ withConfig = true } = {}) {
 
   const configJs = withConfig && exists('config.js') ? read('config.js') : '';
 
+  /* --cloud: the same page with a KEY-FREE config that points the voice and the brain at
+     same-origin proxy routes (functions/) and asks visitors for an access code. Voices,
+     persona and model settings are copied from config.js; the secrets are not. */
+  const cloudConfig = () => {
+    const w = {};
+    try { new Function('window', configJs)(w); } catch { return ''; }
+    const c = w.AIB_CONFIG || {};
+    const el = { ...(c.elevenLabs || {}) }; delete el.apiKey; el.proxy = '/api/eleven';
+    const llm = { ...(c.llm || {}) }; delete llm.apiKey; delete llm.headers; delete llm.apiVersion;
+    llm.provider = 'openai'; llm.endpoint = '/api/llm';
+    const cloud = { elevenLabs: el, webSpeech: c.webSpeech || {}, llm, access: { required: true } };
+    return `window.AIB_CONFIG = ${JSON.stringify(cloud, null, 2)};`;
+  };
+
   const assemble = cfg => read('index.html')
     .replace(/<link rel="stylesheet" href="assets\/fonts\.css">\s*\n?/, '')
     .replace(/<link rel="stylesheet" href="src\/styles\.css">/, `<style>\n${css}\n</style>`)
@@ -94,6 +109,14 @@ function build({ withConfig = true } = {}) {
   const out = path.join(ROOT, 'dist', 'index.html');
   fs.writeFileSync(out, html);
   if (configJs) fs.writeFileSync(path.join(ROOT, 'dist', 'stand.html'), assemble(configJs));
+  if (process.argv.includes('--cloud')) {
+    const cc = cloudConfig();
+    if (!cc) { console.error('--cloud needs a readable config.js to copy the voice and model settings from'); process.exit(1); }
+    if (/sk_[A-Za-z0-9]{20,}|apiKey/.test(cc)) { console.error('refusing: a key would have reached the cloud build'); process.exit(1); }
+    fs.mkdirSync(path.join(ROOT, 'dist', 'cloud'), { recursive: true });
+    fs.writeFileSync(path.join(ROOT, 'dist', 'cloud', 'index.html'), assemble(cc));
+    console.log('dist/cloud/index.html  no keys — voice and brain via /api/* (functions/), access code required');
+  }
 
   /* A Claude Artifact supplies its own <!doctype>/<head>/<body> and wraps what it
      is given, so the hosted preview needs the same page with that scaffolding

@@ -23,6 +23,22 @@
 /* ElevenLabs premade "Rachel" — used when no voiceId is configured. */
 const DEFAULT_VOICE = '21m00Tcm4TlvDq8ikWAM';
 
+/* ── proxy mode ───────────────────────────────────────────────────────
+   On a hosted deployment the page carries no keys: `elevenLabs.proxy` is a
+   same-origin base such as /api/eleven whose routes hold the key (see
+   functions/). The visitor's access code travels in X-AIB-Pass; a 401 means
+   it is missing or wrong, and the page is told so it can say so.         */
+export function accessHeaders() {
+  let pass = '';
+  try { pass = localStorage.getItem('aib-pass') || ''; } catch {}
+  return pass ? { 'X-AIB-Pass': pass } : {};
+}
+export function unauthorised(res) {
+  if (res?.status !== 401) return false;
+  try { window.dispatchEvent(new CustomEvent('aib:unauthorised')); } catch {}
+  return true;
+}
+
 /* ── audio cache ──────────────────────────────────────────────────────
    A stand plays the same thirteen scenes all day. Every ElevenLabs call is
    billed per character, so each distinct line is fetched once and then
@@ -100,7 +116,7 @@ export class Voice {
   }
 
   get usingElevenLabs() {
-    return Boolean(this.cfg?.elevenLabs?.apiKey);
+    return Boolean(this.cfg?.elevenLabs?.apiKey || this.cfg?.elevenLabs?.proxy);
   }
 
   /** The switchable voices: [{ id, label, gender }]. Empty when none are configured. */
@@ -200,23 +216,24 @@ export class Voice {
       ? { stability: [0, 0.5, 1].reduce((best, x) => Math.abs(x - stability) < Math.abs(best - stability) ? x : best, 0.5) }
       : { stability, similarity_boost: similarity, style, use_speaker_boost: true, speed: Math.min(1.2, Math.max(0.7, speed)) };
     const key = `${modelId}|${voiceId}|${JSON.stringify(voiceSettings)}|${hashOf(text)}`;
-    return { apiKey, voiceId, modelId, voiceSettings, key };
+    return { apiKey, voiceId, modelId, voiceSettings, key, proxy: el.proxy ? String(el.proxy).replace(/\/+$/, '') : '' };
   }
 
   /** Fetch (or serve from cache) the MP3 bytes for one line. */
   _elClip(text, controller) {
-    const { apiKey, voiceId, modelId, voiceSettings, key } = this._elSpec(text);
+    const { apiKey, voiceId, modelId, voiceSettings, key, proxy } = this._elSpec(text);
+    const url = proxy
+      ? `${proxy}/tts/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`
+      : `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`;
+    const auth = proxy ? accessHeaders() : { 'xi-api-key': apiKey };
     return cachedClip(key, async () => {
-      const res = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
-        {
-          method: 'POST',
-          signal: controller?.signal,
-          headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, model_id: modelId, voice_settings: voiceSettings }),
-        }
-      );
-      if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 160)}`);
+      const res = await fetch(url, {
+        method: 'POST',
+        signal: controller?.signal,
+        headers: { ...auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, model_id: modelId, voice_settings: voiceSettings }),
+      });
+      if (!res.ok) { unauthorised(res); throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 160)}`); }
       return res.arrayBuffer();
     });
   }
@@ -331,8 +348,9 @@ const micMessage = code => MIC_MESSAGES[code] || 'I couldn’t hear that just no
 
 export function createRecogniser(config = {}, { onResult, onEnd, onError, onStatus } = {}) {
   const canRecord = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.FormData);
-  if (config?.elevenLabs?.apiKey && canRecord) return scribeRecogniser(config.elevenLabs, { onResult, onEnd, onError, onStatus });
-  if (config?.elevenLabs?.apiKey && !canRecord) {
+  const hasEars = Boolean(config?.elevenLabs?.apiKey || config?.elevenLabs?.proxy);
+  if (hasEars && canRecord) return scribeRecogniser(config.elevenLabs, { onResult, onEnd, onError, onStatus });
+  if (hasEars && !canRecord) {
     // The key is there but this page cannot open a microphone (usually a file:// or plain-http
     // page in a browser that only allows the mic on https / localhost). Say so, out loud.
     const why = window.isSecureContext
@@ -384,8 +402,11 @@ function scribeRecogniser(el, { onResult, onEnd, onError, onStatus }) {
     const form = new FormData();
     form.append('model_id', 'scribe_v1');
     form.append('file', blob, blob.type.includes('mp4') ? 'clip.mp4' : blob.type.includes('ogg') ? 'clip.ogg' : 'clip.webm');
-    const res = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': el.apiKey }, body: form });
-    if (!res.ok) throw new Error(`Scribe ${res.status}: ${(await res.text()).slice(0, 120)}`);
+    const proxy = el.proxy ? String(el.proxy).replace(/\/+$/, '') : '';
+    const res = await fetch(proxy ? `${proxy}/stt` : 'https://api.elevenlabs.io/v1/speech-to-text', {
+      method: 'POST', headers: proxy ? accessHeaders() : { 'xi-api-key': el.apiKey }, body: form,
+    });
+    if (!res.ok) { unauthorised(res); throw new Error(`Scribe ${res.status}: ${(await res.text()).slice(0, 120)}`); }
     const data = await res.json();
     return String(data.text || '').trim();
   }

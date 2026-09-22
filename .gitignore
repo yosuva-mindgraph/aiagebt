@@ -4,3 +4,6 @@ shots/
 dist/stand.html
 # dist/index.html is committed on purpose — it is the keyless file you hand out.
 # dist/stand.html is the same file with config.js baked in — never commit it.
+.dev.vars
+dist/cloud/
+.wrangler/

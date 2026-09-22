@@ -25,6 +25,10 @@ node build.js                   # → dist/index.html, everything inlined, NEVER
                                 #   + dist/stand.html with config.js baked in when it exists (gitignored — the stand opens this)
 node build.js --no-config       # skip dist/stand.html
 node build.js --artifact        # also writes dist/artifact.html (scaffolding stripped for Claude Artifact hosting)
+node build.js --cloud           # also dist/cloud/index.html: NO keys; elevenLabs.proxy=/api/eleven, llm.endpoint=/api/llm,
+                                # access.required=true. Served by functions/ on Cloudflare Pages; ./deploy-cloudflare.sh
+                                # sets ELEVEN_KEY / AZURE_KEY / AZURE_ENDPOINT / AIB_PASSCODE as project secrets.
+                                # Rehearse locally: .dev.vars (gitignored) + `npx wrangler@4 pages dev dist/cloud --port 8788`
 
 node shoot-cdp.js               # visual check, no dependencies: drives a local Chrome/Brave/Edge headless
                                 # over the DevTools protocol through every scene at 1920×1080 and 1440×900,
@@ -173,6 +177,14 @@ tokens each second so the theme toggle holds), deliberately isolated behind
 `setState(s)`, `speak(text, durationMs)`, `stopSpeaking()` and `setLevel(rms)`. The planned production swap to met4citizen/TalkingHead
 (see `docs/OSS-EVALUATION.md`) must touch only `avatar.js`; keep that interface intact and keep
 the canvas bust as the no-GPU fallback.
+
+### Proxy mode (hosted)
+
+`elevenLabs.proxy` (a same-origin base) replaces the key for TTS and STT; `llm.endpoint` starting
+with `/` is treated the same for the brain. Both send `X-AIB-Pass` from `localStorage['aib-pass']`
+(entered on the cold open when `access.required`), and a 401 dispatches `aib:unauthorised`, which
+app.js turns into a spoken caption and a cleared code. `functions/_gate.js` enforces the code
+only when the `AIB_PASSCODE` secret exists. The harness seeds the code from `AIB_PASS`.
 
 ### Hosting constraint
 

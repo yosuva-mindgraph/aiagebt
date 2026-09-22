@@ -107,6 +107,7 @@ node build.js                # → dist/index.html  (~0.9 MB, everything inlined
                              #   + dist/stand.html when config.js exists (keys baked in — gitignored; the stand machine opens this one)
 node build.js --no-config    # skip dist/stand.html
 node build.js --artifact     # also dist/artifact.html for Claude Artifact hosting
+node build.js --cloud        # also dist/cloud/index.html — no keys, voice and brain via /api/* (see Hosting)
 ```
 
 The keyed file is deliberately a different name from the tracked one, so a build can never
@@ -115,6 +116,22 @@ put a key into git by accident.
 Fonts are already data URIs; the build folds in the CSS and flattens the ES modules
 into one classic script. It refuses to build on a top-level name collision, because
 that is a bug the module system hides and the built file does not.
+
+## Hosting it on Cloudflare Pages (free)
+
+The public page must not carry keys, so the hosted build talks to three tiny proxy routes in
+`functions/` that hold them as project secrets, and visitors enter an access code once.
+
+```bash
+npx wrangler@4 login          # once — opens a browser
+./deploy-cloudflare.sh        # builds dist/cloud, creates the project, sets the secrets from
+                              # config.js (never echoed), deploys, prints the URL and the code
+```
+
+`AIB_PASSCODE=…` sets your own code; `AIB_CF_PROJECT=…` names the project. To rehearse without
+an account: put the secrets in a gitignored `.dev.vars` and run
+`npx wrangler@4 pages dev dist/cloud --port 8788`, then
+`AIB_PASS=<code> AIB_URL=http://127.0.0.1:8788/ node shoot-cdp.js`.
 
 ## Seeing it
 

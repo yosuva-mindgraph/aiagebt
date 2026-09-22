@@ -23,6 +23,7 @@
    ========================================================================== */
 
 import { search, isGrounded, CONFIDENCE_FLOOR, DONT_KNOW, WINKS } from './knowledge.js';
+import { accessHeaders, unauthorised } from './voice.js';
 
 const SYSTEM = `You are AIRIS, the friendly presenter for "AIRIS — Thinking Airport" — the airport intelligence PLATFORM
 built by MindGraph with DXC. You are speaking out loud to a visitor at a conference stand.
@@ -124,7 +125,8 @@ export class Ask {
     const endpoint = resolveEndpoint(l, provider);
     const maxTokens = l.maxTokens || 260;
     const user = `GROUNDING\n${grounding}\n\nQUESTION\n${question}`;
-    const headers = { 'Content-Type': 'application/json', ...(l.headers || {}) };
+    const sameOrigin = /^\//.test(endpoint);                 // a hosted proxy under this site
+    const headers = { 'Content-Type': 'application/json', ...(sameOrigin ? accessHeaders() : {}), ...(l.headers || {}) };
     let body;
 
     if (provider === 'anthropic') {
@@ -167,7 +169,7 @@ export class Ask {
     try {
       res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal });
     } finally { clearTimeout(timer); }
-    if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    if (!res.ok) { unauthorised(res); throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`); }
 
     const data = await res.json();
     let text = Array.isArray(data.content)
