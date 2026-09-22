@@ -43,10 +43,10 @@ export const SCENES = [
 /* 1 ──────────────────────────────────────────────────────────────────────── */
 {
   id: 'open',
-  title: 'Airport in a Box',
+  title: 'AIRIS · Thinking Airport',
   eyebrow: 'Airport vertical · MindGraph × DXC',
   lines: [
-    "Hi, I'm AIRIS. Welcome to Airport in a Box — the intelligence platform MindGraph and DXC put on top of an airport.",
+    "Hi, I'm AIRIS. This is Thinking Airport — the intelligence platform MindGraph and DXC put on top of an airport.",
     "In one line: all of your airport's data in one governed place, and then anything you like built on top of it.",
     "Here's the tour: the data, the model, asking it questions, building on it, watching it run, and how it lands. About ten minutes — and you can stop me any time."
   ],
@@ -54,13 +54,10 @@ export const SCENES = [
     <p class="eyebrow">Airport vertical · MindGraph × DXC · Confidential</p>
     <h1>All of the airport's data.<br>Then build anything on it.</h1>
     <p class="lede">Airports already own the plumbing — AODB, FIDS, ERP, baggage, A-CDM, CCTV,
-      building management, the sensor estate. Airport in a Box replaces none of it. It reads every
+      building management, the sensor estate. Thinking Airport replaces none of it. It reads every
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
     <div class="metrics">
-      ${metric('59', 'Canonical entities')}
-      ${metric('204', 'Governed KPIs')}
-      ${metric('21', 'Source feeds')}
       ${metric('0', 'Systems replaced', true)}
       ${metric('∞', 'Things you can build', true)}
     </div>
@@ -120,7 +117,7 @@ export const SCENES = [
   eyebrow: '01 · the proposition',
   lines: [
     "The proposition in one sentence: we don't replace a single system you own.",
-    "Airport in a Box sits on top. It reads every source, unifies the data into one model, and puts AI, prediction and automation over it.",
+    "Thinking Airport sits on top. It reads every source, unifies the data into one model, and puts AI, prediction and automation over it.",
     "It reads by default, and only writes back where you've opened that door — which is what makes it safe for a live ops room.",
     "And every lever lands on a number a CFO recognises: cost out, capex deferred, revenue up, risk removed."
   ],

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 AIB Presenter: a single-page, dependency-free browser app. A canvas-drawn presenter ("AIRIS")
-narrates thirteen short scenes about the "Airport in a Box" platform and answers spoken or typed
+narrates thirteen short scenes about the "AIRIS · Thinking Airport" platform (formerly titled "Airport in a Box"; the `AIB_*` identifiers and `aib-*` storage keys keep the old acronym) and answers spoken or typed
 questions at any point, with a figures panel beside every answer. Vanilla ES modules + CSS, no framework, no package.json, no npm install,
 no test suite. The git root is this `aiagebt/` directory; the parent folder only holds an
 unrelated Python venv.
@@ -153,7 +153,7 @@ because it consumes its buffer. `prefetch(text)` warms one line, `prewarm(lines)
 in the background after Start (skipped when muted or `elevenLabs.prewarm === false`), and the
 narration loop prefetches the next line while the current one plays. An aborted fetch (scene
 change) never falls back to the browser voice. Voices are personas (`elevenLabs.voices.{friday,jarvis}`);
-`Voice.setPersona(id)` switches, the header segment persists the choice under `aib-voice`, and the
+`Voice.setPersona(id)` switches, the segment inside the Settings panel (gear button) persists the choice under `aib-voice`, and the
 cache key includes the voice so switching back is free. Speech input: `createRecogniser(config, cbs)`
 returns a Scribe recogniser (MediaRecorder → `/v1/speech-to-text`, silence-stop, `cancel()`) when an
 ElevenLabs key exists, else Web Speech; every failure reaches `onError` with a spoken message. It it decodes to an `AudioContext` so real RMS reaches
@@ -161,8 +161,9 @@ ElevenLabs key exists, else Web Speech; every failure reaches `onError` with a s
 drops long utterances. `estimate(text)` (~153 wpm) drives lip-sync timing and timeouts when no
 real audio exists.
 
-`Avatar` is a canvas "holographic core" (aperture, rings, voice meter, particles; colours read
-from the CSS tokens each second so the theme toggle holds), deliberately isolated behind
+`Avatar` is a canvas neural network (118 nodes on two spherical shells, each wired to its 3
+nearest neighbours, signals that fire along links and spread on arrival; colours read from the CSS
+tokens each second so the theme toggle holds), deliberately isolated behind
 `setState(s)`, `speak(text, durationMs)`, `stopSpeaking()` and `setLevel(rms)`. The planned production swap to met4citizen/TalkingHead
 (see `docs/OSS-EVALUATION.md`) must touch only `avatar.js`; keep that interface intact and keep
 the canvas bust as the no-GPU fallback.

@@ -6,8 +6,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Airport in a Box — walkthrough</title>
-<meta name="description" content="AIRIS walks you through Airport in a Box: the airport intelligence platform from MindGraph and DXC.">
+<title>AIRIS · Thinking Airport</title>
+<meta name="description" content="AIRIS walks you through Thinking Airport: the airport intelligence platform from MindGraph and DXC.">
 <link rel="stylesheet" href="assets/fonts.css">
 <link rel="stylesheet" href="src/styles.css">
 <script src="config.js" onerror="window.AIB_CONFIG=window.AIB_CONFIG||{}"></script>
@@ -17,14 +17,24 @@
 <div id="shell">
 
   <header>
-    <div class="wordmark">Airport in a <span class="box">Box</span> <span class="by">MindGraph × DXC</span></div>
-    <div id="sceneTitle">Airport in a Box</div>
+    <div class="wordmark"><span class="box">AIRIS</span> Thinking Airport <span class="by">MindGraph × DXC</span></div>
+    <div id="sceneTitle">AIRIS · Thinking Airport</div>
     <div class="head-actions">
-      <div class="seg" id="voiceSeg" role="group" aria-label="Voice" hidden></div>
       <button class="btn" id="muteBtn" aria-pressed="true">🔊 Sound on</button>
       <button class="btn ghost" id="themeBtn" title="Switch light / dark">◐</button>
+      <button class="btn ghost" id="settingsBtn" title="Settings" aria-expanded="false" aria-controls="settings">⚙</button>
     </div>
   </header>
+
+  <!-- settings panel: opens from the gear, closes on Escape or a click outside -->
+  <div id="settings" class="panel" role="dialog" aria-label="Settings" hidden>
+    <div class="panel-head"><span>Settings</span><button class="btn ghost" id="settingsClose" title="Close">✕</button></div>
+    <div class="set-row">
+      <div class="set-lbl">Voice</div>
+      <div class="seg" id="voiceSeg" role="group" aria-label="Voice"></div>
+      <div class="set-note" id="voiceNote"></div>
+    </div>
+  </div>
 
   <div id="progress"><div id="progressFill"></div></div>
 
@@ -38,7 +48,7 @@
     </div>
     <div class="presenter">
       <h2>AIRIS</h2>
-      <div class="role">Airport in a Box<br>your guide</div>
+      <div class="role">Thinking Airport<br>your guide</div>
     </div>
     <div id="caption" aria-live="polite">
       <div id="captionText" class="idle"></div>
@@ -86,7 +96,7 @@
 <div id="overlay">
   <div class="opencard">
     <p class="kicker">MindGraph × DXC · Airport vertical</p>
-    <h1>Airport in a <em>Box</em></h1>
+    <h1><em>AIRIS</em> Thinking Airport</h1>
     <p>Hi, I’m AIRIS. Give me a few minutes and I’ll show you the whole platform — and you can
       interrupt me with a question whenever you like.</p>
     <button class="btn primary" id="startBtn">▸ Start the walkthrough</button>

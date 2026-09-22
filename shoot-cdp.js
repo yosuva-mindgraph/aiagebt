@@ -322,14 +322,26 @@ class CDP {
         expect(stt === 0, `cancel still sent ${stt} transcription request(s)`);
       }
 
-      // the voice switch (keyed builds only): changes persona, persists, and marks the button
+      // the settings panel opens from the gear, closes on Escape; the voice switch lives inside it
+      await cdp.eval(`document.querySelector('#settingsBtn').click(); true`);
+      expect(await cdp.eval(`!document.querySelector('#settings').hidden && document.querySelector('#settingsBtn').getAttribute('aria-expanded') === 'true'`), 'settings panel did not open');
+      await sleep(300);
+      await cdp.shot(path.join(OUT, `${size.name}-95-settings.png`));
       const seg = await cdp.eval(`!document.querySelector('#voiceSeg').hidden`);
       if (seg) {
         await cdp.eval(`window.app.voice.setMuted(true); document.querySelector('#voiceSeg [data-persona="jarvis"]').click(); true`);
         expect(await cdp.eval(`window.app.voice.persona === 'jarvis' && localStorage.getItem('aib-voice') === 'jarvis' && document.querySelector('#voiceSeg [data-persona="jarvis"]').getAttribute('aria-pressed') === 'true'`), 'voice switch did not select Jarvis');
+        expect(await cdp.eval(`!document.querySelector('#settings').hidden`), 'switching the voice closed the settings panel');
         await cdp.eval(`document.querySelector('#voiceSeg [data-persona="friday"]').click(); true`);
         expect(await cdp.eval(`window.app.voice.persona === 'friday'`), 'voice switch did not return to Friday');
+      } else {
+        expect(await cdp.eval(`document.querySelector('#voiceNote').textContent.length > 10`), 'keyless build shows no voice note in settings');
       }
+      await key('Escape');
+      expect(await cdp.eval(`document.querySelector('#settings').hidden`), 'Escape did not close the settings panel');
+      await cdp.eval(`document.querySelector('#settingsBtn').click(); true`);
+      await cdp.eval(`document.querySelector('#stage').click(); true`);
+      expect(await cdp.eval(`document.querySelector('#settings').hidden`), 'a click outside did not close the settings panel');
 
       // the workflow run and the AIRIS run both reach their end state and clean up on leave
       await cdp.eval(`window.app.goto('live', { play: false }); document.querySelector('#runBtn').click(); true`);

@@ -24,7 +24,7 @@
 
 import { search, isGrounded, CONFIDENCE_FLOOR, DONT_KNOW, WINKS } from './knowledge.js';
 
-const SYSTEM = `You are AIRIS, the friendly presenter for "Airport in a Box" — the airport intelligence PLATFORM
+const SYSTEM = `You are AIRIS, the friendly presenter for "AIRIS — Thinking Airport" — the airport intelligence PLATFORM
 built by MindGraph with DXC. You are speaking out loud to a visitor at a conference stand.
 
 HARD RULES — never break these

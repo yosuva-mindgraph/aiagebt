@@ -104,7 +104,7 @@ function build({ withConfig = true } = {}) {
       .trim();
     const head = html.slice(html.indexOf('<style>'), html.indexOf('</style>') + 8);
     fs.writeFileSync(path.join(ROOT, 'dist', 'artifact.html'),
-      `<title>Airport in a Box — walkthrough</title>\n${head}\n` +
+      `<title>AIRIS · Thinking Airport</title>\n${head}\n` +
       `<script>document.documentElement.dataset.theme = ` +
       `localStorage.getItem('aib-theme') || 'dark';</script>\n${body}\n`);
     console.log('dist/artifact.html  (head/body scaffolding stripped for hosting)');

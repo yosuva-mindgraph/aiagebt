@@ -332,6 +332,15 @@ const micMessage = code => MIC_MESSAGES[code] || 'I couldn’t hear that just no
 export function createRecogniser(config = {}, { onResult, onEnd, onError, onStatus } = {}) {
   const canRecord = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.FormData);
   if (config?.elevenLabs?.apiKey && canRecord) return scribeRecogniser(config.elevenLabs, { onResult, onEnd, onError, onStatus });
+  if (config?.elevenLabs?.apiKey && !canRecord) {
+    // The key is there but this page cannot open a microphone (usually a file:// or plain-http
+    // page in a browser that only allows the mic on https / localhost). Say so, out loud.
+    const why = window.isSecureContext
+      ? 'This browser can’t record here — open the page in Chrome, Brave or Edge.'
+      : 'The microphone only works on https or localhost — open the localhost link instead of the file.';
+    console.warn('[mic] recording unavailable:', { secure: window.isSecureContext, mediaDevices: !!navigator.mediaDevices, MediaRecorder: !!window.MediaRecorder });
+    return { kind: 'unavailable', start: () => { onError?.(why); }, stop: () => {}, cancel: () => {} };
+  }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return null;
   return webSpeechRecogniser(SR, { onResult, onEnd, onError });
@@ -383,10 +392,18 @@ function scribeRecogniser(el, { onResult, onEnd, onError, onStatus }) {
 
   async function start() {
     cancelled = false;
+    // Create the analyser's AudioContext now, inside the click, so it is allowed to run;
+    // created after an await it can sit "suspended" and never hear you go quiet.
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); ctx.resume?.(); } catch { ctx = null; }
+    console.info('[mic] opening microphone…');
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    } catch (err) { onError?.(micMessage(err?.name)); teardown(); return; }
+    } catch (err) {
+      console.warn('[mic] getUserMedia failed:', err?.name, err?.message);
+      onError?.(micMessage(err?.name)); teardown(); return;
+    }
     if (cancelled) { teardown(); return; }
+    console.info('[mic] recording', stream.getAudioTracks()[0]?.label || '');
 
     const chunks = [];
     const type = pickType();
@@ -399,11 +416,13 @@ function scribeRecogniser(el, { onResult, onEnd, onError, onStatus }) {
       const blob = new Blob(chunks, { type: rec?.mimeType || type || 'audio/webm' });
       const heard = performance.now() - startedAt;
       teardown();
+      console.info(`[mic] stopped after ${Math.round(heard)} ms, ${blob.size} bytes${cancelled ? ' (cancelled)' : ''}`);
       if (cancelled) { onEnd?.(); return; }
       if (heard < MIN_MS || blob.size < 1500) { onError?.(micMessage('no-speech')); return; }
       onStatus?.('Got it — one second.');
       try {
         const text = await transcribe(blob);
+        console.info('[mic] heard:', text);
         if (!text) { onError?.(micMessage('no-speech')); return; }
         onResult?.(text, true);
         onEnd?.();
@@ -415,7 +434,8 @@ function scribeRecogniser(el, { onResult, onEnd, onError, onStatus }) {
 
     // silence detection: stop ~1.2 s after the visitor stops talking, once they have started
     try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!ctx) throw new Error('no AudioContext');
+      if (ctx.state === 'suspended') await ctx.resume();
       const src = ctx.createMediaStreamSource(stream);
       const an = ctx.createAnalyser(); an.fftSize = 512;
       src.connect(an);

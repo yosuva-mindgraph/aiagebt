@@ -1,6 +1,6 @@
-# AIB Presenter
+# AIRIS · Thinking Airport — presenter
 
-An avatar-led walkthrough of **Airport in a Box**. AIRIS presents the platform across
+An avatar-led walkthrough of **AIRIS · Thinking Airport**, the airport intelligence platform from MindGraph and DXC. AIRIS presents the platform across
 thirteen short scenes, and answers any question about it at any point — out loud, with
 figures beside the answer, and the walkthrough pausing and resuming around the interruption.
 
@@ -22,7 +22,7 @@ nobody wants a lecture at a stand.
 
 | # | Scene | What it lands |
 |---|---|---|
-| 1 | Airport in a Box | Three lines: hello, one sentence on what it is, the tour in six stops |
+| 1 | AIRIS · Thinking Airport | Three lines: hello, one sentence on what it is, the tour in six stops |
 | 2 | Where should I start? | The chooser; jump anywhere |
 | 3 | The proposition | Sits on top of everything, replaces none of it |
 | 4 | All the data | 21 sources → 59 entities → 204 governed KPIs |
@@ -82,8 +82,8 @@ cp config.example.js config.js     # then fill in; config.js is gitignored
 Two blocks, both optional and independent:
 
 - `elevenLabs.apiKey` — the voice. Two personas, **Friday** (female) and **Jarvis** (male),
-  each an ElevenLabs voice ID under `elevenLabs.voices`; a switch in the header picks one and
-  remembers it on that machine. The defaults are premade voices (Lily and George) with soft
+  each an ElevenLabs voice ID under `elevenLabs.voices`; the switch is in the Settings panel
+  (the gear in the header) and remembers the choice on that machine. The defaults are premade voices (Lily and George) with soft
   settings: multilingual v2, stability 0.62, a little style, speed 0.93. Eleven v3 accepts
   stability only as 0 / 0.5 / 1 and ignores the v2 knobs; the code snaps the value so a v3
   build never silently falls back. Every distinct line is fetched **once**
@@ -142,7 +142,7 @@ src/
   styles.css        tokens, both themes. One rule: SKY is the platform's, GOLD is the human's
   scenes.js         the thirteen scenes — narration + stage + optional interaction
   knowledge.js      71 traceable entries, each with figures + a source label, the retrieval function, the sign-offs
-  avatar.js         AIRIS — holographic core on canvas, voice meter, four states
+  avatar.js         AIRIS — neural-network view on canvas, firing follows the voice, four states
   voice.js          ElevenLabs → Web Speech fallback; plus speech input
   ask.js            retrieval, then a grounded LLM (OpenAI or Anthropic) if a key is present
   app.js            transport, narration loop, film strip, interruption handling, the figures panel
@@ -165,12 +165,12 @@ you. AIRIS's sign-off jokes are gold, because a smile is the human's. Nothing br
 and Midnight is the brand ground. Light is fully designed — not an inversion; Sky is
 too pale on paper, so the platform speaks in Royal there — and the toggle persists.
 
-**AIRIS is a core, not a face.** A holographic iris — glowing aperture, rotating rings of
-ticks, arcs and brackets, a circular voice meter and a slow field of particles — in the
-style of a film AI's interface. The name is from the source material —
-*"like the iris of an eye, AIRIS enables an Airport to see and understand its operations"* —
-which is why the aperture is the centre of the design. Sky when it speaks, gold when it
-listens (with sonar pings), peach and spinning while it thinks.
+**AIRIS is a neural network, not a face.** A sphere of glowing nodes wired to their nearest
+neighbours, turning slowly, with signals firing along the connections and spreading node to
+node — the way thought looks in a film AI's interface. Activity follows the voice: quiet
+breathing while it waits, a storm of firing while it speaks (from real audio RMS when
+ElevenLabs is playing), gold signals drawn inward while it listens, a fast peach churn while
+it thinks. Sky is the platform's, gold is the human's.
 
 **She is short on purpose.** Every answer is capped near 70 words and every scene near
 four lines. The figures panel does the rest of the talking.

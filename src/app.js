@@ -44,7 +44,8 @@ class App {
       play: $('#playBtn'), back: $('#backBtn'), skip: $('#skipBtn'),
       mute: $('#muteBtn'), theme: $('#themeBtn'),
       answer: $('#answer'), ansBody: $('#ansBody'), ansFigs: $('#ansFigs'), ansQ: $('#ansQ'), ansClose: $('#ansClose'),
-      askForm: $('#askForm'), askInput: $('#askInput'), mic: $('#micBtn'), micCancel: $('#micCancel'), voiceSeg: $('#voiceSeg'),
+      askForm: $('#askForm'), askInput: $('#askInput'), mic: $('#micBtn'), micCancel: $('#micCancel'),
+      voiceSeg: $('#voiceSeg'), voiceNote: $('#voiceNote'), settings: $('#settings'), settingsBtn: $('#settingsBtn'), settingsClose: $('#settingsClose'),
       state: $('#avatarState'), overlay: $('#overlay'),
     };
 
@@ -97,7 +98,7 @@ class App {
     const scene = SCENES[this.i];
 
     this.el.title.textContent = scene.title;
-    document.title = `${scene.title} — Airport in a Box`;
+    document.title = `${scene.title} — AIRIS · Thinking Airport`;
     this.el.stage.scrollTop = 0;
     this.el.stage.innerHTML = `<div class="scene">${scene.html()}</div>`;
 
@@ -286,12 +287,19 @@ class App {
 
   _buildVoiceSwitch() {
     const personas = this.voice.personas;
-    if (!this.voice.usingElevenLabs || personas.length < 2) { this.el.voiceSeg.hidden = true; return; }
+    if (!this.voice.usingElevenLabs || personas.length < 2) {
+      this.el.voiceSeg.hidden = true;
+      this.el.voiceNote.textContent = this.voice.usingElevenLabs
+        ? 'One voice is configured. Add a second under elevenLabs.voices in config.js to switch.'
+        : 'Using the browser’s built-in voice. Add an ElevenLabs key in config.js for Friday and Jarvis.';
+      return;
+    }
+    this.el.voiceNote.textContent = 'Friday is the female voice, Jarvis the male. Your choice is remembered on this machine.';
     let saved = null;
     try { saved = localStorage.getItem('aib-voice'); } catch {}
     if (saved && this.voice.setPersona(saved)) {} else saved = this.voice.persona;
 
-    this.el.voiceSeg.innerHTML = `<span class="lbl">voice</span>` + personas.map(p =>
+    this.el.voiceSeg.innerHTML = personas.map(p =>
       `<button type="button" data-persona="${p.id}" aria-pressed="${p.id === saved}" title="${p.label} — ${p.gender || 'voice'}">${p.gender === 'male' ? '♂' : p.gender === 'female' ? '♀' : '•'} ${p.label}</button>`).join('');
     this.el.voiceSeg.hidden = false;
 
@@ -361,6 +369,7 @@ class App {
     });
     if (!rec) { this.el.mic.disabled = true; this.el.mic.title = 'Speech input is not available in this browser'; }
     else { this.el.mic.title = rec.kind === 'scribe' ? 'Ask out loud — AIRIS listens through ElevenLabs' : 'Ask out loud'; this.el.mic.dataset.kind = rec.kind; }
+    console.info('[mic] speech input:', rec ? rec.kind : 'none', '· secure context:', window.isSecureContext, '· origin:', location.origin);
     this.el.mic.addEventListener('click', () => {
       if (!rec) return;
       if (this.el.mic.classList.contains('rec')) { rec.stop(); return; }
@@ -378,13 +387,24 @@ class App {
       this._caption('Okay, cancelled.');
     });
 
-    // voice switch — Friday / Jarvis — remembered on this machine
+    // settings panel — the voice switch lives here, not on the page
+    const openSettings = open => {
+      this.el.settings.hidden = !open;
+      this.el.settingsBtn.setAttribute('aria-expanded', String(open));
+    };
+    this.el.settingsBtn.addEventListener('click', () => openSettings(this.el.settings.hidden));
+    this.el.settingsClose.addEventListener('click', () => openSettings(false));
+    addEventListener('click', e => {
+      if (this.el.settings.hidden) return;
+      if (!this.el.settings.contains(e.target) && !this.el.settingsBtn.contains(e.target)) openSettings(false);
+    });
+    this._openSettings = openSettings;
     this._buildVoiceSwitch();
 
     // keyboard transport — ignored while typing
     addEventListener('keydown', e => {
       const typing = /^(INPUT|TEXTAREA)$/.test(e.target.tagName);
-      if (e.key === 'Escape') { this._closeAnswer(); if (typing) e.target.blur(); return; }
+      if (e.key === 'Escape') { this._closeAnswer(); this._openSettings?.(false); if (typing) e.target.blur(); return; }
       if (typing) return;
       if (e.key === ' ') { e.preventDefault(); this.toggle(); }
       if (e.key === 'ArrowRight') this.next();

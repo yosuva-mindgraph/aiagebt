@@ -30,13 +30,13 @@ export const KB = [
 /* ── what it is ─────────────────────────────────────────────────────────── */
 {
   id: 'what-is-it',
-  q: 'What is Airport in a Box?',
-  k: 'what is airport in a box aib what does it do overview explain product platform summary tell me about introduce',
+  q: 'What is AIRIS — Thinking Airport?',
+  k: 'what is airis thinking airport product airport in a box aib what does it do overview explain platform summary tell me about introduce',
   scene: 'open',
   icon: '📦',
   src: 'Airport Hub metadata',
   facts: [{ n: '59', l: 'canonical entities' }, { n: '204', l: 'governed KPIs' }, { n: '21', l: 'source feeds' }, { n: '0', l: 'systems replaced', human: true }],
-  a: `<p>Airport in a Box is an intelligence <b>platform</b> that sits on top of the systems an airport
+  a: `<p><b>AIRIS — Thinking Airport</b> is an intelligence <b>platform</b> that sits on top of the systems an airport
      already runs — and replaces none of them.</p>
      <p>It reads every source into one governed model of the airport: 59 entities and 204 KPIs, defined
      once. On top of that you get a governed assistant you can ask anything, and four things your own
@@ -651,14 +651,14 @@ export const KB = [
 /* ── under the hood (the Airport Hub repo) ──────────────────────────────── */
 {
   id: 'airport-hub-name',
-  q: 'Is Airport Hub the same thing as Airport in a Box?',
+  q: 'Is Airport Hub the same thing as Thinking Airport?',
   k: 'airport hub same thing under the hood product name what is it called lakehouse white label skins tenant brand',
   scene: 'open',
   icon: '🏷️',
   src: 'Airport Hub repo',
   facts: [{ n: '3', l: 'engines in one product' }, { n: '1', l: 'deployed instance per airport' }],
   a: `<p>Yes. Under the hood the product is <b>Airport Hub</b>, MindGraph's data-intelligence platform;
-     Airport in a Box is the MindGraph and DXC offer built on it.</p>
+     AIRIS — Thinking Airport is the MindGraph and DXC offer built on it.</p>
      <p>Three engines in one: a lakehouse that reads the airport's sources, an intelligence layer that
      turns documents into policies and a glossary, and a governed serving layer that only ever returns
      data under enforced policy. It's white-label — one deployed instance per airport, in your brand.</p>`
@@ -918,9 +918,9 @@ export const KB = [
   icon: '🧠',
   src: 'Thinking Airport brief',
   facts: [{ n: '4', l: 'pillars, one framework' }, { n: '18', l: 'minutes: a queue predicted before it forms' }],
-  a: `<p><b>Thinking Airport</b> is DXC's vision: an airport that senses, anticipates, adapts and responds
-     in real time — a living ecosystem rather than a fixed piece of infrastructure. Anticipate.
-     Personalise. Adapt. Engage.</p>
+  a: `<p><b>Thinking Airport</b> is DXC's vision — and the name this platform carries: an airport that senses,
+     anticipates, adapts and responds in real time, a living ecosystem rather than a fixed piece of
+     infrastructure. Anticipate. Personalise. Adapt. Engage.</p>
      <p>The operating model shifts from detect-react-recover to <b>sense-predict-decide-act</b>: a queue
      predicted 18 minutes before it forms, resources rerouted before the disruption lands. AIRIS is the
      proof point; Thinking Airport is the framework.</p>`
