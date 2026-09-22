@@ -354,7 +354,23 @@ class CDP {
       // narration loop advances to the next scene on its own (muted, so fast)
       await cdp.eval(`window.app.goto('start', { play: true }); true`);
       expect(await waitFor(`window.app.i === 2`, 15000), 'narration did not auto-advance from scene 2 to scene 3');
+      expect(await waitFor(`window.app.i === 3 && window.app.playing === true`, 30000), 'narration stopped after advancing (the next scene was shown but not narrated)');
       await cdp.eval(`window.app.pause(); true`);
+
+      // …and after the last scene it starts again from the first, still playing
+      await cdp.eval(`window.app.goto('talk', { play: true }); true`);
+      expect(await waitFor(`window.app.i === 0 && window.app.playing === true`, 40000), 'walkthrough did not loop from scene 13 back to scene 1');
+      expect(await waitFor(`window.app.i === 1 && window.app.playing === true`, 40000), 'loop did not carry on past scene 1');
+      await cdp.eval(`window.app.pause(); true`);
+
+      // a film-strip click jumps straight there and plays from there; Next / Back wrap around
+      await cdp.eval(`document.querySelectorAll('#sceneList .strip-item')[8].click(); true`);
+      expect(await cdp.eval(`window.app.i === 8 && window.app.playing === true`), 'strip click did not jump to scene 9 and play');
+      await cdp.eval(`window.app.pause(); window.app.goto('talk', { play: false }); document.querySelector('#skipBtn').click(); true`);
+      expect(await cdp.eval(`window.app.i === 0`), 'Next on the last scene did not wrap to the first');
+      await cdp.eval(`document.querySelector('#backBtn').click(); true`);
+      expect(await cdp.eval(`window.app.i === 12`), 'Back on the first scene did not wrap to the last');
+      await cdp.eval(`window.app.goto('open', { play: false }); true`);
       console.log(`[${size.name}] interactions: ${problems.filter(p => p.includes('interaction')).length} problem(s)`);
     }
   }

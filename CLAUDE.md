@@ -80,6 +80,12 @@ src/app.js      App controller; exposes window.app (shoot.js drives it)
        └─ knowledge.js   KB[], search(), CONFIDENCE_FLOOR, DONT_KNOW, WINKS
 ```
 
+### The walkthrough loops
+
+`play()` renders the next scene when a scene's lines finish and wraps from the last scene to the
+first (with a slightly longer pause), so the deck runs all day until `pause()`. A film-strip click
+always calls `goto(id, { play: true })`; `next()` / `prev()` wrap. There is no "end of tour" state.
+
 ### Token-based cancellation in `app.js`
 
 `App.token` is incremented on every `render()`, `pause()` and `handleAsk()`. Every async loop

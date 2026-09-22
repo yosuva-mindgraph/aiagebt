@@ -150,9 +150,15 @@ build.js  shoot-cdp.js  shoot.js   build the single file · look at it (no deps)
 docs/               where every claim came from · the open-source evaluation
 ```
 
+### Playing
+
+The walkthrough **loops**: scene 1 to 13 and back to 1, all day, until someone pauses it,
+asks a question, or picks a scene. Clicking any scene in the film strip jumps straight there
+and carries on from that point. Next and Back wrap around the ends.
+
 ### Keyboard
 
-`space` play/pause · `←` `→` scene · `/` focus the ask bar · `esc` close the answer
+`space` play/pause · `←` `→` scene · `/` focus the ask bar · `esc` close the answer or settings
 
 ## Design notes
 

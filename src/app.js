@@ -67,7 +67,7 @@ class App {
       b.type = 'button';
       b.innerHTML = `<span class="n">${i + 1}</span><span class="t">${s.title}</span>` +
         (s.flag ? `<span class="flag">● ${s.flag}</span>` : '');
-      b.addEventListener('click', () => this.goto(s.id, { play: this.playing }));
+      b.addEventListener('click', () => this.goto(s.id, { play: true }));   // jump in and carry on from there
       this.el.list.appendChild(b);
     });
   }
@@ -121,16 +121,14 @@ class App {
     if (i >= 0) this.render(i, opts);
   }
 
-  next() {
-    if (this.i < SCENES.length - 1) this.render(this.i + 1, { play: this.playing });
-    else this.pause();
-  }
-  prev() { this.render(Math.max(0, this.i - 1), { play: this.playing }); }
+  next() { this.render((this.i + 1) % SCENES.length, { play: this.playing }); }
+  prev() { this.render((this.i - 1 + SCENES.length) % SCENES.length, { play: this.playing }); }
 
   /* ── narration ────────────────────────────────────────────────────── */
 
   async play() {
-    if (this.playing) return;
+    // No "already playing" guard: the previous scene's loop hands over to this one with the
+    // flag still set, and the token below retires any older loop the moment this one starts.
     this.playing = true;
     this._syncPlayBtn();
     const my = ++this.token;
@@ -158,14 +156,12 @@ class App {
 
     this._setState('idle');
     this.line = 0;
-    if (this.i < SCENES.length - 1) {
-      await wait(600);
-      if (my !== this.token) return;
-      this.render(this.i + 1, { play: true });
-    } else {
-      this.pause();
-      this._caption('That’s the tour. I’m still here — ask me anything you like.');
-    }
+    // On to the next scene — and after the last one, back to the first. The walkthrough
+    // loops all day until someone pauses it, asks a question, or picks a scene.
+    const last = this.i === SCENES.length - 1;
+    await wait(last ? 1600 : 600);
+    if (my !== this.token) return;
+    this.render((this.i + 1) % SCENES.length, { play: true });
   }
 
   pause() {
@@ -177,7 +173,7 @@ class App {
     this._syncPlayBtn();
   }
 
-  toggle() { this.playing ? this.pause() : this.play(); }
+  toggle() { if (this.playing) this.pause(); else this.play(); }
 
   _syncPlayBtn() {
     this.el.play.textContent = this.playing ? '⏸ Pause' : '▸ Resume the walkthrough';
