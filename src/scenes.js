@@ -1,18 +1,21 @@
 /* ============================================================================
-   The walkthrough. Twelve scenes.
+   The walkthrough. Thirteen scenes.
 
    This is a PLATFORM story, not a use-case story. The shape of the argument is:
      all your data, in one governed place
        → the airport modelled on top of it
          → ask it anything
            → build anything on it — boards, apps, workflows, agents
-             → and every one of those is governed by construction.
+             → watch one run, then watch AIRIS coordinate a real disruption
+               → and every one of those is governed by construction.
 
-   The named use cases that appear are examples of what has already been built,
-   explicitly framed as where airports START, not where the platform stops.
+   The narration is deliberately short: at most four lines a scene, each one
+   sentence or two, in a warm voice. AIRIS is a friendly guide, not a lecturer.
+   The stage carries the detail; the voice carries the point.
 
-   Every figure is traceable to the product's own metadata or to a document in
-   "Airports in a Box" on the share — see docs/CONTENT-SOURCES.md.
+   Every figure is traceable to the product's own metadata, to the AIRIS /
+   Thinking Airport briefing, or to a document on the share — see
+   docs/CONTENT-SOURCES.md.
 
    Shape of a scene:
      id        stable key; the knowledge base deep-links answers to it
@@ -31,8 +34,9 @@ const card = (title, body, foot, chip) => `
     ${foot ? `<div class="roi">${foot}</div>` : ''}
   </div>`;
 
+/* a big number that counts up when the scene arrives (app.js reads data-n) */
 const metric = (n, l, human) => `
-  <div class="metric"><div class="n${human ? ' human' : ''}">${n}</div><div class="l">${l}</div></div>`;
+  <div class="metric"><div class="n${human ? ' human' : ''}" data-n="${n}">${n}</div><div class="l">${l}</div></div>`;
 
 export const SCENES = [
 
@@ -42,11 +46,9 @@ export const SCENES = [
   title: 'Airport in a Box',
   eyebrow: 'Airport vertical · MindGraph × DXC',
   lines: [
-    "I'm Iris. I speak for Airport in a Box — the intelligence platform MindGraph and DXC put on top of an airport.",
-    "Let me be clear about what this is before anything else. It is not an application. It is not a fixed list of modules you pick from a menu.",
-    "It is a platform. Every system in your airport, read into one governed model of your data — and then anything you want built on top of it.",
-    "A dashboard. An application. An automated workflow. An AI agent. Asked for in plain language, built without an engineering ticket, and governed the same way whether it took you five minutes or five months.",
-    "Your airport already owns the plumbing. This is the brain that sits on top of it. Let me show you."
+    "Hi, I'm AIRIS. Welcome to Airport in a Box — the intelligence platform MindGraph and DXC put on top of an airport.",
+    "In one line: all of your airport's data in one governed place, and then anything you like built on top of it.",
+    "Here's the tour: the data, the model, asking it questions, building on it, watching it run, and how it lands. About ten minutes — and you can stop me any time."
   ],
   html: () => `
     <p class="eyebrow">Airport vertical · MindGraph × DXC · Confidential</p>
@@ -56,14 +58,28 @@ export const SCENES = [
       source into <strong>one governed model</strong>, and turns that model into the surface every
       board, app, workflow and agent is built on.</p>
     <div class="metrics">
-      ${metric('58', 'Canonical entities')}
-      ${metric('201', 'Governed KPIs')}
-      ${metric('5', 'Control centres')}
+      ${metric('59', 'Canonical entities')}
+      ${metric('204', 'Governed KPIs')}
+      ${metric('21', 'Source feeds')}
       ${metric('0', 'Systems replaced', true)}
       ${metric('∞', 'Things you can build', true)}
     </div>
+
+    <h2>The tour, in six stops</h2>
+    <div class="tour">
+      <button class="stop" data-goto="data"><span class="si">🗄️</span><span class="sn">01 · data</span><span class="st">Every source, one model</span></button>
+      <button class="stop" data-goto="model"><span class="si">🏗️</span><span class="sn">02 · model</span><span class="st">The airport, modelled</span></button>
+      <button class="stop" data-goto="ask"><span class="si">💬</span><span class="sn">03 · ask</span><span class="st">Ask it anything</span></button>
+      <button class="stop" data-goto="build"><span class="si">🧩</span><span class="sn">04 · build</span><span class="st">Boards, apps, workflows, agents</span></button>
+      <button class="stop" data-goto="live"><span class="si">⚡</span><span class="sn">05 · live</span><span class="st">Watch it run — 83 seconds</span></button>
+      <button class="stop human" data-goto="deploy"><span class="si">🛫</span><span class="sn">06 · landing</span><span class="st">How it lands in your airport</span></button>
+    </div>
     <div class="gate">One governed pipeline. Every question, every board, every workflow and every
-      agent resolves through it — so access, masking and audit are the same everywhere.</div>`
+      agent resolves through it — so access, masking and audit are the same everywhere.</div>`,
+  enter(ctx) {
+    ctx.root.querySelectorAll('[data-goto]').forEach(b =>
+      b.addEventListener('click', () => ctx.goto(b.dataset.goto, { play: true })));
+  }
 },
 
 /* 2 ──────────────────────────────────────────────────────────────────────── */
@@ -72,19 +88,21 @@ export const SCENES = [
   title: 'Where should I start?',
   eyebrow: '▸ where should I start?',
   lines: [
-    "Before I dive in — where would you like me to start?",
-    "Pick whatever you're most curious about and I'll take you straight there. Or choose the full walkthrough and I'll give you the whole tour.",
-    "You can scrub back with the film strip on the right at any point, and you can stop me with a question whenever you like."
+    "Before I dive in — where would you like to start? Pick anything, or take the full tour.",
+    "You can scrub with the strip on the right, and interrupt me with a question whenever you like."
   ],
   html: () => `
     <p class="eyebrow">▸ where should I start?</p>
-    <h1>Where should I take you first?</h1>
-    <p class="lede">Tap one — I'll jump right there.</p>
+    <h1>Pick a door.<br>Or take the whole tour.</h1>
+    <p class="lede">Every scene stands on its own, and I'll happily jump between them. Choose what
+      you're most curious about and I'll take you straight there.</p>
     <div class="chooser">
-      <button data-goto="proposition"><span>🧭&nbsp;&nbsp;What it actually is</span><span class="arrow">→</span></button>
-      <button data-goto="data"><span>🗄&nbsp;&nbsp;The data foundation — what it knows</span><span class="arrow">→</span></button>
-      <button data-goto="build"><span>🧱&nbsp;&nbsp;Building boards, apps, workflows and agents</span><span class="arrow">→</span></button>
-      <button data-goto="live"><span>⏱&nbsp;&nbsp;Show me it working — live</span><span class="arrow">→</span></button>
+      <button data-goto="data"><span>🗄&nbsp;&nbsp;The data — every source, one model</span><span class="arrow">→</span></button>
+      <button data-goto="model"><span>🏗&nbsp;&nbsp;The airport, modelled</span><span class="arrow">→</span></button>
+      <button data-goto="ask"><span>💬&nbsp;&nbsp;Ask it anything</span><span class="arrow">→</span></button>
+      <button data-goto="build"><span>🧩&nbsp;&nbsp;Build anything on it</span><span class="arrow">→</span></button>
+      <button data-goto="airis"><span>⚡&nbsp;&nbsp;One disruption, 83 seconds — the AIRIS demo</span><span class="arrow">→</span></button>
+      <button data-goto="agents"><span>🤖&nbsp;&nbsp;Agents, governed</span><span class="arrow">→</span></button>
       <button data-goto="governance"><span>🛡&nbsp;&nbsp;Governance, risk and compliance</span><span class="arrow">→</span></button>
       <button data-goto="deploy"><span>🛫&nbsp;&nbsp;How it would land in my airport</span><span class="arrow">→</span></button>
       <button class="full" data-goto="proposition" data-full="1"><span>▸&nbsp;&nbsp;Give me the full walkthrough</span><span class="arrow">→</span></button>
@@ -101,10 +119,10 @@ export const SCENES = [
   title: 'The proposition',
   eyebrow: '01 · the proposition',
   lines: [
-    "Here is the proposition in one sentence. We do not replace a single system you own.",
-    "Airport in a Box is a non-invasive overlay. It connects to every source system, unifies the data into one canonical model, and puts AI, prediction, automation and a single command picture on top.",
-    "Everything it reads is ingest-only by default. It does not write back into an operational system unless you have explicitly opened that door — which is what makes it safe to point at an ops room rather than a lab.",
-    "And the reason airports say yes is not the architecture. It's that every lever it pulls lands on a number a CFO recognises: cost out, capex deferred, revenue up, risk removed."
+    "The proposition in one sentence: we don't replace a single system you own.",
+    "Airport in a Box sits on top. It reads every source, unifies the data into one model, and puts AI, prediction and automation over it.",
+    "It reads by default, and only writes back where you've opened that door — which is what makes it safe for a live ops room.",
+    "And every lever lands on a number a CFO recognises: cost out, capex deferred, revenue up, risk removed."
   ],
   html: () => `
     <p class="eyebrow">01 · the proposition</p>
@@ -146,22 +164,21 @@ export const SCENES = [
   title: 'All the data',
   eyebrow: '02 · the data fabric',
   lines: [
-    "Everything else I'm going to show you rests on this scene, so let me spend a moment here.",
-    "Source systems land in the lakehouse and are mapped into one canonical model of the airport. Fifty-eight entities — flight, bag, passenger, cargo, retail transaction, energy, roster, revenue, sensor, emergency event, IT system, and so on. Two hundred and one KPIs defined once, on top of them.",
-    "Defined once is the important part. On-time performance means the same thing in the operations dashboard, in a workflow's threshold, in an agent's answer and in the board that goes to your regulator. There is no second definition hiding in someone's spreadsheet.",
-    "Around it sits the catalog: every table and document, their lineage back to source, and a business glossary so the word a director uses resolves to the field an engineer built.",
-    "And there's a governed SQL explorer for the people who'd rather write the query themselves — same masking, same row policies, same audit trail. We do not make the analysts leave."
+    "Everything else rests on this, so one moment here.",
+    "Twenty-one source feeds land in one canonical model: fifty-nine entities and two hundred and four KPIs, each defined exactly once.",
+    "That 'once' is the whole trick. On-time performance means the same thing in a dashboard, a workflow and a regulator's report.",
+    "Around it sit the catalog, lineage, a business glossary — and a governed SQL explorer for the people who like to write their own."
   ],
   html: () => `
     <p class="eyebrow">02 · the data fabric · one governed model</p>
     <h1>Every source, one model,<br>one definition of the truth.</h1>
 
     <div class="pipeline">
-      <div class="stage-step"><div class="sn">Sources</div><div class="sv">21</div><div class="sd">mapped feeds — AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data</div></div>
+      <div class="stage-step"><div class="sn">Sources</div><div class="sv" data-n="21">21</div><div class="sd">mapped feeds — AODB, A-CDM, BHS, DCS, sensors, car park, retail POS, ASQ, airline master data</div></div>
       <div class="arrow-r">→</div>
-      <div class="stage-step"><div class="sn">Canonical model</div><div class="sv">58</div><div class="sd">entities — the airport described once, independent of the system it came from</div></div>
+      <div class="stage-step"><div class="sn">Canonical model</div><div class="sv" data-n="59">59</div><div class="sd">entities — the airport described once, independent of the system it came from</div></div>
       <div class="arrow-r">→</div>
-      <div class="stage-step"><div class="sn">Governed KPIs</div><div class="sv">201</div><div class="sd">measures defined once and reused by every board, workflow, agent and answer</div></div>
+      <div class="stage-step"><div class="sn">Governed KPIs</div><div class="sv" data-n="204">204</div><div class="sd">measures defined once and reused by every board, workflow, agent and answer</div></div>
     </div>
 
     <h2>What sits around it</h2>
@@ -184,12 +201,10 @@ export const SCENES = [
   title: 'The airport, modelled',
   eyebrow: '03 · the operating model',
   lines: [
-    "On top of the data sits the airport itself — modelled the way you actually run it.",
-    "Five control centres. The AOCC for day-to-day flight, baggage, passenger and resource operations. The tower. The emergency operations centre, structured to your airport emergency plan. The network and IT operations centre. And the security operations centre, physical and cyber together.",
-    "Alongside them, the business domains — energy, ESG, facility management, safety training, aviation security, OT security. And the applications: passenger flow, revenue management, disaster operations, connected health, rostering.",
-    "Now here is the sentence I want you to remember, because it's the whole difference between a product and a platform.",
-    "Adding a domain is metadata, not code. You name it, you point it at an entity, and it arrives with a working dashboard. No release. No engineering ticket. No waiting for our roadmap.",
-    "That's why I won't give you a fixed list of use cases. The list is however many your airport has."
+    "On top of the data sits the airport itself, modelled the way you actually run it.",
+    "Five control centres — operations, the tower, emergency, network and security — plus business domains like energy, ESG and facilities, and the apps already built on it.",
+    "Now the sentence to remember: adding a domain is metadata, not code. Name it, point it at an entity, and it arrives with a working dashboard.",
+    "So I won't give you a fixed list of use cases. The list is however many your airport has."
   ],
   html: () => `
     <p class="eyebrow">03 · the operating model</p>
@@ -213,10 +228,10 @@ export const SCENES = [
 
     <h2>Applications already built on it</h2>
     <div class="grid g2">
-      ${card('Passenger360', 'Live passenger flow on the sensor estate — queues, check-in, fill level, objects and PRM, forecasts, a live 2D floor and a 3D twin layer.')}
+      ${card('Flow360', 'Live passenger flow on the sensor estate — curb to gate — queues, check-in, fill level, objects and PRM, forecasts, a live 2D floor and a 3D twin layer. Anonymous counts and coordinates, never images.')}
       ${card('Revenue Management', 'Aeronautical and non-aeronautical revenue: airline billing (tariff → gross charges → incentive credit → net invoice → collection), the airline marketing incentive programme, and route development from market opportunity through business case to launch and ROI.')}
       ${card('AIR Disaster Management', 'Coordinated response for major disruption and crisis events, wired to the emergency operations centre.')}
-      ${card('Connected Health', 'Rapid emergency response linked to connected medical devices.')}
+      ${card('Connected Health', 'Rapid emergency response linked to connected medical devices — incidents, AED deployments, patients treated, hospital transfers.')}
       ${card('Roster Management', 'Staff scheduling and roster analytics — demand, standby, assignment, absence, touchpoints.')}
       ${card('Published boards', 'Any board can be published to a viewer audience — partners, executives, a regulator — with its own access scope.')}
     </div>
@@ -231,11 +246,10 @@ export const SCENES = [
   title: 'Ask it anything',
   eyebrow: '04 · the assistant',
   lines: [
-    "With the model in place, the first thing it buys you is the end of the report queue.",
-    "Anyone in the building asks an operational question in plain language and gets an answer, with a chart, in seconds. Across every connected source at once. No SQL. No ticket to the analytics team. No two-day wait for a report that was stale when it arrived.",
-    "The word governed matters here. The assistant answers through the same pipeline as everything else — so it can only see what your role is allowed to see. Masking applies. Row policies apply. The answer is logged.",
-    "It cites where the number came from, so a sceptical director can follow it back to the source table. And when it doesn't know, it says so rather than inventing a figure — which is the single most important behaviour in a room full of operators.",
-    "In practice this is where roughly eighty percent of analyst time gets handed back."
+    "First thing the model buys you: the end of the report queue.",
+    "Anyone asks a question in plain language and gets the answer, with a chart, in seconds — across every source at once.",
+    "It only sees what your role can see, it cites its sources, and it's logged.",
+    "And when it doesn't know, it says so. In a room full of operators, that's the most important habit it has."
   ],
   html: () => `
     <p class="eyebrow">04 · the assistant · governed natural language</p>
@@ -283,13 +297,10 @@ export const SCENES = [
   title: 'Build anything on it',
   eyebrow: '05 · the build surfaces',
   lines: [
-    "Now the part that makes this a platform rather than a product.",
-    "Four things get built on that data model, and all four are built by the people who need them rather than by an engineering backlog.",
-    "Dashboards. Not a fixed set — a canvas of tiles over any governed measure, saved, shared, and published to whoever should see it.",
-    "Applications. Describe what you want on your data and it is generated against the canonical model — hero, KPI row, charts, tables, flight boards, maps, forms — then refined by hand where you want it exact.",
-    "Workflows. A canvas of triggers and actions: schedules, thresholds, webhooks, live events, and the one people forget — fire when an expected event doesn't arrive. A silent feed is a fault.",
-    "And agents. Registered, scoped, evaluated, guardrailed. I'll come to them next.",
-    "The point is that the twentieth dashboard costs what the second one did. That is what unbounded actually means."
+    "Now the part that makes it a platform, not a product.",
+    "Four things get built on the model, by the people who need them: dashboards, applications, workflows and agents.",
+    "My favourite trigger is the one everyone forgets — fire when an expected event doesn't arrive. A silent feed is a fault.",
+    "The twentieth dashboard costs what the second one did. That's what unbounded actually means."
   ],
   html: () => `
     <p class="eyebrow">05 · the build surfaces</p>
@@ -298,7 +309,7 @@ export const SCENES = [
     <div class="grid g2">
       ${card('Dashboards — endless', 'A canvas of tiles over any governed measure, in any combination, saved and shared. Publish a board to an audience — a partner, an executive, a regulator — with its own access scope. There is no fixed set, and the twentieth costs what the second did.', 'Every tile resolves through the governed pipeline. A board cannot show a number its viewer is not allowed to see.')}
       ${card('Applications — described, then generated', 'Describe the application you want on your data and it is generated against the canonical model, from a component library: hero, navbar, KPI, chart, data table, timeline, filter bar, search, status badge, flight board, map, gallery, form. Then edited by hand where you want it precise.', 'Generated apps inherit the same scopes and audit as everything else — they are not a side door to the data.')}
-      ${card('Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Eleven playbooks ship with the product, disabled, so a fresh install has something real to turn on. They are examples — not the ceiling.')}
+      ${card('Workflows — the automation canvas', 'Triggers: manual run, schedule or cron, a governed measure crossing a threshold, an inbound webhook, a live push event, another workflow failing, or an expected event that never arrived. Actions: query the lakehouse, ask a registered agent, branch, open an alert, email, POST to any REST API, or notify Slack, Teams, Discord, Telegram or WhatsApp.', 'Twelve playbooks come with it — three seeded and switched off so a fresh install has something real to turn on, nine more in the library. Examples, not the ceiling.')}
       ${card('Agents — registered, not improvised', 'Purpose-built agents over the same data scope, each with a risk tier, a declared tool set, evaluations and guardrails. A catalog, a run history, and a topology view of which agent calls what.', 'Shipped today: Airport Hub Analyst, Ops Analyst, Baggage Analyst, Retail Analyst, Data Steward, Compliance Explainer.')}
     </div>
 
@@ -307,9 +318,9 @@ export const SCENES = [
       <div class="before"><b>Everyone builds this</b>Alert when a number goes past a threshold. Useful, and it is the first thing every monitoring tool does.</div>
       <div class="after"><b>This one catches the outage</b>Fire when an <b>expected event does not arrive</b> — a heartbeat on a silent feed. A dashboard reading zero and a dashboard reading nothing look identical until something asks the question.</div>
     </div>
-    <div class="note">Three forecast models ship alongside — delay prediction, passenger-flow
-      forecasting and baggage anomaly detection — and sit in the same catalog, under the same
-      provenance rules, as everything else.</div>`
+    <div class="note">Three forecast models are registered alongside — delay prediction, passenger-flow
+      forecasting and baggage anomaly detection — in the same catalog, under the same provenance
+      rules. They are locked for now and marked "coming soon"; I'd rather tell you that than pretend.</div>`
 },
 
 /* 8 ──────────────────────────────────────────────────────────────────────── */
@@ -320,11 +331,9 @@ export const SCENES = [
   eyebrow: '06 · one workflow, end to end',
   lines: [
     "Let me stop describing it and run one.",
-    "This is a shipped playbook: a security queue has been over the airport's wait-time target for two minutes. Watch every stage, because every stage is a node you can swap.",
-    "The live event fires. The workflow queries the canonical model — governed, so it sees exactly what its scope allows. It asks a registered agent to explain what it's looking at. It opens an alert in the operations register, deduped so the same queue doesn't raise forty of them. It notifies the channels that matter.",
-    "And then it stops. Because the last step is a human.",
-    "That's the rule that makes an automated platform safe to point at a live airport: the machine does the watching, the querying, the explaining and the drafting — and a person makes the call.",
-    "Eleven of these ship with the product, switched off, so a fresh install has something real to turn on. They are examples. Swap any node and it's a different workflow entirely."
+    "A shipped playbook: a security queue has been over target for two minutes. Every step you'll see is a node you can swap.",
+    "The event fires. It queries the model, asks an agent to explain, opens one alert — not forty — and tells the right people.",
+    "Then it stops, because the last step is a human. The machine watches, explains and drafts. A person makes the call."
   ],
   html: () => `
     <p class="eyebrow">06 · one workflow, end to end</p>
@@ -363,11 +372,12 @@ export const SCENES = [
             <span>manual</span><span>schedule / cron</span><span>threshold</span><span>webhook</span>
             <span>live event</span><span>on another flow's failure</span><span>missing event</span>
           </div>
-          <div class="roi" style="margin-top:12px"><b>Shipped playbooks</b>
-            Flight OTP &amp; delay · Airline OTP &amp; cancellations · Baggage mishandling &amp; first-bag
-            SLA · Cargo dwell &amp; throughput · Retail non-aero revenue dip · Customer complaint &amp;
-            ASQ · Security screening &amp; breach · Security wait above target · Lounge at capacity ·
-            IT availability &amp; SLA breach · Emergency response watch
+          <div class="roi" style="margin-top:12px"><b>Twelve playbooks</b>
+            Seeded, switched off: Flight OTP &amp; delay · Baggage mishandling &amp; first-bag SLA ·
+            Security screening &amp; breach. In the library: Airline OTP &amp; cancellations · Cargo dwell
+            &amp; throughput · Customer complaint &amp; ASQ · Emergency response · IT availability &amp; SLA ·
+            Retail non-aero revenue dip · Security wait above target · Lounge at capacity · Daily
+            passenger-flow report
           </div>
         </div>
         <button class="btn primary" id="runBtn" style="margin-top:12px;width:100%">▸ Run the workflow</button>
@@ -408,25 +418,122 @@ export const SCENES = [
     };
 
     btn.addEventListener('click', run);
-    ctx.onLine(2, run);            // fires as the narration reaches "the live event fires"
+    ctx.onLine(2, run);            // fires as the narration reaches "the event fires"
     ctx.onLeave(clear);
   }
 },
 
 /* 9 ──────────────────────────────────────────────────────────────────────── */
 {
-  id: 'agents',
-  title: 'Agents, governed',
-  eyebrow: '07 · the agents',
+  id: 'airis',
+  title: 'One disruption, 83 seconds',
+  flag: 'live',
+  eyebrow: '07 · the AIRIS demo',
   lines: [
-    "A word about the agents, because this is where most AI platforms quietly stop being auditable.",
-    "An agent here is not a prompt somebody pasted into a chat window. It's a registered object with a purpose, a risk tier, a declared set of tools, its own governed data scope, an evaluation suite and guardrails.",
-    "There's a catalog of them, a full run history, and a topology view that shows you which agent calls which tool and which other agent — so nobody has to guess what is talking to what.",
-    "Six ship with the product. An airport hub analyst, an operations analyst, a baggage analyst, a retail analyst, a data steward, and a compliance explainer. You register your own the same way.",
-    "And everything irreversible lands in one approvals inbox. Human in the loop is not a setting we can forget to switch on — it is the shape of the thing."
+    "Now a little about me at full scale — the AIRIS demo DXC built. One routine disruption, end to end.",
+    "A gate change moves a hundred and eighty-seven passengers between terminals. Done by hand, that's five to fifteen minutes of calls and emails across five teams.",
+    "AIRIS orchestrates seventeen systems — AODB, A-CDM, the event bus, FIDS, wayfinding, baggage — and coordinates the whole response in eighty-three seconds.",
+    "Ops gets three options, not a wall of alerts. The passenger gets a map in eighteen seconds. Security gets a fifteen-minute head start. One event, understood once."
   ],
   html: () => `
-    <p class="eyebrow">07 · the agents · registered, scoped, evaluated</p>
+    <p class="eyebrow">07 · the AIRIS demo · AI Real-Time Integrated Solution</p>
+    <h1>One event. Seventeen systems.<br>Eighty-three seconds.</h1>
+    <p class="lede">A gate change moves <strong>187 passengers</strong> from T3-14 to NT-103 after a
+      four-minute delay. Handled by hand, it ripples across five stakeholder groups for 5 to 15 minutes
+      of calls, emails and manual updates. AIRIS coordinates the same event in <strong>83 seconds</strong>,
+      with every stakeholder seeing the update built for their role.</p>
+
+    <div class="airis">
+      <div class="card">
+        <div class="clock"><span id="airisClock">0</span><small>SEC · COORDINATION</small></div>
+        <div class="airis-status" id="airisStatus">● gate change detected · manual baseline 5–15 min</div>
+        <div class="syslist" id="airisSys">
+          <div class="sys">AODB</div><div class="sys">A-CDM</div><div class="sys">Event bus</div>
+          <div class="sys">FIDS</div><div class="sys">Digital wayfinding</div><div class="sys">Baggage — BHS</div>
+          <div class="sys more">+ 11 more systems</div>
+        </div>
+        <button class="btn primary" id="airisBtn" style="margin-top:14px;width:100%">▸ Run the disruption</button>
+      </div>
+
+      <div class="personas" id="airisPersonas">
+        <div class="persona"><div class="who">APOC · operations</div><div class="what">Three response options with impact analysis — not a wall of alerts.</div><div class="lands">Resolved in seconds, not phone calls.</div></div>
+        <div class="persona"><div class="who">Passenger</div><div class="what">An 18-second notification with a map to the new gate.</div><div class="lands">Confusion prevented before it starts.</div></div>
+        <div class="persona"><div class="who">Security</div><div class="what">A predictive surge alert 15 minutes before it happens.</div><div class="lands">A lane opens proactively — no queue ever builds.</div></div>
+        <div class="persona"><div class="who">Airline</div><div class="what">Full context for crew positioning and network impact.</div><div class="lands">A collaborative decision, not a unilateral one.</div></div>
+        <div class="persona"><div class="who">CFO · finance</div><div class="what">Cost avoidance quantified per incident.</div><div class="lands">A measurable business case, not an operational narrative.</div></div>
+      </div>
+    </div>
+
+    <div class="metrics">
+      ${metric('83', 'seconds, demonstrated')}
+      ${metric('17', 'systems orchestrated')}
+      ${metric('187', 'passengers moved')}
+      ${metric('18', 'seconds to notify')}
+      ${metric('15', 'minute head start', true)}
+      ${metric('80–90%', 'faster than manual', true)}
+    </div>
+    <div class="note">Timings are from DXC's AIRIS demonstration against a manual baseline of 5–15
+      minutes and 6–15 touchpoints (IATA). Any cost figure around it is illustrative, modelled on
+      industry benchmarks, and is replaced by an airport's own incident data.</div>`,
+  enter(ctx) {
+    const clock = ctx.root.querySelector('#airisClock');
+    const status = ctx.root.querySelector('#airisStatus');
+    const btn = ctx.root.querySelector('#airisBtn');
+    const systems = [...ctx.root.querySelectorAll('#airisSys .sys')];
+    const personas = [...ctx.root.querySelectorAll('#airisPersonas .persona')];
+    let timers = [];
+    let raf = 0;
+
+    const clear = () => { timers.forEach(clearTimeout); timers = []; cancelAnimationFrame(raf); };
+    const reset = () => {
+      clear();
+      clock.textContent = '0'; clock.parentElement.classList.remove('done');
+      status.textContent = '● gate change detected · manual baseline 5–15 min';
+      systems.forEach(s => s.classList.remove('lit'));
+      personas.forEach(p => p.classList.remove('lit'));
+      btn.disabled = false; btn.textContent = '▸ Run the disruption';
+    };
+
+    const DUR = 6200;   // 83 "seconds" compressed into six real ones
+    const run = () => {
+      reset();
+      btn.disabled = true; btn.textContent = 'Coordinating…';
+      status.textContent = '● AIRIS coordinating · 17 systems';
+      const t0 = performance.now();
+      const tick = now => {
+        const p = Math.min(1, (now - t0) / DUR);
+        clock.textContent = String(Math.round(83 * p));
+        if (p < 1) raf = requestAnimationFrame(tick);
+        else {
+          clock.parentElement.classList.add('done');
+          status.textContent = '● coordinated · every stakeholder updated · 83 s';
+          btn.disabled = false; btn.textContent = '↻ Run it again';
+        }
+      };
+      raf = requestAnimationFrame(tick);
+      systems.forEach((s, i) => timers.push(setTimeout(() => s.classList.add('lit'), 300 + i * 420)));
+      personas.forEach((p, i) => timers.push(setTimeout(() => p.classList.add('lit'), 900 + i * 1000)));
+    };
+
+    btn.addEventListener('click', run);
+    ctx.onLine(2, run);            // fires as the narration reaches "AIRIS orchestrates seventeen systems"
+    ctx.onLeave(clear);
+  }
+},
+
+/* 10 ─────────────────────────────────────────────────────────────────────── */
+{
+  id: 'agents',
+  title: 'Agents, governed',
+  eyebrow: '08 · the agents',
+  lines: [
+    "A word on the agents, because this is where most AI platforms quietly stop being auditable.",
+    "An agent here is a registered object, not a prompt someone pasted: a purpose, a risk tier, declared tools, its own data scope, evals and guardrails.",
+    "Six ship today — an airport analyst, ops, baggage, retail, a data steward and a compliance explainer. You register your own the same way.",
+    "And anything irreversible waits in one approvals inbox for a person. That's the shape of the thing, not a setting."
+  ],
+  html: () => `
+    <p class="eyebrow">08 · the agents · registered, scoped, evaluated</p>
     <h1>An agent is an object,<br>not a prompt somebody pasted.</h1>
 
     <div class="grid g3">
@@ -452,28 +559,27 @@ export const SCENES = [
       Human-in-the-loop is the shape of the platform, not a setting on it.</div>`
 },
 
-/* 10 ─────────────────────────────────────────────────────────────────────── */
+/* 11 ─────────────────────────────────────────────────────────────────────── */
 {
   id: 'governance',
   title: 'Governance, risk & compliance',
-  eyebrow: '08 · GRC',
+  eyebrow: '09 · GRC',
   lines: [
-    "Most platforms treat governance as a module you buy later. Here it is one of the five things in the navigation, and it governs the platform itself as well as the airport.",
-    "The obligation register carries what you're actually held to. ICAO Annex 19 safety management, Annex 17 security, Annex 14 aerodrome, your emergency plan, IGOM ground operations, slot punctuality, ESG reporting, personal data and cross-border transfer, breach notification, access control, audit evidence — and, increasingly, AI governance and model provenance.",
-    "The risk register scores both sides of the house: runway incursion, emergency readiness, security breach, OT cyber, on-time degradation, baggage SLA, resource shortfall, revenue concentration, ESG targets — and next to them, data access scope, personal-data exposure, and unapproved AI extraction.",
-    "Underneath sit column-level access policies, a trust view covering data protection and AI governance, and an audit and telemetry trail across every surface.",
-    "The reason this matters commercially is simple. An airport is a regulated environment, and the question that kills AI pilots is never 'is it clever'. It's 'can you show me who saw what, and why the model said that'. This answers both."
+    "Most platforms sell governance as a module you buy later. Here it's one of the five things in the navigation — and it governs the platform, too.",
+    "The obligation register carries what you're actually held to: the ICAO annexes, your emergency plan, ESG, personal data — and now AI governance.",
+    "The risk register scores both sides: runway incursion and baggage SLA, right next to data-access scope and unapproved AI extraction.",
+    "Why it matters: the question that kills AI pilots is never 'is it clever'. It's 'show me who saw what, and why the model said that'. This answers both."
   ],
   html: () => `
-    <p class="eyebrow">08 · governance, risks &amp; compliance</p>
+    <p class="eyebrow">09 · governance, risks &amp; compliance</p>
     <h1>Governs the airport —<br>and governs itself.</h1>
 
     <h2>Obligations tracked</h2>
     <div class="grid g2">
       ${card('Aviation', 'ICAO Annex 19 safety management · Annex 17 security · Annex 14 aerodrome · the Airport Emergency Plan · IGOM ground operations · slot punctuality.')}
-      ${card('Data &amp; privacy', 'Personal-data protection · cross-border transfer · breach notification · access control · audit evidence · retention schedules.')}
-      ${card('Sustainability', 'ESG reporting against ACI, GRI and Airport Carbon Accreditation.')}
-      ${card('AI', 'AI governance and model provenance — tracked as obligations in the same register as everything else, not in a separate slide.')}
+      ${card('Data &amp; privacy', 'Personal-data protection · GDPR transfers · breach notification · ISO 27001 access control and logging · audit evidence · retention schedules.')}
+      ${card('Sustainability', 'ISO 14001 environmental management and Airport Carbon Accreditation; ESG reporting against ACI and GRI.')}
+      ${card('AI', 'EU AI Act-style transparency and human oversight, plus provenance of AI output — tracked as obligations in the same register as everything else, not in a separate slide.')}
     </div>
 
     <h2>Risks scored — both sides of the house</h2>
@@ -482,13 +588,13 @@ export const SCENES = [
         <div class="card-head"><h3>The airport</h3><span class="chip partial">operational</span></div>
         <p>Runway incursion · emergency readiness · AVSEC breach · OT cyber · OTP degradation ·
           baggage SLA · disruption · resource shortfall · aeronautical revenue concentration ·
-          non-aero shortfall · ESG targets.</p>
+          non-aero shortfall · ESG targets. Each with an owner, and a live signal where the platform can see one.</p>
       </div>
       <div class="card">
         <div class="card-head"><h3>The platform itself</h3><span class="chip live">self-governing</span></div>
-        <p>Data access scope · personal-data exposure · unapproved AI extraction. The platform
-          carries its own risks in the same register, scored on the same scale — because a tool that
-          cannot be audited is a risk to the airport that bought it.</p>
+        <p>Data access scope · personal-data exposure · unapproved AI extraction · engine dependency ·
+          audit gap. The platform carries its own risks in the same register, scored on the same 5×5
+          scale — because a tool that cannot be audited is a risk to the airport that bought it.</p>
       </div>
     </div>
 
@@ -503,20 +609,19 @@ export const SCENES = [
     </div>`
 },
 
-/* 11 ─────────────────────────────────────────────────────────────────────── */
+/* 12 ─────────────────────────────────────────────────────────────────────── */
 {
   id: 'deploy',
   title: 'How it lands',
-  eyebrow: '09 · delivery',
+  eyebrow: '10 · delivery',
   lines: [
     "So how does it actually land in your airport?",
-    "About eighty-five percent of what you'd deploy already exists and is proven in production. The remaining fifteen is your brand, your terminal and zone maps, your local regulations, language and currency, your workflows and SLAs, and your data migration.",
-    "That ratio is the commercial argument. You are not funding a build. You are funding a tailoring.",
-    "Three ways in. Greenfield, where there's no entrenched estate and we stand the whole platform up. Brownfield, where ageing systems get consolidated in phases behind a parallel run with a rollback at every step. Or the intelligent layer, where your systems stay exactly as they are and we overlay on top — fastest ROI, lowest disruption.",
-    "And it runs where you need it. Cloud, on-premise, hybrid, or fully air-gapped for a restricted ops room with no network at all. When a feed drops the board keeps rendering the last known state behind a clear stale banner, and says how old it is — because a dark screen in an operations room is worse than an old one."
+    "About eighty-five percent already exists and is proven. The other fifteen is your brand, your maps, your rules, your workflows. You're funding a tailoring, not a build.",
+    "Three ways in: greenfield, brownfield in phases, or the intelligent layer — where nothing you own moves. That last one is the fastest return.",
+    "And it runs anywhere: cloud, on-prem, hybrid, or fully air-gapped. If a feed drops, the board keeps the last known picture and tells you how old it is."
   ],
   html: () => `
-    <p class="eyebrow">09 · delivery &amp; engagement</p>
+    <p class="eyebrow">10 · delivery &amp; engagement</p>
     <h1>Built once.<br>Tailored per airport.</h1>
 
     <h2>Effort to go live</h2>
@@ -557,20 +662,18 @@ export const SCENES = [
       IDC Future Enterprise Award 2023.</div>`
 },
 
-/* 12 ─────────────────────────────────────────────────────────────────────── */
+/* 13 ─────────────────────────────────────────────────────────────────────── */
 {
   id: 'talk',
   title: "Let's talk",
-  eyebrow: '10 · next',
+  eyebrow: '11 · next',
   lines: [
-    "That's the tour.",
-    "If you take one thing from it: airports do not have a systems problem. They have a coordination problem sitting on top of systems that already work — and a data problem underneath it that nobody has solved once, properly, in one place.",
-    "This solves the second one first, and then the first one falls out of it.",
-    "The shortest honest next step is small. Point it at two or three of your real feeds and let it build the canonical model for them. You'll know inside a fortnight whether what I've told you is true.",
-    "Ask me anything you like. I'm still here."
+    "That's the tour — thank you for staying with me.",
+    "If you take one thing: airports don't have a systems problem. They have a coordination problem, and a data problem underneath it. Solve the second and the first falls out.",
+    "The shortest honest next step is small: three real feeds, a fortnight, and your own people building on it. Ask me anything — I'm still here."
   ],
   html: () => `
-    <p class="eyebrow">10 · next</p>
+    <p class="eyebrow">11 · next</p>
     <h1>Point it at three feeds.<br>Judge it in a fortnight.</h1>
     <p class="lede">The fastest way to test everything I've said is not a workshop. It's a small,
       contained piece of your real estate, mapped into the canonical model, with a board, a workflow
@@ -584,11 +687,11 @@ export const SCENES = [
     <h2>Questions I get asked most</h2>
     <div class="chooser" style="max-width:100%">
       <button data-q="Will this replace my AODB or my existing systems?"><span>Will this replace my existing systems?</span><span class="arrow">→</span></button>
-      <button data-q="What is actually built today versus what still has to be built?"><span>What's actually built today?</span><span class="arrow">→</span></button>
+      <button data-q="What is AIRIS and what did the demo show?"><span>What is AIRIS?</span><span class="arrow">→</span></button>
       <button data-q="Can it run air-gapped with no network at all?"><span>Can it run air-gapped?</span><span class="arrow">→</span></button>
       <button data-q="How do you stop an AI agent seeing data it should not see?"><span>How do you stop an agent over-reaching?</span><span class="arrow">→</span></button>
       <button data-q="Can we build our own dashboards and workflows without you?"><span>Can we build our own, without you?</span><span class="arrow">→</span></button>
-      <button data-q="How long does it take to onboard an airport?"><span>How long does onboarding take?</span><span class="arrow">→</span></button>
+      <button data-q="Where is DXC at PTE Asia and when are the talks?"><span>Where do I find DXC at PTE Asia?</span><span class="arrow">→</span></button>
     </div>`,
   enter(ctx) {
     ctx.root.querySelectorAll('[data-q]').forEach(b =>

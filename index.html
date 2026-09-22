@@ -7,7 +7,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Airport in a Box — walkthrough</title>
-<meta name="description" content="Iris walks you through Airport in a Box: the airport intelligence platform from MindGraph and DXC.">
+<meta name="description" content="AIRIS walks you through Airport in a Box: the airport intelligence platform from MindGraph and DXC.">
 <link rel="stylesheet" href="assets/fonts.css">
 <link rel="stylesheet" href="src/styles.css">
 <script src="config.js" onerror="window.AIB_CONFIG=window.AIB_CONFIG||{}"></script>
@@ -32,11 +32,11 @@
     <div id="stageCanvasWrap">
       <canvas id="avatar" aria-hidden="true"></canvas>
       <div id="avatarState" data-state="idle">
-        <span class="dot"></span><span class="label">standing by</span>
+        <span class="dot"></span><span class="label">ready when you are</span>
       </div>
     </div>
     <div class="presenter">
-      <h2>IRIS</h2>
+      <h2>AIRIS</h2>
       <div class="role">Airport in a Box<br>your guide</div>
     </div>
     <div id="caption" aria-live="polite">
@@ -51,30 +51,33 @@
   <main id="stage"></main>
 
   <aside id="strip">
-    <div class="strip-head"><span id="sceneCounter">scene 1 / 12</span><span>walkthrough</span></div>
+    <div class="strip-head"><span id="sceneCounter">scene 1 / 13</span><span>walkthrough</span></div>
     <div id="sceneList"></div>
     <div class="transport">
-      <button class="btn primary" id="playBtn">▸ Start presentation</button>
+      <button class="btn primary" id="playBtn">▸ Start the walkthrough</button>
     </div>
   </aside>
 
   <div id="askbar">
     <button class="btn" id="micBtn" title="Ask out loud">🎤 Speak</button>
     <form id="askForm" autocomplete="off">
-      <input id="askInput" type="text" placeholder="Ask Iris anything about the platform…  (press / to focus)" aria-label="Ask a question">
+      <input id="askInput" type="text" placeholder="Ask AIRIS anything — the data, the AIRIS demo, the agents, how it lands…  (press / to focus)" aria-label="Ask a question">
       <button class="btn primary" type="submit">Ask</button>
     </form>
   </div>
 
 </div>
 
-<!-- answer sheet -->
+<!-- answer sheet: the words on the left, the figures on the right -->
 <section id="answer" aria-live="polite">
   <div class="ans-head">
     <span class="q" id="ansQ"></span>
     <button class="btn ghost" id="ansClose">Close ✕</button>
   </div>
-  <div class="ans-body" id="ansBody"></div>
+  <div class="ans-grid">
+    <div class="ans-body" id="ansBody"></div>
+    <aside class="ans-figs" id="ansFigs" hidden></aside>
+  </div>
 </section>
 
 <!-- cold open. The click is what unlocks audio autoplay, so it has to exist. -->
@@ -82,8 +85,8 @@
   <div class="opencard">
     <p class="kicker">MindGraph × DXC · Airport vertical</p>
     <h1>Airport in a <em>Box</em></h1>
-    <p>I’m Iris. In about ten minutes I’ll show you the whole platform — the data foundation, what
-      gets built on it, and how it stays governed. Stop me with a question at any point.</p>
+    <p>Hi, I’m AIRIS. Give me a few minutes and I’ll show you the whole platform — and you can
+      interrupt me with a question whenever you like.</p>
     <button class="btn primary" id="startBtn">▸ Start the walkthrough</button>
     <div style="margin-top:14px"><button class="btn ghost" id="skipIntroBtn">Skip — I’ll just ask questions</button></div>
     <p class="fine">Sound is on. Use the toggle in the top right if you’d rather read.</p>

@@ -1,5 +1,5 @@
 /* ============================================================================
-   IRIS — the presenter.
+   AIRIS — the presenter.
 
    A canvas bust, drawn rather than filmed. The name is not decoration: the
    source briefing says "like an iris, AIRIS enables an airport to SEE and
@@ -63,7 +63,7 @@ export function visemesFor(text) {
 const lerp = (a, b, t) => a + (b - a) * t;
 
 export class Avatar {
-  constructor(canvas, { name = 'IRIS' } = {}) {
+  constructor(canvas, { name = 'AIRIS' } = {}) {
     this.c = canvas;
     this.ctx = canvas.getContext('2d');
     this.name = name;

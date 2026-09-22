@@ -4,7 +4,7 @@
    Owns the transport (play / pause / back / skip / jump), mounts a scene's
    stage, runs its narration line by line through the voice, keeps the caption
    and the film strip in step, and handles a question at any moment — which
-   pauses the walkthrough, answers, and offers to resume.
+   pauses the walkthrough, answers (with figures), and offers to resume.
    ========================================================================== */
 
 import { SCENES, sceneIndex } from './scenes.js';
@@ -15,6 +15,13 @@ import { Ask, spokenForm } from './ask.js';
 const $ = sel => document.querySelector(sel);
 
 const CONFIG = window.AIB_CONFIG || {};
+
+const STATE_LABEL = {
+  idle: 'ready when you are',
+  speaking: 'speaking',
+  listening: 'listening…',
+  thinking: 'thinking…',
+};
 
 class App {
   constructor() {
@@ -36,7 +43,7 @@ class App {
       list: $('#sceneList'), counter: $('#sceneCounter'), progress: $('#progressFill'),
       play: $('#playBtn'), back: $('#backBtn'), skip: $('#skipBtn'),
       mute: $('#muteBtn'), theme: $('#themeBtn'),
-      answer: $('#answer'), ansBody: $('#ansBody'), ansQ: $('#ansQ'), ansClose: $('#ansClose'),
+      answer: $('#answer'), ansBody: $('#ansBody'), ansFigs: $('#ansFigs'), ansQ: $('#ansQ'), ansClose: $('#ansClose'),
       askForm: $('#askForm'), askInput: $('#askInput'), mic: $('#micBtn'),
       state: $('#avatarState'), overlay: $('#overlay'),
     };
@@ -45,7 +52,7 @@ class App {
     this._wire();
     this._setState('idle');
     this.el.caption.classList.add('idle');
-    this.el.caption.textContent = 'Press start and I’ll take you through it. Stop me with a question whenever you like.';
+    this.el.caption.textContent = 'Hi, I’m AIRIS. Press start and I’ll walk you through it — or just ask me something.';
     this.render(0, { play: false });
   }
 
@@ -101,6 +108,7 @@ class App {
       onLeave: fn => this.leaveHooks.push(fn),
       onLine: (n, fn) => this.lineHooks.set(n, fn),
     });
+    countUpAll(this.el.stage);
 
     this._syncStrip();
     this.line = 0;
@@ -141,19 +149,19 @@ class App {
       if (my !== this.token) return;
 
       this.avatar.stopSpeaking();
-      await wait(340);
+      await wait(300);
       if (my !== this.token) return;
     }
 
     this._setState('idle');
     this.line = 0;
     if (this.i < SCENES.length - 1) {
-      await wait(700);
+      await wait(600);
       if (my !== this.token) return;
       this.render(this.i + 1, { play: true });
     } else {
       this.pause();
-      this._caption('That’s the tour. Ask me anything you like — I’m still here.');
+      this._caption('That’s the tour. I’m still here — ask me anything you like.');
     }
   }
 
@@ -169,7 +177,7 @@ class App {
   toggle() { this.playing ? this.pause() : this.play(); }
 
   _syncPlayBtn() {
-    this.el.play.textContent = this.playing ? '⏸ Pause presentation' : '▸ Resume presentation';
+    this.el.play.textContent = this.playing ? '⏸ Pause' : '▸ Resume the walkthrough';
     this.el.play.classList.toggle('primary', !this.playing);
   }
 
@@ -182,8 +190,7 @@ class App {
   _setState(s) {
     this.avatar.setState(s);
     this.el.state.dataset.state = s;
-    this.el.state.querySelector('.label').textContent =
-      s === 'speaking' ? 'speaking' : s === 'listening' ? 'listening' : s === 'thinking' ? 'thinking' : 'standing by';
+    this.el.state.querySelector('.label').textContent = STATE_LABEL[s] || STATE_LABEL.idle;
   }
 
   /* ── questions ────────────────────────────────────────────────────── */
@@ -197,26 +204,33 @@ class App {
     this.el.askInput.value = '';
 
     this.el.ansQ.textContent = q.length > 110 ? q.slice(0, 107) + '…' : q;
-    this.el.ansBody.innerHTML = `<p style="color:var(--ink-3)">Looking that up…</p>`;
+    this.el.ansBody.innerHTML = `<p class="thinking"><span></span><span></span><span></span> Let me have a look…</p>`;
+    this.el.ansFigs.hidden = true;
     this.el.answer.classList.add('open');
     this._setState('thinking');
-    this._caption('Let me take that.');
+    this._caption('Ooh, good question. One second.');
 
     const my = ++this.token;
-    const { html, scene, via } = await this.ask.answer(q);
+    const { html, scene, via, visual } = await this.ask.answer(q);
     if (my !== this.token) return;
 
     const jump = scene && scene !== SCENES[this.i].id
-      ? `<button class="jump" data-jump="${scene}">Take me to “${SCENES[sceneIndex(scene)].title}” →</button>`
+      ? `<button class="jump" data-jump="${scene}">Show me “${SCENES[sceneIndex(scene)].title}” →</button>`
       : '';
     const resume = wasPlaying
-      ? `<button class="jump" data-resume="1">↩ Resume the walkthrough</button>` : '';
+      ? `<button class="jump" data-resume="1">↩ Carry on with the tour</button>` : '';
 
-    this.el.ansBody.innerHTML = html + (jump || resume ? `
+    const label = via === 'llm' ? 'AIRIS · grounded in the briefing'
+      : via === 'local-fallback' ? 'straight from the briefing (offline)'
+      : 'straight from the briefing';
+
+    this.el.ansBody.innerHTML = html + `
       <div class="ans-src">
-        <span class="lbl">${via === 'llm' ? 'answered by Iris · grounded' : 'answered from the briefing'}</span>
+        <span class="lbl">${label}</span>
         ${jump}${resume}
-      </div>` : '');
+      </div>`;
+
+    this._renderFigures(visual);
 
     this.el.ansBody.querySelector('[data-jump]')?.addEventListener('click', e => {
       this._closeAnswer();
@@ -236,6 +250,31 @@ class App {
     if (my !== this.token) return;
     this.avatar.stopSpeaking();
     this._setState('idle');
+  }
+
+  /** The figures panel beside an answer: icon, up to four numbers, sources, two related questions. */
+  _renderFigures(visual) {
+    const v = visual || {};
+    const facts = v.facts || [];
+    const related = v.related || [];
+    const sources = v.sources || [];
+    if (!facts.length && !related.length && !sources.length) { this.el.ansFigs.hidden = true; return; }
+
+    const tiles = facts.map(f => `
+      <div class="fig${f.human ? ' human' : ''}"><div class="fn" data-n="${esc(f.n)}">${esc(f.n)}</div><div class="fl">${esc(f.l)}</div></div>`).join('');
+    const src = sources.length
+      ? `<div class="fig-src"><span class="lbl">from</span>${sources.map(s => `<span class="cite">${esc(s)}</span>`).join('')}</div>` : '';
+    const also = related.length
+      ? `<div class="also"><span class="lbl">you could also ask</span>${related.map(r => `<button type="button" data-q="${esc(r)}">${esc(r)}</button>`).join('')}</div>` : '';
+
+    this.el.ansFigs.innerHTML = `
+      <div class="fig-icon" aria-hidden="true">${v.icon || '✈️'}</div>
+      ${tiles ? `<div class="fig-tiles">${tiles}</div>` : ''}
+      ${src}${also}`;
+    this.el.ansFigs.hidden = false;
+    countUpAll(this.el.ansFigs);
+    this.el.ansFigs.querySelectorAll('[data-q]').forEach(b =>
+      b.addEventListener('click', () => this.handleAsk(b.dataset.q)));
   }
 
   _closeAnswer() { this.el.answer.classList.remove('open'); }
@@ -285,7 +324,7 @@ class App {
       this.pause();
       this.el.mic.classList.add('rec');
       this._setState('listening');
-      this._caption('I’m listening.');
+      this._caption('I’m listening — go ahead.');
       try { rec.start(); } catch { this.el.mic.classList.remove('rec'); }
     });
 
@@ -312,6 +351,44 @@ class App {
     });
   }
 }
+
+/* ── count-up figures ─────────────────────────────────────────────────
+   Any element with data-n="83" / "~85%" / "201" / "$13.6k" counts up from
+   zero on arrival, keeping its prefix and suffix. Non-numeric values are
+   left alone. Honours prefers-reduced-motion.                            */
+
+const REDUCED = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+function countUpAll(root) {
+  root.querySelectorAll('[data-n]').forEach(countUp);
+}
+
+function countUp(el) {
+  const raw = el.dataset.n || '';
+  const m = raw.match(/^([^\d]*)(\d[\d,]*)(\.\d+)?(.*)$/);
+  if (!m || REDUCED) { el.textContent = raw; return; }
+  const [, pre, intPart, dec = '', post] = m;
+  const target = parseFloat(intPart.replace(/,/g, '') + dec);
+  const decimals = dec ? dec.length - 1 : 0;
+  const grouped = intPart.includes(',');
+  const t0 = performance.now();
+  const dur = 700 + Math.min(500, target * 2);
+  const fmt = v => {
+    let s = v.toFixed(decimals);
+    if (grouped) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return pre + s + post;
+  };
+  const tick = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(target * eased);
+    if (p < 1) requestAnimationFrame(tick); else el.textContent = raw;
+  };
+  el.textContent = fmt(0);
+  requestAnimationFrame(tick);
+}
+
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

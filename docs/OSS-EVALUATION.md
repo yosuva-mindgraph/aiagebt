@@ -93,7 +93,7 @@ through an AudioContext, and feeds real RMS to the avatar. Falls back to the bro
 built-in `speechSynthesis` when there is no key — which is what an air-gapped room runs.
 
 Pick the model deliberately: **`eleven_turbo_v2_5`** for lowest latency (it matters,
-because Iris has to answer a live question), or **v3** when expressiveness is worth the
+because AIRIS has to answer a live question), or **v3** when expressiveness is worth the
 extra delay. When we move to TalkingHead, switch to the **WebSocket** endpoint so we get
 word-level timestamps — that is the single biggest upgrade to lip-sync quality available.
 
@@ -109,7 +109,7 @@ LlamaIndex) would be a large dependency for one `fetch` and a scoring function o
 38 facts.
 
 **The thing to protect:** the LLM is *grounded*, not authoritative. It may only answer
-from `src/knowledge.js`. Adding a key makes Iris more fluent, not more imaginative, and
+from `src/knowledge.js`. Adding a key makes AIRIS more fluent, not more imaginative, and
 unanswerable questions stay unanswerable. Do not relax that to make a demo smoother.
 
 **Before this goes anywhere public:** move the key behind a proxy. A key in `config.js`
@@ -124,5 +124,5 @@ is a key in the browser, and anyone can read it. `llm.endpoint` exists for exact
    customer-facing version — MIT, purpose-built, ~half a day, one file changes.
 3. **Keep the canvas presenter as the fallback** for venue machines with no GPU.
 4. **Put the LLM key behind a proxy** before it is reachable from the internet.
-5. Revisit Pipecat / LiveKit only if we decide people should be able to interrupt Iris
+5. Revisit Pipecat / LiveKit only if we decide people should be able to interrupt AIRIS
    mid-sentence. That is a different product, not a bigger version of this one.

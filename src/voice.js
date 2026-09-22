@@ -20,6 +20,9 @@
    and the key takes over. That is a property of the preview, not of the build.
    ========================================================================== */
 
+/* ElevenLabs premade "Rachel" — used when no voiceId is configured. */
+const DEFAULT_VOICE = '21m00Tcm4TlvDq8ikWAM';
+
 export class Voice {
   constructor(config = {}) {
     this.cfg = config;
@@ -35,7 +38,7 @@ export class Voice {
   }
 
   get usingElevenLabs() {
-    return Boolean(this.cfg?.elevenLabs?.apiKey && this.cfg?.elevenLabs?.voiceId);
+    return Boolean(this.cfg?.elevenLabs?.apiKey);
   }
 
   setMuted(m) { this.muted = m; if (m) this.stop(); }
@@ -99,8 +102,11 @@ export class Voice {
   /* ── ElevenLabs ─────────────────────────────────────────────────────── */
 
   async _elevenLabs(text) {
-    const { apiKey, voiceId, modelId = 'eleven_turbo_v2_5', stability = 0.42, similarity = 0.80 } =
-      this.cfg.elevenLabs;
+    const {
+      apiKey, voiceId: configuredVoice, modelId = 'eleven_turbo_v2_5',
+      stability = 0.45, similarity = 0.80, style = 0.35,
+    } = this.cfg.elevenLabs;
+    const voiceId = configuredVoice || DEFAULT_VOICE;
 
     const controller = new AbortController();
     const res = await fetch(
@@ -112,7 +118,7 @@ export class Voice {
         body: JSON.stringify({
           text,
           model_id: modelId,
-          voice_settings: { stability, similarity_boost: similarity, use_speaker_boost: true },
+          voice_settings: { stability, similarity_boost: similarity, style, use_speaker_boost: true },
         }),
       }
     );

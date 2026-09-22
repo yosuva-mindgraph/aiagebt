@@ -677,3 +677,96 @@ header {
 .steps li.human .sk { color: var(--gold); }
 .steps .sb { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
 .steps li.lit .sb { color: var(--ink); }
+
+/* ── answer sheet: words left, figures right ──────────────────────────── */
+
+.ans-grid {
+  display: grid; grid-template-columns: minmax(0,1fr) 272px;
+  grid-template-rows: minmax(0,1fr);
+  min-height: 0; overflow: hidden;
+}
+.ans-grid > * { min-height: 0; }
+.ans-figs {
+  border-left: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--sky) 4%, var(--slab));
+  padding: 16px 18px 18px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.ans-figs[hidden] { display: none; }
+.ans-figs::-webkit-scrollbar { width: 5px; }
+.ans-figs::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+.fig-icon { font-size: 30px; line-height: 1; animation: pop .45s var(--e) both; }
+.fig-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fig {
+  border: 1px solid var(--rule); border-radius: 7px; padding: 11px 12px;
+  background: var(--abyss); animation: pop .45s var(--e) both;
+}
+.fig:nth-child(2) { animation-delay: .07s; }
+.fig:nth-child(3) { animation-delay: .14s; }
+.fig:nth-child(4) { animation-delay: .21s; }
+.fig .fn {
+  font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1;
+  color: var(--sky); font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fig.human .fn { color: var(--gold); }
+.fig .fl {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ink-3); margin-top: 7px; line-height: 1.35;
+}
+.fig-src { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fig-src .lbl, .also .lbl {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.also { display: flex; flex-direction: column; gap: 6px; }
+.also button {
+  text-align: left; font: inherit; font-size: 12.5px; line-height: 1.4; cursor: pointer;
+  color: var(--ink-2); background: transparent;
+  border: 1px solid var(--rule); border-radius: 6px; padding: 8px 11px;
+  transition: border-color .16s var(--e), color .16s var(--e), transform .16s var(--e);
+}
+.also button:hover { border-color: var(--gold); color: var(--gold); transform: translateX(2px); }
+@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 900px) {
+  .ans-grid { grid-template-columns: 1fr; grid-template-rows: minmax(0,1fr) auto; }
+  .ans-figs { border-left: none; border-top: 1px solid var(--rule); max-height: 38vh; }
+  .fig-tiles { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* the gentle sign-off on a local answer — it is the human's colour because it is a smile */
+.ans-body p.wink { color: var(--gold); font-style: italic; font-size: 14px; }
+
+/* "thinking" dots while an answer is looked up */
+.thinking { color: var(--ink-3); }
+.thinking span {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--sky); margin-right: 3px; animation: dot 1s ease-in-out infinite;
+}
+.thinking span:nth-child(2) { animation-delay: .15s; }
+.thinking span:nth-child(3) { animation-delay: .3s; margin-right: 8px; }
+@keyframes dot { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+/* ── the tour map (scene 1) ───────────────────────────────────────────── */
+
+.tour { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 8px 0 0; }
+.stop {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--rule); border-radius: 8px; padding: 13px 14px;
+  background: var(--slab); cursor: pointer; text-align: left; font: inherit; color: var(--ink);
+  transition: border-color .16s var(--e), transform .16s var(--e);
+}
+.stop:hover { border-color: var(--sky); transform: translateY(-2px); }
+.stop .si { font-size: 22px; line-height: 1; }
+.stop .sn { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--sky); }
+.stop .st { font-family: var(--display); font-weight: 500; font-size: 14.5px; line-height: 1.25; }
+.stop.human .sn { color: var(--gold); }
+
+/* ── AIRIS scene extras ───────────────────────────────────────────────── */
+
+.airis-status {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); margin-top: 8px;
+}
+.sys.more { color: var(--ink-3); border-style: dashed; }
+.clock.done { color: var(--gold); }
