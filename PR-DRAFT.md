@@ -1138,3 +1138,176 @@ Deliverables in `/home/mindgraph1/projects/aib-presenter-voiced/`:
 3. **§11.4(5) — `1` / `0` / `∞` in scene 1's `.metrics`.** Deliberate platform invariants, still
    the only digits left in the walkthrough.
 4. **`.bars` / `.bar` in `src/styles.css` is dead CSS.** Last consumer went in `g17`.
+
+---
+
+## 13. Questions beyond the briefing: a key-holding proxy, and a deck that ships none
+
+Four branches, merged in QA's order: `proxy-backend` (t1), `endpoint-frontend` (t2),
+`publicconfig-flow` (t3), `proxy-qa` (t4). **Path scopes verified disjoint before merging** — no
+file is touched by two branches — so R3 allowed the straight sequence and all four merged with
+zero conflicts.
+
+The deck can now answer questions *past* the 39 curated facts and speak them. A companion
+`aib-proxy` container holds the Anthropic and ElevenLabs credentials server-side; nginx routes
+same-origin `/api/llm` and `/api/tts` to it. **The artifact ships no credential of any kind** —
+`--public-config` splices `config.public.js`, which contains two relative paths and nothing else.
+
+There are now three distinct deployments rather than a quality ladder:
+
+| build | config | what it is |
+|---|---|---|
+| `build.js` | `config.js` | key in the page — a laptop on a stand you own |
+| `build.js --no-config` | none | no network at all — emailed file, booth stick, air-gapped venue |
+| `build.js --public-config` | `config.public.js` | same-origin proxy — the public URL, live voice and LLM, no credential in the artifact |
+
+### 13.1 The no_ship that made this correct, and why it was not about money
+
+QA's first pass failed it. `src/ask.js` gated on `hasLLM` alone and never read the `grounded`
+value computed a line above, so with an endpoint configured **every** question went to the model:
+39 knowledge-base questions produced 78 paid calls and **0/39** returned the curated text.
+
+The cost was the visible symptom; the governance failure was the real one. `src/knowledge.js`
+carries the never-quote-a-price rule, the no-quantified-outcomes rewrites of §11 and §12, and the
+"I am not going to quote you one" answers — and **those rules hold only while the text is fixed.**
+A model paraphrasing them is a model free to re-derive a number the operator spent three passes
+removing. §11 recorded the rule as *"a figure on screen is one the room can hold us to"*; a
+rephrasing layer over the briefing would have quietly reopened it.
+
+The fix inverts the gate: `src/ask.js:178` returns the curated answer **before** `hasLLM` is
+consulted at `:194`, so a grounded question cannot reach the model whatever the config says. Now
+0 calls and 39/39 curated. Only sub-floor questions cost a round trip. `via` gained a fourth
+value, `llm-unbriefed`, for the case where the model answered with nothing relevant to draw on —
+and it does not trip `guards.test.mjs`, because `g22` made that check pin the **key set** rather
+than the values. A fixture fixed two cycles ago paying off here is worth noting.
+
+### 13.2 Gate
+
+**445/445 green in 696.1 s**, matching QA's figure exactly — baseline 388 plus 57 new checks, no
+pre-existing suite's count changed. Twelve suites; the new `proxy` suite is 50 checks in 120.8 s.
+
+Setup matters and was done first: `npm ci`, `assets/voice-clips.js` (15,937,305 B) and
+`.voice-cache/` (139 clips) present, `LD_LIBRARY_PATH` set. Browser canary green before the run.
+The `avatar` and `voice §0` failures that have been reported around this repo are that setup
+missing, not code.
+
+| target | chars (gate) | **bytes on disk** | cap |
+|---|---|---|---|
+| `dist/index.html` voiced, no-config | 17,019,677 | **17,032,050** | 18 MB |
+| `dist/artifact.html` voiced, no-config | 17,019,188 | **17,031,559** | 18 MB |
+| `dist/index-3d.html` | 11,755,644 | **11,767,845** | 12 MB |
+| `dist/index.html` **`--public-config`** | — | **17,039,451** | 18 MB |
+| `dist/index.html` tracked, unvoiced | — | **1,094,725** | — |
+| `dist/artifact.html` tracked, unvoiced | — | **1,094,234** | — |
+
+Zero API calls this cycle — the cache is complete at all scope.
+
+### 13.3 The two images, and the guards proved by firing them
+
+| image | size | serves |
+|---|---|---|
+| `aib-deck:proxy` | **75 MB** | 17,039,451 B page + 12,455,406 B precompressed |
+| `aib-proxy:final` | **242 MB** | the two keyless routes |
+
+`aib-deck:proxy` audit: **0** `config.js`, **0** `.env`, **0** key-shaped strings in the served
+deck, **0** literal `apiKey` assignments, both `/api/` endpoints present, voice payload present,
+no node binary, document root is the deck and its `.gz`.
+
+`aib-proxy:final`: **refuses to start** without `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY` and
+`ELEVENLABS_VOICE_ID` — exit 1, naming the missing variables. No key-shaped string anywhere in the
+image, no `.env`, no credential in its environment, runs as non-root `node`. The model is pinned
+to `claude-sonnet-5` server-side and a client-supplied `model` is discarded, which is the property
+that matters on an unauthenticated endpoint.
+
+**Planted-secret tests — three, because there are now two audit stages.** Planting a fake
+`config.js` alone proves nothing: `.dockerignore` excludes it and the audit correctly sees an empty
+context. So:
+
+| test | expected | result |
+|---|---|---|
+| fake `config.js` **+** the `config.js` line removed from `.dockerignore` | refuse | **exit 1, no image** |
+| fake `.env` (deliberately *not* in `.dockerignore`, so the audit can fire) | refuse | **exit 1, no image** |
+| `.env.example` present | **allow** — a guard that cries wolf gets deleted | **exit 0, image built** |
+
+Fake keys only; the real key never left its own worktree. Both files restored, tree clean.
+`assertPublicConfigClean()` is exercised by the gate itself at `proxy` §1.4–§1.6, including a key
+that appears **only in a comment** — which matters because this file is inlined verbatim.
+
+### 13.4 Deliverables
+
+`/home/mindgraph1/projects/aib-presenter-voiced/`
+
+| file | bytes | sha256 |
+|---|---|---|
+| `aib-deck-proxy.tar.gz` | **30,594,886** | `d8d31f4115254b2903293f86ef37a595d6f05eaa6d3bd2470952e373b47f3347` |
+| `aib-proxy-final.tar.gz` | **61,356,041** | `007dc2ee074b16f6cc36a9fb79b2127a89da9d02743ec9134c8ad315dd17a09c` |
+| `index.html` (voiced, no-config) | 17,032,050 | `72a1f353444e7f37844c3d413430b1799ca65977c3a8d23d4474dc90f34915c3` |
+| `artifact.html` (voiced, no-config) | 17,031,559 | `7c9ce5acb3c7d94ea45025fbdac6650dd3f3c059760eecfef5e2da8bd971d991` |
+
+Both tarballs `gzip -t` clean; 23 and 17 tar entries. **`aib-deck-final.tar.gz` (30,576,427 B) in
+that directory is SUPERSEDED** — the previous cycle's deck image, with no proxy support. Left in
+place rather than deleted, but it is one wrong `scp` away from re-deploying the old build.
+
+### 13.5 Open pre-flight items
+
+1. **The Anthropic parameter combination has never been exercised against the live API.**
+   `thinking: { type: 'disabled' }` + `output_config: { effort: 'low' }` on `claude-sonnet-5`, with
+   `max_tokens` 350. No key was available to any agent in this cycle. The reasoning behind it is
+   sound and written down — adaptive thinking is on by default and `max_tokens` caps thinking and
+   text together, so omitting the field would spend the budget before the answer starts — but it is
+   **untested**, and it is the single thing between a working `/api/llm` and a 400. **First live
+   call with a real key is the pre-flight.** The ElevenLabs half *was* verified live: a real call
+   through the proxy returned valid MP3 with intact character timings.
+2. **No rate limiting on the public, unauthenticated `/api/`.** Accepted risk, not a defect — the
+   operator has been told the spend exposure twice and explicitly accepted it. Worth recording that
+   §13.1's gating fix shrank it substantially and incidentally: ordinary questions no longer reach
+   the proxy at all, so the exposed surface is sub-floor questions only.
+
+### 13.6 Two findings from integration
+
+**(a) `docker/default.conf.template`'s 502 comment is right, and the reported 504 is a different
+failure.** The comment says a missing proxy yields 502 on `/api/`. I could not reproduce 504 from a
+missing proxy; I measured **502 in both constructible cases**:
+
+| condition | code | latency |
+|---|---|---|
+| upstream name does not resolve (no peer at all) | **502** | 30 s — `resolver … valid=30s` timing out |
+| name resolves, nothing listening on 8091 | **502** | 1 ms — `proxy_connect_timeout 5s`, refused |
+
+504 needs the upstream to **accept** the connection and then not answer within
+`proxy_read_timeout 120s` — a *wedged* proxy, not an absent one. So the comment is accurate for
+what it describes; the 504 that was observed was a third state worth documenting separately rather
+than a correction to this one.
+
+**More useful than either number: the browser rarely sees it.** `src/ask.js` carries a 15,000 ms
+deadline and `src/voice.js` a 12,000 ms one, so the client aborts and degrades long before nginx's
+30 s resolve or 120 s read timeout expires. The only case a visitor actually meets the nginx status
+is the fast one — connection refused, 502 in a millisecond. The property holds in every case
+measured: **deck serves in full, nginx stays `healthy`, and routing recovers with no restart.**
+
+**(b) `dist/artifact.html` silently carries no config in any mode, and with `--public-config` that
+is correct by accident.** The artifact target is assembled from a `<style>…</style>` slice plus the
+`<body>` contents, and the config seam sits in `<head>` outside both — so the
+`window.AIB_CONFIG = {…}` assignment is dropped. Measured on the `--public-config` build:
+`dist/index.html` has the assignment and 4 endpoint references; `dist/artifact.html` has **0
+assignments** and only the 2 references that live in inlined `src/` comments.
+
+This has always been true — the committed artifact at `4b3456c` has no assignment either — and it
+went unnoticed because no earlier mode put anything functional in that file. **For the Artifact
+channel it is the right outcome:** a relative `/api/tts` would resolve against `claude.ai` and 404,
+so the artifact degrading to pre-rendered speech plus the local knowledge base is what you want.
+But it is undocumented, it is **untested** — `proxy` §1.3 asserts the endpoints are inlined and
+reads `index.html` only — and it is fragile: moving the config seam below `<style>` would start
+shipping endpoints that 404 on the host they would resolve against. Not acted on; it is a design
+decision about what the artifact target promises, not integration work.
+
+### 13.7 Still open from earlier sections
+
+1. **§10.5(b)** — voiced and unvoiced builds share filenames, so `node tests/run.mjs` leaves
+   `dist/` voiced and the tracked pair must be rebuilt `--no-voice` afterward. Now three variants
+   share those two paths rather than two, so the footgun is slightly worse than when it was
+   recorded.
+2. **§10.7(1)** — the canvas caption still has no word-by-word highlight, though all 112 clips
+   carry timings that tokenise exactly as the caption splits.
+3. **§11.4(5)** — `1` / `0` / `∞` in scene 1's `.metrics`, deliberate platform invariants.
+4. **`.bars` / `.bar`** in `src/styles.css` is dead CSS; last consumer went in `g17`.
