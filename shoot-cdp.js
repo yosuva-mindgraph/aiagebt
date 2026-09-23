@@ -334,6 +334,13 @@ class CDP {
         await cdp.eval(`window.app.voice.setMuted(true); document.querySelector('#voiceSeg [data-persona="jarvis"]').click(); true`);
         expect(await cdp.eval(`window.app.voice.persona === 'jarvis' && localStorage.getItem('aib-voice') === 'jarvis' && document.querySelector('#voiceSeg [data-persona="jarvis"]').getAttribute('aria-pressed') === 'true'`), 'voice switch did not select Jarvis');
         expect(await cdp.eval(`!document.querySelector('#settings').hidden`), 'switching the voice closed the settings panel');
+        expect(await cdp.eval(`/Jarvis \\(male\\)/.test(document.querySelector('#voiceNote').textContent)`), 'settings note does not say Jarvis (male) is speaking');
+        // mid-walkthrough switch restarts the current line in the new voice (muted, so no request — check the persona flips while playing)
+        await cdp.eval(`window.app.goto('data', { play: true }); true`);
+        await sleep(300);
+        await cdp.eval(`document.querySelector('#voiceSeg [data-persona="friday"]').click(); true`);
+        expect(await cdp.eval(`window.app.playing === true && window.app.voice.persona === 'friday'`), 'switching while playing did not keep playing in the new voice');
+        await cdp.eval(`window.app.pause(); document.querySelector('#voiceSeg [data-persona="jarvis"]').click(); true`);
         await cdp.eval(`document.querySelector('#voiceSeg [data-persona="friday"]').click(); true`);
         expect(await cdp.eval(`window.app.voice.persona === 'friday'`), 'voice switch did not return to Friday');
       } else {

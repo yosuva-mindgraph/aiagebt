@@ -108,6 +108,9 @@ export class Voice {
     this.onLevel = null;        // (rms 0..1) => void
     this.voice = null;
     this._sayId = 0;            // bumped by every say() and stop(); a stale call sees a mismatch and goes quiet
+    this.engine = this.usingElevenLabs ? 'elevenlabs' : 'browser';   // which engine spoke last
+    this.lastError = '';        // why ElevenLabs fell back, if it did
+    this.onEngine = null;       // (engine, lastError) => void
     this.persona = this.cfg?.elevenLabs?.persona || Object.keys(this.cfg?.elevenLabs?.voices || {})[0] || null;
     this._pickVoice();
     if ('speechSynthesis' in window) {
@@ -147,11 +150,17 @@ export class Voice {
     const my = ++this._sayId;
     if (this.muted || !text) { await sleep(estimate(text) * 0.35); return; }
     if (this.usingElevenLabs) {
-      try { return await this._elevenLabs(text, my); }
+      try {
+        const r = await this._elevenLabs(text, my);
+        if (this.engine !== 'elevenlabs') { this.engine = 'elevenlabs'; this.lastError = ''; this.onEngine?.(this.engine, ''); }
+        return r;
+      }
       catch (err) {
         // Cancelled, or superseded by a newer line while this one was still loading — stay silent.
         if (err?.name === 'AbortError' || my !== this._sayId) return;
         console.warn('[voice] ElevenLabs failed, falling back to Web Speech:', err?.message || err);
+        this.lastError = String(err?.message || err);
+        if (this.engine !== 'browser') { this.engine = 'browser'; this.onEngine?.(this.engine, this.lastError); }
       }
     }
     if (my !== this._sayId) return;

@@ -854,6 +854,12 @@ header {
 .airis-bar .fill { display: block; height: 100%; width: 0%; border-radius: 5px; background: linear-gradient(90deg, var(--royal), var(--sky)); transition: width .12s linear; }
 .card.done .airis-bar .fill { background: linear-gradient(90deg, var(--gold), var(--peach)); }
 
+/* the voice switch reads as a toggle: one lit side, one dim side, a clear hand-off */
+#voiceSeg { position: relative; }
+#voiceSeg button { min-width: 108px; text-align: center; }
+#voiceSeg button[aria-pressed="true"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sky) 60%, transparent); }
+#voiceSeg button[aria-pressed="false"]:hover { background: color-mix(in srgb, var(--sky) 10%, transparent); }
+
 </style>
 <script>window.AIB_CONFIG = window.AIB_CONFIG || {};</script>
 </head>
@@ -3284,6 +3290,9 @@ class Voice {
     this.onLevel = null;        // (rms 0..1) => void
     this.voice = null;
     this._sayId = 0;            // bumped by every say() and stop(); a stale call sees a mismatch and goes quiet
+    this.engine = this.usingElevenLabs ? 'elevenlabs' : 'browser';   // which engine spoke last
+    this.lastError = '';        // why ElevenLabs fell back, if it did
+    this.onEngine = null;       // (engine, lastError) => void
     this.persona = this.cfg?.elevenLabs?.persona || Object.keys(this.cfg?.elevenLabs?.voices || {})[0] || null;
     this._pickVoice();
     if ('speechSynthesis' in window) {
@@ -3323,11 +3332,17 @@ class Voice {
     const my = ++this._sayId;
     if (this.muted || !text) { await sleep(estimate(text) * 0.35); return; }
     if (this.usingElevenLabs) {
-      try { return await this._elevenLabs(text, my); }
+      try {
+        const r = await this._elevenLabs(text, my);
+        if (this.engine !== 'elevenlabs') { this.engine = 'elevenlabs'; this.lastError = ''; this.onEngine?.(this.engine, ''); }
+        return r;
+      }
       catch (err) {
         // Cancelled, or superseded by a newer line while this one was still loading — stay silent.
         if (err?.name === 'AbortError' || my !== this._sayId) return;
         console.warn('[voice] ElevenLabs failed, falling back to Web Speech:', err?.message || err);
+        this.lastError = String(err?.message || err);
+        if (this.engine !== 'browser') { this.engine = 'browser'; this.onEngine?.(this.engine, this.lastError); }
       }
     }
     if (my !== this._sayId) return;
@@ -4224,7 +4239,17 @@ class App {
         : 'Using the browser’s built-in voice. Add an ElevenLabs key in config.js for Friday and Jarvis.';
       return;
     }
-    this.el.voiceNote.textContent = 'Friday is the female voice, Jarvis the male. Your choice is remembered on this machine.';
+    const describe = () => {
+      const p = personas.find(x => x.id === this.voice.persona);
+      const who = p ? `${p.label} (${p.gender === 'male' ? 'male' : 'female'})` : '';
+      if (this.voice.engine === 'browser' && this.voice.lastError) {
+        this.el.voiceNote.textContent = `Using the browser's voice right now — ElevenLabs answered: ${this.voice.lastError}. ${who} will be back once it can be reached.`;
+      } else {
+        this.el.voiceNote.textContent = `Speaking as ${who} through ElevenLabs. Friday is the female voice, Jarvis the male; your choice is remembered on this machine.`;
+      }
+    };
+    describe();
+    this.voice.onEngine = () => describe();
     let saved = null;
     try { saved = localStorage.getItem('aib-voice'); } catch {}
     if (saved && this.voice.setPersona(saved)) {} else saved = this.voice.persona;
@@ -4239,8 +4264,15 @@ class App {
       try { localStorage.setItem('aib-voice', id); } catch {}
       this.el.voiceSeg.querySelectorAll('[data-persona]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.persona === id)));
       const p = personas.find(x => x.id === id);
-      // a one-line hello in the new voice, unless the walkthrough is mid-sentence
-      if (!this.playing) {
+      describe();
+      if (this.playing) {
+        // mid-walkthrough: restart the current line straight away in the new voice
+        const line = this.line;
+        this.pause();
+        this.line = line;
+        this.play();
+      } else {
+        // a one-line hello in the new voice
         const hello = `${p.label} here. Ask me anything.`;
         this._caption(hello);
         this._setState('speaking');

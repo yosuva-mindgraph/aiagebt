@@ -290,7 +290,17 @@ class App {
         : 'Using the browser’s built-in voice. Add an ElevenLabs key in config.js for Friday and Jarvis.';
       return;
     }
-    this.el.voiceNote.textContent = 'Friday is the female voice, Jarvis the male. Your choice is remembered on this machine.';
+    const describe = () => {
+      const p = personas.find(x => x.id === this.voice.persona);
+      const who = p ? `${p.label} (${p.gender === 'male' ? 'male' : 'female'})` : '';
+      if (this.voice.engine === 'browser' && this.voice.lastError) {
+        this.el.voiceNote.textContent = `Using the browser's voice right now — ElevenLabs answered: ${this.voice.lastError}. ${who} will be back once it can be reached.`;
+      } else {
+        this.el.voiceNote.textContent = `Speaking as ${who} through ElevenLabs. Friday is the female voice, Jarvis the male; your choice is remembered on this machine.`;
+      }
+    };
+    describe();
+    this.voice.onEngine = () => describe();
     let saved = null;
     try { saved = localStorage.getItem('aib-voice'); } catch {}
     if (saved && this.voice.setPersona(saved)) {} else saved = this.voice.persona;
@@ -305,8 +315,15 @@ class App {
       try { localStorage.setItem('aib-voice', id); } catch {}
       this.el.voiceSeg.querySelectorAll('[data-persona]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.persona === id)));
       const p = personas.find(x => x.id === id);
-      // a one-line hello in the new voice, unless the walkthrough is mid-sentence
-      if (!this.playing) {
+      describe();
+      if (this.playing) {
+        // mid-walkthrough: restart the current line straight away in the new voice
+        const line = this.line;
+        this.pause();
+        this.line = line;
+        this.play();
+      } else {
+        // a one-line hello in the new voice
         const hello = `${p.label} here. Ask me anything.`;
         this._caption(hello);
         this._setState('speaking');
